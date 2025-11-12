@@ -1,0 +1,65 @@
+-- ============================================
+-- Grindproof Database Schema
+-- AI Goal & Routine Assistant
+-- ============================================
+
+-- Goals table
+CREATE TABLE IF NOT EXISTS goals (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  title TEXT NOT NULL,
+  description TEXT,
+  target_date TIMESTAMPTZ,
+  status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'completed', 'paused')),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Routines table
+CREATE TABLE IF NOT EXISTS routines (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  description TEXT,
+  frequency TEXT NOT NULL DEFAULT 'daily' CHECK (frequency IN ('daily', 'weekly', 'custom')),
+  days_of_week INTEGER[],
+  time_of_day TEXT,
+  is_active BOOLEAN NOT NULL DEFAULT true,
+  goal_id UUID REFERENCES goals(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Create indexes for better query performance
+CREATE INDEX IF NOT EXISTS idx_routines_goal_id ON routines(goal_id);
+CREATE INDEX IF NOT EXISTS idx_goals_status ON goals(status);
+CREATE INDEX IF NOT EXISTS idx_routines_is_active ON routines(is_active);
+CREATE INDEX IF NOT EXISTS idx_goals_created_at ON goals(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_routines_created_at ON routines(created_at DESC);
+
+-- Create updated_at trigger function
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Add triggers to automatically update updated_at timestamp
+CREATE TRIGGER update_goals_updated_at 
+  BEFORE UPDATE ON goals
+  FOR EACH ROW 
+  EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_routines_updated_at 
+  BEFORE UPDATE ON routines
+  FOR EACH ROW 
+  EXECUTE FUNCTION update_updated_at_column();
+
+-- ============================================
+-- Notes:
+-- - Run this SQL in your Supabase SQL Editor
+-- - Tables use snake_case (PostgreSQL convention)
+-- - tRPC layer converts to camelCase for API responses
+-- - All timestamps are stored as TIMESTAMPTZ (timezone-aware)
+-- ============================================
+
