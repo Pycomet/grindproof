@@ -1,0 +1,33 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="512" height="512" fill="#09090b" rx="64"/>
+  
+  <!-- Shield outline -->
+  <path
+    d="M256 80L144 128V240C144 344 192 416 256 472C320 416 368 344 368 240V128L256 80Z"
+    stroke="#fafafa"
+    stroke-width="24"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    fill="none"
+  />
+  
+  <!-- Upward trend line inside shield -->
+  <path
+    d="M192 336L224 304L256 320L288 272"
+    stroke="#fafafa"
+    stroke-width="24"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+  
+  <!-- Arrow point -->
+  <path
+    d="M264 272H288V296"
+    stroke="#fafafa"
+    stroke-width="24"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+</svg>
+

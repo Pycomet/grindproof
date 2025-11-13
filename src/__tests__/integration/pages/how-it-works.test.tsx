@@ -28,7 +28,8 @@ describe('How It Works Page', () => {
   it('has navigation links', () => {
     render(<HowItWorks />);
     
-    const brandLink = screen.getAllByText('Grindproof')[0];
+    // Find the brand link by role and name
+    const brandLink = screen.getByRole('link', { name: 'Grindproof' });
     expect(brandLink).toHaveAttribute('href', '/');
     
     const ctaButton = screen.getByRole('link', { name: /Ready to Stop Bullshitting/i });
