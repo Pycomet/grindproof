@@ -67,28 +67,30 @@ export const goalRouter = router({
   getById: publicProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {
-      const { data, error } = await ctx.db
+      const response = await ctx.db
         .from("goals")
         .select("*")
         .eq("id", input.id)
         .single();
 
-      if (error) {
-        throw new Error(`Failed to fetch goal: ${error.message}`);
+      if (response.error) {
+        throw new Error(`Failed to fetch goal: ${response.error.message}`);
       }
 
-      if (!data) {
+      if (!response.data) {
         return null;
       }
 
+      const goal = response.data;
+
       return {
-        id: data.id,
-        title: data.title,
-        description: data.description || undefined,
-        targetDate: data.target_date ? new Date(data.target_date) : undefined,
-        status: data.status as "active" | "completed" | "paused",
-        createdAt: new Date(data.created_at),
-        updatedAt: new Date(data.updated_at),
+        id: goal.id,
+        title: goal.title,
+        description: goal.description || undefined,
+        targetDate: goal.target_date ? new Date(goal.target_date) : undefined,
+        status: goal.status as "active" | "completed" | "paused",
+        createdAt: new Date(goal.created_at),
+        updatedAt: new Date(goal.updated_at),
       };
     }),
 
