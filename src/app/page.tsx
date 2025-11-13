@@ -1,6 +1,7 @@
 'use client';
 
 import Link from "next/link";
+import { Logo } from "@/components/Logo";
 
 export default function Home() {
   return (
@@ -9,13 +10,8 @@ export default function Home() {
       <div className="flex min-h-screen flex-col items-center justify-center px-4">
         <div className="max-w-3xl text-center">
           {/* Logo/Brand */}
-          <div className="mb-8">
-            <h1 className="text-6xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50 sm:text-7xl">
-              Grindproof
-            </h1>
-            <div className="mt-2 text-sm font-medium tracking-wider text-zinc-500 dark:text-zinc-400">
-              STOP LYING TO YOURSELF
-            </div>
+          <div className="mb-8 flex justify-center">
+            <Logo size="xl" href="/" />
           </div>
 
           {/* Tagline */}

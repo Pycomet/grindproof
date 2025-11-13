@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { Logo } from '@/components/Logo';
 
 export default function HowItWorks() {
   return (
@@ -9,9 +10,7 @@ export default function HowItWorks() {
       <header className="border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
         <div className="mx-auto max-w-5xl px-4 py-4">
           <div className="flex items-center justify-between">
-            <Link href="/" className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
-              Grindproof
-            </Link>
+            <Logo size="md" href="/" />
             <Link
               href="/dashboard"
               className="rounded-full bg-zinc-900 px-6 py-2 text-sm font-semibold text-white transition-colors hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"

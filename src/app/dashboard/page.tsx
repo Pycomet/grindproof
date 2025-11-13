@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import type { User } from '@supabase/supabase-js';
 import { MobileSwipeView } from '@/components/MobileSwipeView';
+import { Logo } from '@/components/Logo';
 
 type ViewMode = 'today' | 'evening' | 'weekly' | 'integrations';
 
@@ -67,9 +68,7 @@ export default function Dashboard() {
       <header className="border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
         <div className="mx-auto max-w-5xl px-4 py-4">
           <div className="flex items-center justify-between">
-            <Link href="/" className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
-              Grindproof
-            </Link>
+            <Logo size="md" href="/" />
             <div className="flex items-center gap-4">
               <div className="hidden text-sm text-zinc-500 sm:block">{currentTime}</div>
               {user && (

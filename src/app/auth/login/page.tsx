@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { supabase } from '@/lib/supabase/client';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { Logo } from '@/components/Logo';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -43,11 +44,9 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-zinc-50 px-4 dark:bg-zinc-950">
       <div className="w-full max-w-md">
-        <div className="text-center">
-          <Link href="/" className="text-3xl font-bold text-zinc-900 dark:text-zinc-50">
-            Grindproof
-          </Link>
-          <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+        <div className="mb-8 flex flex-col items-center">
+          <Logo size="lg" href="/" />
+          <p className="mt-4 text-sm text-zinc-600 dark:text-zinc-400">
             Sign in to your account
           </p>
         </div>
