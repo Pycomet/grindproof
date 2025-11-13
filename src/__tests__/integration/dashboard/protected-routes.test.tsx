@@ -42,7 +42,7 @@ describe('Protected Routes - Dashboard', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Grindproof')).toBeInTheDocument();
-      expect(screen.getByText('🌅 Morning Plan')).toBeInTheDocument();
+      expect(screen.getByText('✓ Today')).toBeInTheDocument();
       expect(screen.getByText('🌙 Reality Check')).toBeInTheDocument();
       expect(screen.getByText('📊 Weekly Roast')).toBeInTheDocument();
     });
@@ -96,7 +96,7 @@ describe('Protected Routes - Dashboard', () => {
     });
   });
 
-  it('displays morning plan tasks', async () => {
+  it('displays today view tasks', async () => {
     vi.mocked(supabase.auth.getUser).mockResolvedValue({
       data: {
         user: {
@@ -111,8 +111,11 @@ describe('Protected Routes - Dashboard', () => {
     render(<Dashboard />);
 
     await waitFor(() => {
-      expect(screen.getByText('Good Morning 👋')).toBeInTheDocument();
-      expect(screen.getByText("Here's what you planned for today. Confirm or adjust:")).toBeInTheDocument();
+      const headers = screen.getAllByText('Today\'s Tasks ✓');
+      expect(headers.length).toBeGreaterThan(0);
+      
+      const completionText = screen.getAllByText(/1 of 3 completed/);
+      expect(completionText.length).toBeGreaterThan(0);
     });
   });
 });
