@@ -1,17 +1,33 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { supabase } from '@/lib/supabase/client';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import type { User } from '@supabase/supabase-js';
 
 type ViewMode = 'morning' | 'evening' | 'weekly';
 
 export default function Dashboard() {
+  const router = useRouter();
   const [view, setView] = useState<ViewMode>('morning');
+  const [user, setUser] = useState<User | null>(null);
   const currentTime = new Date().toLocaleTimeString('en-US', { 
     hour: 'numeric', 
     minute: '2-digit',
     hour12: true 
   });
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      setUser(user);
+    });
+  }, []);
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    router.push('/');
+  };
 
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
@@ -22,7 +38,17 @@ export default function Dashboard() {
             <Link href="/" className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
               Grindproof
             </Link>
-            <div className="text-sm text-zinc-500">{currentTime}</div>
+            <div className="flex items-center gap-4">
+              <div className="text-sm text-zinc-500">{currentTime}</div>
+              {user && (
+                <button
+                  onClick={handleSignOut}
+                  className="text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50"
+                >
+                  Sign Out
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </header>

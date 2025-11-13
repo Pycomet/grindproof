@@ -1,34 +1,55 @@
+import { createServerClient as createSSRClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
+import { cookies } from "next/headers";
 import { env } from "@/lib/env";
 
 /**
- * Supabase client for server-side usage
- * Uses the service role key - bypasses row-level security
- * Use this in tRPC procedures for admin operations
+ * Admin client - bypasses RLS
+ * Lazy initialization to prevent test errors
  */
-export const supabaseAdmin = createClient(
-  env.NEXT_PUBLIC_SUPABASE_URL,
-  env.SUPABASE_SERVICE_ROLE_KEY,
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  }
-);
+let _supabaseAdmin: ReturnType<typeof createClient> | null = null;
+
+export const supabaseAdmin = new Proxy({} as ReturnType<typeof createClient>, {
+  get(target, prop) {
+    if (!_supabaseAdmin) {
+      _supabaseAdmin = createClient(
+        env.NEXT_PUBLIC_SUPABASE_URL,
+        env.SUPABASE_SERVICE_ROLE_KEY!,
+        {
+          auth: {
+            autoRefreshToken: false,
+            persistSession: false,
+          },
+        }
+      );
+    }
+    return (_supabaseAdmin as any)[prop];
+  },
+});
 
 /**
- * Get a Supabase client for a specific user session
- * Use this when you have user authentication
+ * Server client with user session
  */
-export function createServerClient() {
-  return createClient(
+export async function createServerClient() {
+  const cookieStore = await cookies();
+
+  return createSSRClient(
     env.NEXT_PUBLIC_SUPABASE_URL,
-    env.SUPABASE_SERVICE_ROLE_KEY,
+    env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
+      cookies: {
+        getAll() {
+          return cookieStore.getAll();
+        },
+        setAll(cookiesToSet) {
+          try {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            );
+          } catch {
+            // Ignore in Server Components
+          }
+        },
       },
     }
   );

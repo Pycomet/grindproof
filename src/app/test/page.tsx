@@ -146,16 +146,16 @@ export default function TestPage() {
           <h2 className="text-2xl font-semibold mb-4">Available Endpoints</h2>
           <div className="space-y-2 text-sm font-mono">
             <div>
-              <strong>GET:</strong> /api/trpc/goal.getAll
+              <strong>GET:</strong> /api/goal.getAll
             </div>
             <div>
-              <strong>POST:</strong> /api/trpc/goal.create
+              <strong>POST:</strong> /api/goal.create
             </div>
             <div>
-              <strong>GET:</strong> /api/trpc/routine.getAll
+              <strong>GET:</strong> /api/routine.getAll
             </div>
             <div>
-              <strong>POST:</strong> /api/trpc/routine.create
+              <strong>POST:</strong> /api/routine.create
             </div>
           </div>
         </section>
