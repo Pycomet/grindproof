@@ -4,6 +4,9 @@ import withPWA from "next-pwa";
 const nextConfig: NextConfig = {
   /* config options here */
   reactCompiler: true,
+  // Empty turbopack config to silence Next.js 16 warning
+  // PWA functionality uses webpack, not turbopack
+  turbopack: {},
 };
 
 const pwaConfig = withPWA({

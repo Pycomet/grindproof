@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint",
     "test": "vitest",
@@ -44,6 +44,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.0.1",
     "jsdom": "^23.0.0",
+    "minimatch": "^10.1.1",
     "sharp": "^0.34.5",
     "tailwindcss": "^4",
     "typescript": "^5",
