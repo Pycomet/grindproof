@@ -16,27 +16,40 @@ export function Logo({ size = 'md', href = '/', className = '' }: LogoProps) {
 
   const content = (
     <div className={`flex items-center gap-2 ${className}`}>
-      {/* Icon/Symbol */}
+      {/* Icon/Symbol - Shield with upward arrow representing proof and progress */}
       <div className="relative">
-        <div className="relative flex items-center justify-center">
-          {/* Outer ring */}
-          <div className="absolute h-8 w-8 rounded-full border-2 border-zinc-900 dark:border-zinc-50 opacity-20"></div>
-          {/* Inner symbol - represents "grinding" gears */}
-          <svg
-            className="h-6 w-6 text-zinc-900 dark:text-zinc-50"
-            viewBox="0 0 24 24"
-            fill="none"
+        <svg
+          className="h-8 w-8 text-zinc-900 dark:text-zinc-50"
+          viewBox="0 0 32 32"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          {/* Shield outline */}
+          <path
+            d="M16 3L6 7V14C6 20.5 10 25.5 16 29C22 25.5 26 20.5 26 14V7L16 3Z"
             stroke="currentColor"
             strokeWidth="2.5"
             strokeLinecap="round"
             strokeLinejoin="round"
-          >
-            {/* Gear/cog shape */}
-            <circle cx="12" cy="12" r="3" />
-            <path d="M12 1v6m0 6v6M1 12h6m6 0h6" />
-            <path d="m4.93 4.93 4.24 4.24m5.66 0 4.24-4.24m0 14.14-4.24-4.24m-5.66 0-4.24 4.24" />
-          </svg>
-        </div>
+            fill="none"
+          />
+          {/* Upward arrow/trend inside shield */}
+          <path
+            d="M11 19L14 16L17 18L21 13"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          {/* Arrow point */}
+          <path
+            d="M18 13H21V16"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
       </div>
 
       {/* Text */}
