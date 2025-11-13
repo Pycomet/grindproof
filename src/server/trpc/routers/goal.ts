@@ -67,21 +67,22 @@ export const goalRouter = router({
   getById: publicProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {
-      const response = await ctx.db
+      const { data, error } = await ctx.db
         .from("goals")
         .select("*")
         .eq("id", input.id)
-        .single();
+        .maybeSingle();
 
-      if (response.error) {
-        throw new Error(`Failed to fetch goal: ${response.error.message}`);
+      if (error) {
+        throw new Error(`Failed to fetch goal: ${error.message}`);
       }
 
-      if (!response.data) {
+      if (!data) {
         return null;
       }
 
-      const goal = response.data;
+      // Type assertion to help TypeScript understand the data structure
+      const goal = data as any;
 
       return {
         id: goal.id,
@@ -109,20 +110,26 @@ export const goalRouter = router({
           status: input.status || "active",
         })
         .select()
-        .single();
+        .maybeSingle();
 
       if (error) {
         throw new Error(`Failed to create goal: ${error.message}`);
       }
 
+      if (!data) {
+        throw new Error("Failed to create goal: No data returned");
+      }
+
+      const goal = data as any;
+
       return {
-        id: data.id,
-        title: data.title,
-        description: data.description || undefined,
-        targetDate: data.target_date ? new Date(data.target_date) : undefined,
-        status: data.status as "active" | "completed" | "paused",
-        createdAt: new Date(data.created_at),
-        updatedAt: new Date(data.updated_at),
+        id: goal.id,
+        title: goal.title,
+        description: goal.description || undefined,
+        targetDate: goal.target_date ? new Date(goal.target_date) : undefined,
+        status: goal.status as "active" | "completed" | "paused",
+        createdAt: new Date(goal.created_at),
+        updatedAt: new Date(goal.updated_at),
       };
     }),
 
@@ -148,20 +155,26 @@ export const goalRouter = router({
         .update(updateData)
         .eq("id", input.id)
         .select()
-        .single();
+        .maybeSingle();
 
       if (error) {
         throw new Error(`Failed to update goal: ${error.message}`);
       }
 
+      if (!data) {
+        throw new Error("Failed to update goal: No data returned");
+      }
+
+      const goal = data as any;
+
       return {
-        id: data.id,
-        title: data.title,
-        description: data.description || undefined,
-        targetDate: data.target_date ? new Date(data.target_date) : undefined,
-        status: data.status as "active" | "completed" | "paused",
-        createdAt: new Date(data.created_at),
-        updatedAt: new Date(data.updated_at),
+        id: goal.id,
+        title: goal.title,
+        description: goal.description || undefined,
+        targetDate: goal.target_date ? new Date(goal.target_date) : undefined,
+        status: goal.status as "active" | "completed" | "paused",
+        createdAt: new Date(goal.created_at),
+        updatedAt: new Date(goal.updated_at),
       };
     }),
 

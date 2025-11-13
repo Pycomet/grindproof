@@ -24,6 +24,7 @@ describe("Goal Router", () => {
     const mockEq = vi.fn().mockReturnThis();
     const mockOrder = vi.fn().mockReturnThis();
     const mockSingle = vi.fn();
+    const mockMaybeSingle = vi.fn();
 
     mockDb = {
       from: vi.fn(() => ({
@@ -34,6 +35,7 @@ describe("Goal Router", () => {
         eq: mockEq,
         order: mockOrder,
         single: mockSingle,
+        maybeSingle: mockMaybeSingle,
       })),
     };
 
@@ -121,8 +123,8 @@ describe("Goal Router", () => {
         updated_at: "2024-01-01T00:00:00Z",
       };
 
-      const mockSingle = vi.fn().mockResolvedValue({ data: mockGoal, error: null });
-      const mockEq = vi.fn().mockReturnValue({ single: mockSingle });
+      const mockMaybeSingle = vi.fn().mockResolvedValue({ data: mockGoal, error: null });
+      const mockEq = vi.fn().mockReturnValue({ maybeSingle: mockMaybeSingle });
       const mockSelect = vi.fn().mockReturnValue({ eq: mockEq });
       
       mockDb.from.mockReturnValue({
@@ -137,8 +139,8 @@ describe("Goal Router", () => {
     });
 
     it("should return null when goal not found", async () => {
-      const mockSingle = vi.fn().mockResolvedValue({ data: null, error: null });
-      const mockEq = vi.fn().mockReturnValue({ single: mockSingle });
+      const mockMaybeSingle = vi.fn().mockResolvedValue({ data: null, error: null });
+      const mockEq = vi.fn().mockReturnValue({ maybeSingle: mockMaybeSingle });
       const mockSelect = vi.fn().mockReturnValue({ eq: mockEq });
       
       mockDb.from.mockReturnValue({
@@ -169,8 +171,8 @@ describe("Goal Router", () => {
         updated_at: "2024-01-01T00:00:00Z",
       };
 
-      const mockSingle = vi.fn().mockResolvedValue({ data: mockCreatedGoal, error: null });
-      const mockSelect = vi.fn().mockReturnValue({ single: mockSingle });
+      const mockMaybeSingle = vi.fn().mockResolvedValue({ data: mockCreatedGoal, error: null });
+      const mockSelect = vi.fn().mockReturnValue({ maybeSingle: mockMaybeSingle });
       const mockInsert = vi.fn().mockReturnValue({ select: mockSelect });
       
       mockDb.from.mockReturnValue({
@@ -199,8 +201,8 @@ describe("Goal Router", () => {
         updated_at: "2024-01-01T00:00:00Z",
       };
 
-      const mockSingle = vi.fn().mockResolvedValue({ data: mockCreatedGoal, error: null });
-      const mockSelect = vi.fn().mockReturnValue({ single: mockSingle });
+      const mockMaybeSingle = vi.fn().mockResolvedValue({ data: mockCreatedGoal, error: null });
+      const mockSelect = vi.fn().mockReturnValue({ maybeSingle: mockMaybeSingle });
       const mockInsert = vi.fn().mockReturnValue({ select: mockSelect });
       
       mockDb.from.mockReturnValue({
@@ -232,8 +234,8 @@ describe("Goal Router", () => {
         updated_at: "2024-01-02T00:00:00Z",
       };
 
-      const mockSingle = vi.fn().mockResolvedValue({ data: mockUpdatedGoal, error: null });
-      const mockSelect = vi.fn().mockReturnValue({ single: mockSingle });
+      const mockMaybeSingle = vi.fn().mockResolvedValue({ data: mockUpdatedGoal, error: null });
+      const mockSelect = vi.fn().mockReturnValue({ maybeSingle: mockMaybeSingle });
       const mockEq = vi.fn().mockReturnValue({ select: mockSelect });
       const mockUpdate = vi.fn().mockReturnValue({ eq: mockEq });
       
