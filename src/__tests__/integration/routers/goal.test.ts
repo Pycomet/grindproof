@@ -102,7 +102,8 @@ describe("Goal Router", () => {
 
     it("should return empty array when no goals exist", async () => {
       const mockOrder = vi.fn().mockResolvedValue({ data: [], error: null });
-      const mockSelect = vi.fn().mockReturnValue({ order: mockOrder });
+      const mockEq = vi.fn().mockReturnValue({ order: mockOrder });
+      const mockSelect = vi.fn().mockReturnValue({ eq: mockEq });
       
       mockDb.from.mockReturnValue({
         select: mockSelect,
@@ -118,7 +119,8 @@ describe("Goal Router", () => {
         data: null,
         error: { message: "Database error" },
       });
-      const mockSelect = vi.fn().mockReturnValue({ order: mockOrder });
+      const mockEq = vi.fn().mockReturnValue({ order: mockOrder });
+      const mockSelect = vi.fn().mockReturnValue({ eq: mockEq });
       
       mockDb.from.mockReturnValue({
         select: mockSelect,
@@ -132,17 +134,22 @@ describe("Goal Router", () => {
     it("should return a goal by id", async () => {
       const mockGoal = {
         id: "1",
+        user_id: "user-123",
         title: "Test Goal",
         description: "Test description",
         target_date: null,
         status: "active",
+        github_repos: null,
+        priority: "medium",
+        time_horizon: null,
         created_at: "2024-01-01T00:00:00Z",
         updated_at: "2024-01-01T00:00:00Z",
       };
 
       const mockMaybeSingle = vi.fn().mockResolvedValue({ data: mockGoal, error: null });
-      const mockEq = vi.fn().mockReturnValue({ maybeSingle: mockMaybeSingle });
-      const mockSelect = vi.fn().mockReturnValue({ eq: mockEq });
+      const mockEq2 = vi.fn().mockReturnValue({ maybeSingle: mockMaybeSingle });
+      const mockEq1 = vi.fn().mockReturnValue({ eq: mockEq2 });
+      const mockSelect = vi.fn().mockReturnValue({ eq: mockEq1 });
       
       mockDb.from.mockReturnValue({
         select: mockSelect,
@@ -157,8 +164,9 @@ describe("Goal Router", () => {
 
     it("should return null when goal not found", async () => {
       const mockMaybeSingle = vi.fn().mockResolvedValue({ data: null, error: null });
-      const mockEq = vi.fn().mockReturnValue({ maybeSingle: mockMaybeSingle });
-      const mockSelect = vi.fn().mockReturnValue({ eq: mockEq });
+      const mockEq2 = vi.fn().mockReturnValue({ maybeSingle: mockMaybeSingle });
+      const mockEq1 = vi.fn().mockReturnValue({ eq: mockEq2 });
+      const mockSelect = vi.fn().mockReturnValue({ eq: mockEq1 });
       
       mockDb.from.mockReturnValue({
         select: mockSelect,
@@ -243,18 +251,23 @@ describe("Goal Router", () => {
 
       const mockUpdatedGoal = {
         id: "1",
+        user_id: "user-123",
         title: "Updated Title",
         description: null,
         target_date: null,
         status: "completed",
+        github_repos: null,
+        priority: "medium",
+        time_horizon: null,
         created_at: "2024-01-01T00:00:00Z",
         updated_at: "2024-01-02T00:00:00Z",
       };
 
       const mockMaybeSingle = vi.fn().mockResolvedValue({ data: mockUpdatedGoal, error: null });
       const mockSelect = vi.fn().mockReturnValue({ maybeSingle: mockMaybeSingle });
-      const mockEq = vi.fn().mockReturnValue({ select: mockSelect });
-      const mockUpdate = vi.fn().mockReturnValue({ eq: mockEq });
+      const mockEq2 = vi.fn().mockReturnValue({ select: mockSelect });
+      const mockEq1 = vi.fn().mockReturnValue({ eq: mockEq2 });
+      const mockUpdate = vi.fn().mockReturnValue({ eq: mockEq1 });
       
       mockDb.from.mockReturnValue({
         update: mockUpdate,
@@ -269,8 +282,9 @@ describe("Goal Router", () => {
 
   describe("delete", () => {
     it("should delete a goal", async () => {
-      const mockEq = vi.fn().mockResolvedValue({ error: null });
-      const mockDelete = vi.fn().mockReturnValue({ eq: mockEq });
+      const mockEq2 = vi.fn().mockResolvedValue({ error: null });
+      const mockEq1 = vi.fn().mockReturnValue({ eq: mockEq2 });
+      const mockDelete = vi.fn().mockReturnValue({ eq: mockEq1 });
       
       mockDb.from.mockReturnValue({
         delete: mockDelete,
@@ -283,8 +297,9 @@ describe("Goal Router", () => {
     });
 
     it("should throw error on delete failure", async () => {
-      const mockEq = vi.fn().mockResolvedValue({ error: { message: "Delete failed" } });
-      const mockDelete = vi.fn().mockReturnValue({ eq: mockEq });
+      const mockEq2 = vi.fn().mockResolvedValue({ error: { message: "Delete failed" } });
+      const mockEq1 = vi.fn().mockReturnValue({ eq: mockEq2 });
+      const mockDelete = vi.fn().mockReturnValue({ eq: mockEq1 });
       
       mockDb.from.mockReturnValue({
         delete: mockDelete,

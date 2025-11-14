@@ -104,9 +104,10 @@ describe("Goals View Component", () => {
         isLoading: false,
       } as any);
 
-      expect(mockGoals).toHaveLength(2);
+      expect(mockGoals).toHaveLength(3);
       expect(mockGoals[0].title).toBe("Launch new feature");
       expect(mockGoals[1].title).toBe("Improve test coverage");
+      expect(mockGoals[2].title).toBe("Completed goal example");
     });
 
     it("should show empty state when no goals exist", () => {
@@ -381,7 +382,7 @@ describe("Goals View Component", () => {
         refetch: vi.fn(),
       } as any);
 
-      expect(mockGoals.length).toBe(2);
+      expect(mockGoals.length).toBe(3);
     });
 
     it("should display correct count for single goal", () => {

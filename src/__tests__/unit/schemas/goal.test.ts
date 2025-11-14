@@ -10,10 +10,14 @@ describe("Goal Schemas", () => {
     it("should validate a complete goal object", () => {
       const validGoal = {
         id: "123",
+        userId: "user-123",
         title: "Test Goal",
         description: "Test description",
         targetDate: new Date("2024-12-31"),
         status: "active" as const,
+        priority: "medium" as const,
+        timeHorizon: "monthly" as const,
+        githubRepos: ["user/repo1"],
         createdAt: new Date(),
         updatedAt: new Date(),
       };
@@ -23,6 +27,7 @@ describe("Goal Schemas", () => {
       if (result.success) {
         expect(result.data.title).toBe("Test Goal");
         expect(result.data.status).toBe("active");
+        expect(result.data.priority).toBe("medium");
       }
     });
 
@@ -53,8 +58,10 @@ describe("Goal Schemas", () => {
     it("should accept optional fields", () => {
       const minimalGoal = {
         id: "123",
+        userId: "user-123",
         title: "Test Goal",
         status: "active" as const,
+        priority: "medium" as const,
         createdAt: new Date(),
         updatedAt: new Date(),
       };

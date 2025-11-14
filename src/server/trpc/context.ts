@@ -21,26 +21,28 @@ export async function createContext(opts?: { req?: Request }) {
         env.NEXT_PUBLIC_SUPABASE_URL,
         env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
         {
-          cookies: {
-            getAll() {
-              // Extract cookies from the request
-              const cookieHeader = opts.req.headers.get("cookie") || "";
-              const cookies: { name: string; value: string }[] = [];
-              
-              cookieHeader.split(";").forEach((cookie) => {
-                const [name, ...rest] = cookie.trim().split("=");
-                if (name) {
-                  cookies.push({ name, value: rest.join("=") });
-                }
-              });
-              
-              return cookies;
-            },
-            setAll() {
-              // Cookies are set via response headers in the route handler
-              // This is a no-op here as we can't set cookies in the context
-            },
-          },
+      cookies: {
+        getAll() {
+          // Extract cookies from the request
+          if (!opts.req) return [];
+          
+          const cookieHeader = opts.req.headers.get("cookie") || "";
+          const cookies: { name: string; value: string }[] = [];
+          
+          cookieHeader.split(";").forEach((cookie) => {
+            const [name, ...rest] = cookie.trim().split("=");
+            if (name) {
+              cookies.push({ name, value: rest.join("=") });
+            }
+          });
+          
+          return cookies;
+        },
+        setAll() {
+          // Cookies are set via response headers in the route handler
+          // This is a no-op here as we can't set cookies in the context
+        },
+      },
         }
       );
       
