@@ -12,6 +12,10 @@ vi.mock("@/lib/supabase/server", () => ({
 describe("Goal Router", () => {
   let mockDb: any;
   let caller: Awaited<ReturnType<typeof createTestCaller>>;
+  const mockUser = {
+    id: "user-123",
+    email: "test@example.com",
+  };
 
   beforeEach(async () => {
     vi.clearAllMocks();
@@ -39,37 +43,47 @@ describe("Goal Router", () => {
       })),
     };
 
-    // Create caller with mocked context
+    // Create caller with mocked context including authenticated user
     caller = await createTestCaller({
       db: mockDb as any,
+      user: mockUser,
     } as Partial<Context>);
   });
 
   describe("getAll", () => {
-    it("should return all goals", async () => {
+    it("should return all goals for authenticated user", async () => {
       const mockGoals = [
         {
           id: "1",
+          user_id: "user-123",
           title: "Goal 1",
           description: "Description 1",
           target_date: "2024-12-31T00:00:00Z",
           status: "active",
+          github_repos: ["user/repo1", "user/repo2"],
+          priority: "high",
+          time_horizon: "monthly",
           created_at: "2024-01-01T00:00:00Z",
           updated_at: "2024-01-01T00:00:00Z",
         },
         {
           id: "2",
+          user_id: "user-123",
           title: "Goal 2",
           description: null,
           target_date: null,
           status: "completed",
+          github_repos: null,
+          priority: "medium",
+          time_horizon: null,
           created_at: "2024-01-02T00:00:00Z",
           updated_at: "2024-01-02T00:00:00Z",
         },
       ];
 
       const mockOrder = vi.fn().mockResolvedValue({ data: mockGoals, error: null });
-      const mockSelect = vi.fn().mockReturnValue({ order: mockOrder });
+      const mockEq = vi.fn().mockReturnValue({ order: mockOrder });
+      const mockSelect = vi.fn().mockReturnValue({ eq: mockEq });
       
       mockDb.from.mockReturnValue({
         select: mockSelect,
@@ -78,8 +92,11 @@ describe("Goal Router", () => {
       const result = await caller.goal.getAll();
 
       expect(mockDb.from).toHaveBeenCalledWith("goals");
+      expect(mockEq).toHaveBeenCalledWith("user_id", "user-123");
       expect(result).toHaveLength(2);
       expect(result[0].title).toBe("Goal 1");
+      expect(result[0].priority).toBe("high");
+      expect(result[0].githubRepos).toEqual(["user/repo1", "user/repo2"]);
       expect(result[1].status).toBe("completed");
     });
 
@@ -276,6 +293,156 @@ describe("Goal Router", () => {
       await expect(caller.goal.delete({ id: "1" })).rejects.toThrow(
         "Failed to delete goal"
       );
+    });
+  });
+
+  describe("User Isolation", () => {
+    it("should only return goals for the authenticated user", async () => {
+      const mockGoals = [
+        {
+          id: "1",
+          user_id: "user-123",
+          title: "User 123 Goal",
+          description: null,
+          target_date: null,
+          status: "active",
+          github_repos: null,
+          priority: "medium",
+          time_horizon: null,
+          created_at: "2024-01-01T00:00:00Z",
+          updated_at: "2024-01-01T00:00:00Z",
+        },
+      ];
+
+      const mockOrder = vi.fn().mockResolvedValue({ data: mockGoals, error: null });
+      const mockEq = vi.fn().mockReturnValue({ order: mockOrder });
+      const mockSelect = vi.fn().mockReturnValue({ eq: mockEq });
+
+      mockDb.from.mockReturnValue({
+        select: mockSelect,
+      });
+
+      const result = await caller.goal.getAll();
+
+      expect(mockEq).toHaveBeenCalledWith("user_id", "user-123");
+      expect(result).toHaveLength(1);
+      expect(result[0].userId).toBe("user-123");
+    });
+
+    it("should not allow unauthenticated access", async () => {
+      const unauthenticatedCaller = await createTestCaller({
+        db: mockDb as any,
+        user: null,
+      } as Partial<Context>);
+
+      await expect(unauthenticatedCaller.goal.getAll()).rejects.toThrow();
+    });
+  });
+
+  describe("New Fields", () => {
+    it("should handle GitHub repos array", async () => {
+      const mockGoal = {
+        id: "1",
+        user_id: "user-123",
+        title: "Test Goal",
+        description: null,
+        target_date: null,
+        status: "active",
+        github_repos: ["user/repo1", "user/repo2", "user/repo3"],
+        priority: "high",
+        time_horizon: "annual",
+        created_at: "2024-01-01T00:00:00Z",
+        updated_at: "2024-01-01T00:00:00Z",
+      };
+
+      const mockMaybeSingle = vi.fn().mockResolvedValue({ data: mockGoal, error: null });
+      const mockSelect = vi.fn().mockReturnValue({ maybeSingle: mockMaybeSingle });
+      const mockInsert = vi.fn().mockReturnValue({ select: mockSelect });
+
+      mockDb.from.mockReturnValue({
+        insert: mockInsert,
+      });
+
+      const result = await caller.goal.create({
+        title: "Test Goal",
+        githubRepos: ["user/repo1", "user/repo2", "user/repo3"],
+        priority: "high",
+        timeHorizon: "annual",
+      });
+
+      expect(result.githubRepos).toEqual(["user/repo1", "user/repo2", "user/repo3"]);
+      expect(result.priority).toBe("high");
+      expect(result.timeHorizon).toBe("annual");
+    });
+
+    it("should handle all priority levels", async () => {
+      const priorities = ["high", "medium", "low"] as const;
+
+      for (const priority of priorities) {
+        const mockGoal = {
+          id: "1",
+          user_id: "user-123",
+          title: "Test Goal",
+          description: null,
+          target_date: null,
+          status: "active",
+          github_repos: null,
+          priority,
+          time_horizon: null,
+          created_at: "2024-01-01T00:00:00Z",
+          updated_at: "2024-01-01T00:00:00Z",
+        };
+
+        const mockMaybeSingle = vi.fn().mockResolvedValue({ data: mockGoal, error: null });
+        const mockSelect = vi.fn().mockReturnValue({ maybeSingle: mockMaybeSingle });
+        const mockInsert = vi.fn().mockReturnValue({ select: mockSelect });
+
+        mockDb.from.mockReturnValue({
+          insert: mockInsert,
+        });
+
+        const result = await caller.goal.create({
+          title: "Test Goal",
+          priority,
+        });
+
+        expect(result.priority).toBe(priority);
+      }
+    });
+
+    it("should handle all time horizons", async () => {
+      const timeHorizons = ["daily", "weekly", "monthly", "annual"] as const;
+
+      for (const timeHorizon of timeHorizons) {
+        const mockGoal = {
+          id: "1",
+          user_id: "user-123",
+          title: "Test Goal",
+          description: null,
+          target_date: null,
+          status: "active",
+          github_repos: null,
+          priority: "medium",
+          time_horizon: timeHorizon,
+          created_at: "2024-01-01T00:00:00Z",
+          updated_at: "2024-01-01T00:00:00Z",
+        };
+
+        const mockMaybeSingle = vi.fn().mockResolvedValue({ data: mockGoal, error: null });
+        const mockSelect = vi.fn().mockReturnValue({ maybeSingle: mockMaybeSingle });
+        const mockInsert = vi.fn().mockReturnValue({ select: mockSelect });
+
+        mockDb.from.mockReturnValue({
+          insert: mockInsert,
+        });
+
+        const result = await caller.goal.create({
+          title: "Test Goal",
+          timeHorizon,
+        });
+
+        expect(result.timeHorizon).toBe(timeHorizon);
+      }
     });
   });
 });

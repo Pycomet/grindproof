@@ -6,10 +6,14 @@
 -- Goals table
 CREATE TABLE IF NOT EXISTS goals (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   title TEXT NOT NULL,
   description TEXT,
   target_date TIMESTAMPTZ,
   status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'completed', 'paused')),
+  github_repos JSONB DEFAULT '[]'::jsonb,
+  priority TEXT NOT NULL DEFAULT 'medium' CHECK (priority IN ('high', 'medium', 'low')),
+  time_horizon TEXT CHECK (time_horizon IN ('daily', 'weekly', 'monthly', 'annual')),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -30,7 +34,9 @@ CREATE TABLE IF NOT EXISTS routines (
 
 -- Create indexes for better query performance
 CREATE INDEX IF NOT EXISTS idx_routines_goal_id ON routines(goal_id);
+CREATE INDEX IF NOT EXISTS idx_goals_user_id ON goals(user_id);
 CREATE INDEX IF NOT EXISTS idx_goals_status ON goals(status);
+CREATE INDEX IF NOT EXISTS idx_goals_priority ON goals(priority);
 CREATE INDEX IF NOT EXISTS idx_routines_is_active ON routines(is_active);
 CREATE INDEX IF NOT EXISTS idx_goals_created_at ON goals(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_routines_created_at ON routines(created_at DESC);

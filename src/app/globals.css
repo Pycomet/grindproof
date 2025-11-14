@@ -3,6 +3,25 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  
+  /* Minimal shadcn variables mapped to zinc colors */
+  --radius: 0.5rem;
+  --primary: #18181b; /* zinc-900 */
+  --primary-foreground: #fafafa; /* zinc-50 */
+  --secondary: #f4f4f5; /* zinc-100 */
+  --secondary-foreground: #18181b; /* zinc-900 */
+  --accent: #f4f4f5; /* zinc-100 */
+  --accent-foreground: #18181b; /* zinc-900 */
+  --destructive: #dc2626; /* red-600 */
+  --muted: #f4f4f5; /* zinc-100 */
+  --muted-foreground: #71717a; /* zinc-500 */
+  --border: #e4e4e7; /* zinc-200 */
+  --input: #e4e4e7; /* zinc-200 */
+  --ring: #18181b; /* zinc-900 */
+  --card: #ffffff;
+  --card-foreground: #18181b;
+  --popover: #ffffff;
+  --popover-foreground: #18181b;
 }
 
 @theme inline {
@@ -10,12 +29,52 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  
+  /* Map shadcn variables to Tailwind colors */
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  
+  --radius-sm: calc(var(--radius) - 2px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 2px);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
     --background: #0a0a0a;
     --foreground: #ededed;
+    
+    /* Dark mode shadcn variables */
+    --primary: #fafafa; /* zinc-50 */
+    --primary-foreground: #18181b; /* zinc-900 */
+    --secondary: #27272a; /* zinc-800 */
+    --secondary-foreground: #fafafa; /* zinc-50 */
+    --accent: #27272a; /* zinc-800 */
+    --accent-foreground: #fafafa; /* zinc-50 */
+    --destructive: #ef4444; /* red-500 */
+    --muted: #27272a; /* zinc-800 */
+    --muted-foreground: #a1a1aa; /* zinc-400 */
+    --border: #3f3f46; /* zinc-700 */
+    --input: #3f3f46; /* zinc-700 */
+    --ring: #fafafa; /* zinc-50 */
+    --card: #18181b; /* zinc-900 */
+    --card-foreground: #fafafa;
+    --popover: #18181b; /* zinc-900 */
+    --popover-foreground: #fafafa;
   }
 }
 

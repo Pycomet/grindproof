@@ -8,8 +8,16 @@ import type { User } from '@supabase/supabase-js';
 import { MobileSwipeView } from '@/components/MobileSwipeView';
 import { Logo } from '@/components/Logo';
 import { trpc } from '@/lib/trpc/client';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+import { Label } from '@/components/ui/label';
+import { Calendar } from '@/components/ui/calendar';
 
-type ViewMode = 'today' | 'evening' | 'weekly' | 'integrations';
+type ViewMode = 'today' | 'goals' | 'evening' | 'weekly' | 'integrations';
 
 export default function Dashboard() {
   const router = useRouter();
@@ -38,6 +46,12 @@ export default function Dashboard() {
       emoji: '✓',
       title: 'Today',
       content: <TodayView />,
+    },
+    {
+      id: 'goals',
+      emoji: '🎯',
+      title: 'Goals',
+      content: <GoalsView />,
     },
     {
       id: 'evening',
@@ -100,6 +114,16 @@ export default function Dashboard() {
               ✓ Today
             </button>
             <button
+              onClick={() => setView('goals')}
+              className={`px-6 py-3 text-sm font-medium transition-colors ${
+                view === 'goals'
+                  ? 'border-b-2 border-zinc-900 text-zinc-900 dark:border-zinc-50 dark:text-zinc-50'
+                  : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-50'
+              }`}
+            >
+              🎯 Goals
+            </button>
+            <button
               onClick={() => setView('evening')}
               className={`px-6 py-3 text-sm font-medium transition-colors ${
                 view === 'evening'
@@ -141,6 +165,7 @@ export default function Dashboard() {
       {/* Desktop Content - Hidden on Mobile */}
       <main className="hidden md:block mx-auto max-w-5xl px-4 py-8">
         {view === 'today' && <TodayView />}
+        {view === 'goals' && <GoalsView />}
         {view === 'evening' && <EveningCheck />}
         {view === 'weekly' && <WeeklyRoast />}
         {view === 'integrations' && <Integrations />}
@@ -370,6 +395,827 @@ function TodayView() {
           </button>
         </div>
       )}
+    </div>
+  );
+}
+
+// Goals View Component
+function GoalsView() {
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [isViewOpen, setIsViewOpen] = useState(false);
+  const [selectedGoal, setSelectedGoal] = useState<any>(null);
+  const [showCalendar, setShowCalendar] = useState(false);
+  const [showCompleted, setShowCompleted] = useState(false);
+  const [formData, setFormData] = useState({
+    title: '',
+    description: '',
+    priority: 'medium' as 'high' | 'medium' | 'low',
+    timeHorizon: '' as '' | 'daily' | 'weekly' | 'monthly' | 'annual',
+    status: 'active' as 'active' | 'completed' | 'paused',
+    targetDate: undefined as Date | undefined,
+    githubRepos: [] as string[],
+  });
+
+  const { data: goals, refetch } = trpc.goal.getAll.useQuery();
+  const { data: githubIntegration } = trpc.integration.getByServiceType.useQuery({ serviceType: 'github' });
+  const { data: githubActivity } = trpc.integration.getGitHubActivity.useQuery({ hours: 24 * 30 }); // Last 30 days for more repos
+  
+  const createMutation = trpc.goal.create.useMutation({
+    onSuccess: () => {
+      refetch();
+      setIsCreateOpen(false);
+      resetForm();
+    },
+  });
+  
+  const updateMutation = trpc.goal.update.useMutation({
+    onSuccess: () => {
+      refetch();
+      setIsEditOpen(false);
+      resetForm();
+    },
+  });
+  
+  const deleteMutation = trpc.goal.delete.useMutation({
+    onSuccess: () => {
+      refetch();
+      setIsDeleteOpen(false);
+      setSelectedGoal(null);
+    },
+  });
+
+  const availableRepos = githubActivity?.repositories || [];
+
+  const resetForm = () => {
+    setFormData({
+      title: '',
+      description: '',
+      priority: 'medium',
+      timeHorizon: '',
+      status: 'active',
+      targetDate: undefined,
+      githubRepos: [],
+    });
+    setSelectedGoal(null);
+    setShowCalendar(false);
+  };
+
+  const handleCreate = () => {
+    createMutation.mutate({
+      title: formData.title,
+      description: formData.description || undefined,
+      priority: formData.priority,
+      timeHorizon: formData.timeHorizon || undefined,
+      status: formData.status,
+      targetDate: formData.targetDate,
+      githubRepos: formData.githubRepos.length > 0 ? formData.githubRepos : undefined,
+    });
+  };
+
+  const handleEdit = () => {
+    if (!selectedGoal) return;
+    updateMutation.mutate({
+      id: selectedGoal.id,
+      title: formData.title,
+      description: formData.description || undefined,
+      priority: formData.priority,
+      timeHorizon: formData.timeHorizon || undefined,
+      status: formData.status,
+      targetDate: formData.targetDate,
+      githubRepos: formData.githubRepos.length > 0 ? formData.githubRepos : undefined,
+    });
+  };
+
+  const handleDelete = () => {
+    if (!selectedGoal) return;
+    deleteMutation.mutate({ id: selectedGoal.id });
+  };
+
+  const openEditDialog = (goal: any) => {
+    setSelectedGoal(goal);
+    setFormData({
+      title: goal.title,
+      description: goal.description || '',
+      priority: goal.priority,
+      timeHorizon: goal.timeHorizon || '',
+      status: goal.status,
+      targetDate: goal.targetDate,
+      githubRepos: goal.githubRepos || [],
+    });
+    setIsEditOpen(true);
+  };
+
+  const openDeleteDialog = (goal: any) => {
+    setSelectedGoal(goal);
+    setIsDeleteOpen(true);
+  };
+
+  const openViewDialog = (goal: any) => {
+    setSelectedGoal(goal);
+    setIsViewOpen(true);
+  };
+
+  // Split goals into active and completed
+  const activeGoals = goals?.filter((g: any) => g.status !== 'completed') || [];
+  const completedGoals = goals?.filter((g: any) => g.status === 'completed') || [];
+  const totalGoals = goals?.length || 0;
+
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case 'high': return 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-300';
+      case 'medium': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-300';
+      case 'low': return 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-300';
+      default: return 'bg-zinc-100 text-zinc-800 dark:bg-zinc-800 dark:text-zinc-300';
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'active': return 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-300';
+      case 'completed': return 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-300';
+      case 'paused': return 'bg-zinc-100 text-zinc-800 dark:bg-zinc-800 dark:text-zinc-300';
+      default: return 'bg-zinc-100 text-zinc-800 dark:bg-zinc-800 dark:text-zinc-300';
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Header with Create Button */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
+            Goals 🎯
+          </h2>
+          <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+            {goals?.length || 0} {goals?.length === 1 ? 'goal' : 'goals'} tracked
+          </p>
+        </div>
+        <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+          <DialogTrigger asChild>
+            <Button onClick={() => setIsCreateOpen(true)}>
+              + Create Goal
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Create New Goal</DialogTitle>
+              <DialogDescription>
+                Set a new goal to track your progress and achievements.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="title">Title *</Label>
+                <Input
+                  id="title"
+                  placeholder="e.g., Launch new feature"
+                  value={formData.title}
+                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="description">Description / Notes</Label>
+                <Textarea
+                  id="description"
+                  placeholder="Add details about your goal..."
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  rows={3}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="priority">Priority</Label>
+                  <Select value={formData.priority} onValueChange={(value: any) => setFormData({ ...formData, priority: value })}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="high">🔴 High</SelectItem>
+                      <SelectItem value="medium">🟡 Medium</SelectItem>
+                      <SelectItem value="low">🟢 Low</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="timeHorizon">Time Horizon</Label>
+                  <Select value={formData.timeHorizon} onValueChange={(value: any) => setFormData({ ...formData, timeHorizon: value })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="daily">Daily</SelectItem>
+                      <SelectItem value="weekly">Weekly</SelectItem>
+                      <SelectItem value="monthly">Monthly</SelectItem>
+                      <SelectItem value="annual">Annual</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="status">Status</Label>
+                <Select value={formData.status} onValueChange={(value: any) => setFormData({ ...formData, status: value })}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="completed">Completed</SelectItem>
+                    <SelectItem value="paused">Paused</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Deadline (Optional)</Label>
+                <Button
+                  variant="outline"
+                  onClick={() => setShowCalendar(!showCalendar)}
+                  className="w-full justify-start text-left font-normal"
+                >
+                  {formData.targetDate ? formData.targetDate.toLocaleDateString() : 'Pick a date'}
+                </Button>
+                {showCalendar && (
+                  <Calendar
+                    mode="single"
+                    selected={formData.targetDate}
+                    onSelect={(date) => {
+                      setFormData({ ...formData, targetDate: date });
+                      setShowCalendar(false);
+                    }}
+                    className="rounded-md border"
+                  />
+                )}
+              </div>
+
+              {githubIntegration && availableRepos.length > 0 && (
+                <div className="space-y-2">
+                  <Label>GitHub Repositories (Optional)</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {availableRepos.map((repo) => (
+                      <button
+                        key={repo}
+                        onClick={() => {
+                          const isSelected = formData.githubRepos.includes(repo);
+                          setFormData({
+                            ...formData,
+                            githubRepos: isSelected
+                              ? formData.githubRepos.filter(r => r !== repo)
+                              : [...formData.githubRepos, repo]
+                          });
+                        }}
+                        className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                          formData.githubRepos.includes(repo)
+                            ? 'bg-zinc-900 text-white dark:bg-zinc-50 dark:text-zinc-900'
+                            : 'border border-zinc-300 text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800'
+                        }`}
+                      >
+                        {repo}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => {
+                setIsCreateOpen(false);
+                resetForm();
+              }}>
+                Cancel
+              </Button>
+              <Button onClick={handleCreate} disabled={!formData.title || createMutation.isPending}>
+                {createMutation.isPending ? 'Creating...' : 'Create Goal'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      {/* Active Goals List */}
+      {totalGoals === 0 ? (
+        <div className="rounded-xl border border-zinc-200 bg-white p-12 text-center dark:border-zinc-800 dark:bg-zinc-900">
+          <div className="text-4xl mb-4">🎯</div>
+          <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50 mb-2">
+            No goals yet
+          </h3>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-4">
+            Create your first goal to start tracking your progress
+          </p>
+          <Button onClick={() => setIsCreateOpen(true)}>
+            Create Your First Goal
+          </Button>
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {/* Active Goals */}
+          {activeGoals.length > 0 && (
+            <div className="space-y-4">
+              {activeGoals.map((goal: any) => (
+                <div
+                  key={goal.id}
+                  className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900 sm:p-6"
+                >
+                  <div className="flex flex-col gap-3">
+                    {/* Header with badges and actions */}
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-base font-semibold text-zinc-900 dark:text-zinc-50 sm:text-lg truncate">
+                          {goal.title}
+                        </h3>
+                        <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                          <Badge className={`${getPriorityColor(goal.priority)} text-xs`}>
+                            {goal.priority === 'high' && '🔴'}
+                            {goal.priority === 'medium' && '🟡'}
+                            {goal.priority === 'low' && '🟢'}
+                            <span className="ml-1 hidden sm:inline">{goal.priority}</span>
+                          </Badge>
+                          <Badge className={`${getStatusColor(goal.status)} text-xs`}>
+                            {goal.status}
+                          </Badge>
+                        </div>
+                      </div>
+
+                      {/* Icon buttons for mobile, text buttons for desktop */}
+                      <div className="flex gap-1 sm:gap-2 shrink-0">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => openEditDialog(goal)}
+                          className="h-8 w-8 p-0 sm:h-9 sm:w-auto sm:px-3"
+                          aria-label="Edit goal"
+                        >
+                          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                          </svg>
+                          <span className="ml-1.5 hidden sm:inline">Edit</span>
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => openDeleteDialog(goal)}
+                          className="h-8 w-8 p-0 text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20 sm:h-9 sm:w-auto sm:px-3"
+                          aria-label="Delete goal"
+                        >
+                          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                          <span className="ml-1.5 hidden sm:inline">Delete</span>
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Description */}
+                    {goal.description && (
+                      <p className="text-sm text-zinc-600 dark:text-zinc-400 line-clamp-2 sm:line-clamp-none">
+                        {goal.description}
+                      </p>
+                    )}
+
+                    {/* Metadata */}
+                    <div className="flex flex-wrap items-center gap-3 text-xs text-zinc-500 dark:text-zinc-400">
+                      {goal.timeHorizon && (
+                        <span className="flex items-center gap-1">
+                          ⏱️ <span className="hidden sm:inline">{goal.timeHorizon}</span><span className="sm:hidden capitalize">{goal.timeHorizon.slice(0,1)}</span>
+                        </span>
+                      )}
+                      {goal.targetDate && (
+                        <span className="flex items-center gap-1">
+                          📅 {new Date(goal.targetDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                        </span>
+                      )}
+                      {goal.githubRepos && goal.githubRepos.length > 0 && (
+                        <span className="flex items-center gap-1">
+                          🐙 {goal.githubRepos.length}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* GitHub Repos */}
+                    {goal.githubRepos && goal.githubRepos.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5">
+                        {goal.githubRepos.slice(0, 3).map((repo: string) => (
+                          <span
+                            key={repo}
+                            className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 truncate max-w-[120px] sm:max-w-none"
+                          >
+                            {repo}
+                          </span>
+                        ))}
+                        {goal.githubRepos.length > 3 && (
+                          <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
+                            +{goal.githubRepos.length - 3} more
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Completed Goals Section */}
+          {completedGoals.length > 0 && (
+            <div className="space-y-4">
+              <button
+                onClick={() => setShowCompleted(!showCompleted)}
+                className="w-full flex items-center justify-between rounded-xl border border-zinc-200 bg-white p-3 text-left transition-all hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:bg-zinc-800/50 sm:p-4"
+                aria-label={showCompleted ? 'Collapse completed goals' : 'Expand completed goals'}
+              >
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <div className="text-xl sm:text-2xl">✅</div>
+                  <div>
+                    <h3 className="text-base font-semibold text-zinc-900 dark:text-zinc-50 sm:text-lg">
+                      Completed Goals ({completedGoals.length}/{totalGoals})
+                    </h3>
+                    <p className="text-xs text-zinc-600 dark:text-zinc-400 sm:text-sm">
+                      {showCompleted ? 'Tap to collapse' : 'Tap to expand'}
+                    </p>
+                  </div>
+                </div>
+                <svg
+                  className={`h-5 w-5 text-zinc-500 transition-transform shrink-0 ${showCompleted ? 'rotate-180' : ''}`}
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+
+              {showCompleted && (
+                <div className="space-y-4">
+                  {completedGoals.map((goal: any) => (
+                    <div
+                      key={goal.id}
+                      className="rounded-xl border border-green-200 bg-green-50/50 p-4 shadow-sm backdrop-blur-sm dark:border-green-900 dark:bg-green-950/20 sm:p-6"
+                    >
+                      <div className="flex flex-col gap-3">
+                        {/* Header */}
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex items-start gap-2 flex-1 min-w-0">
+                            <span className="text-xl sm:text-2xl shrink-0">✅</span>
+                            <div className="flex-1 min-w-0">
+                              <h3 className="text-base font-semibold text-zinc-900 dark:text-zinc-50 sm:text-lg truncate">
+                                {goal.title}
+                              </h3>
+                              <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                                <Badge className={`${getPriorityColor(goal.priority)} text-xs`}>
+                                  {goal.priority === 'high' && '🔴'}
+                                  {goal.priority === 'medium' && '🟡'}
+                                  {goal.priority === 'low' && '🟢'}
+                                  <span className="ml-1 hidden sm:inline">{goal.priority}</span>
+                                </Badge>
+                              </div>
+                            </div>
+                          </div>
+
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => openViewDialog(goal)}
+                            className="h-8 w-8 p-0 shrink-0 sm:h-9 sm:w-auto sm:px-3"
+                            aria-label="View goal details"
+                          >
+                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
+                            <span className="ml-1.5 hidden sm:inline">View</span>
+                          </Button>
+                        </div>
+
+                        {/* Description */}
+                        {goal.description && (
+                          <p className="text-sm text-zinc-600 dark:text-zinc-400 line-clamp-2">
+                            {goal.description}
+                          </p>
+                        )}
+
+                        {/* Metadata */}
+                        <div className="flex flex-wrap items-center gap-3 text-xs text-zinc-500 dark:text-zinc-400">
+                          {goal.timeHorizon && (
+                            <span className="flex items-center gap-1">
+                              ⏱️ <span className="hidden sm:inline">{goal.timeHorizon}</span><span className="sm:hidden capitalize">{goal.timeHorizon.slice(0,1)}</span>
+                            </span>
+                          )}
+                          {goal.updatedAt && (
+                            <span className="flex items-center gap-1">
+                              📅 {new Date(goal.updatedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                            </span>
+                          )}
+                          {goal.githubRepos && goal.githubRepos.length > 0 && (
+                            <span className="flex items-center gap-1">
+                              🐙 {goal.githubRepos.length}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* GitHub Repos */}
+                        {goal.githubRepos && goal.githubRepos.length > 0 && (
+                          <div className="flex flex-wrap gap-1.5">
+                            {goal.githubRepos.slice(0, 3).map((repo: string) => (
+                              <span
+                                key={repo}
+                                className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 truncate max-w-[120px] sm:max-w-none"
+                              >
+                                {repo}
+                              </span>
+                            ))}
+                            {goal.githubRepos.length > 3 && (
+                              <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
+                                +{goal.githubRepos.length - 3} more
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Edit Dialog */}
+      <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Edit Goal</DialogTitle>
+            <DialogDescription>
+              Update your goal details and track your progress.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-title">Title *</Label>
+              <Input
+                id="edit-title"
+                placeholder="e.g., Launch new feature"
+                value={formData.title}
+                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-description">Description / Notes</Label>
+              <Textarea
+                id="edit-description"
+                placeholder="Add details about your goal..."
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                rows={3}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-priority">Priority</Label>
+                <Select value={formData.priority} onValueChange={(value: any) => setFormData({ ...formData, priority: value })}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="high">🔴 High</SelectItem>
+                    <SelectItem value="medium">🟡 Medium</SelectItem>
+                    <SelectItem value="low">🟢 Low</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="edit-timeHorizon">Time Horizon</Label>
+                <Select value={formData.timeHorizon} onValueChange={(value: any) => setFormData({ ...formData, timeHorizon: value })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="daily">Daily</SelectItem>
+                    <SelectItem value="weekly">Weekly</SelectItem>
+                    <SelectItem value="monthly">Monthly</SelectItem>
+                    <SelectItem value="annual">Annual</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-status">Status</Label>
+              <Select value={formData.status} onValueChange={(value: any) => setFormData({ ...formData, status: value })}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem value="paused">Paused</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Deadline (Optional)</Label>
+              <Button
+                variant="outline"
+                onClick={() => setShowCalendar(!showCalendar)}
+                className="w-full justify-start text-left font-normal"
+              >
+                {formData.targetDate ? formData.targetDate.toLocaleDateString() : 'Pick a date'}
+              </Button>
+              {showCalendar && (
+                <Calendar
+                  mode="single"
+                  selected={formData.targetDate}
+                  onSelect={(date) => {
+                    setFormData({ ...formData, targetDate: date });
+                    setShowCalendar(false);
+                  }}
+                  className="rounded-md border"
+                />
+              )}
+            </div>
+
+            {githubIntegration && availableRepos.length > 0 && (
+              <div className="space-y-2">
+                <Label>GitHub Repositories (Optional)</Label>
+                <div className="flex flex-wrap gap-2">
+                  {availableRepos.map((repo) => (
+                    <button
+                      key={repo}
+                      onClick={() => {
+                        const isSelected = formData.githubRepos.includes(repo);
+                        setFormData({
+                          ...formData,
+                          githubRepos: isSelected
+                            ? formData.githubRepos.filter(r => r !== repo)
+                            : [...formData.githubRepos, repo]
+                        });
+                      }}
+                      className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                        formData.githubRepos.includes(repo)
+                          ? 'bg-zinc-900 text-white dark:bg-zinc-50 dark:text-zinc-900'
+                          : 'border border-zinc-300 text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800'
+                      }`}
+                    >
+                      {repo}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setIsEditOpen(false);
+              resetForm();
+            }}>
+              Cancel
+            </Button>
+            <Button onClick={handleEdit} disabled={!formData.title || updateMutation.isPending}>
+              {updateMutation.isPending ? 'Saving...' : 'Save Changes'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Goal</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete &quot;{selectedGoal?.title}&quot;? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setIsDeleteOpen(false);
+              setSelectedGoal(null);
+            }}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleDelete}
+              disabled={deleteMutation.isPending}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              {deleteMutation.isPending ? 'Deleting...' : 'Delete Goal'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* View Goal Dialog (Read-only) */}
+      <Dialog open={isViewOpen} onOpenChange={setIsViewOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Goal Details</DialogTitle>
+            <DialogDescription>
+              Viewing completed goal - this goal is now read-only.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Title</Label>
+              <div className="rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm dark:border-zinc-800 dark:bg-zinc-900">
+                {selectedGoal?.title}
+              </div>
+            </div>
+
+            {selectedGoal?.description && (
+              <div className="space-y-2">
+                <Label>Description / Notes</Label>
+                <div className="rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm dark:border-zinc-800 dark:bg-zinc-900">
+                  {selectedGoal?.description}
+                </div>
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Priority</Label>
+                <div className="flex items-center gap-2">
+                  <Badge className={getPriorityColor(selectedGoal?.priority || 'medium')}>
+                    {selectedGoal?.priority === 'high' && '🔴'}
+                    {selectedGoal?.priority === 'medium' && '🟡'}
+                    {selectedGoal?.priority === 'low' && '🟢'}
+                    {' '}{selectedGoal?.priority}
+                  </Badge>
+                </div>
+              </div>
+
+              {selectedGoal?.timeHorizon && (
+                <div className="space-y-2">
+                  <Label>Time Horizon</Label>
+                  <div className="rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm dark:border-zinc-800 dark:bg-zinc-900">
+                    {selectedGoal?.timeHorizon}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label>Status</Label>
+              <div className="flex items-center gap-2">
+                <Badge className={getStatusColor(selectedGoal?.status || 'completed')}>
+                  ✅ {selectedGoal?.status}
+                </Badge>
+              </div>
+            </div>
+
+            {selectedGoal?.targetDate && (
+              <div className="space-y-2">
+                <Label>Target Date</Label>
+                <div className="rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm dark:border-zinc-800 dark:bg-zinc-900">
+                  {new Date(selectedGoal?.targetDate).toLocaleDateString()}
+                </div>
+              </div>
+            )}
+
+            {selectedGoal?.updatedAt && (
+              <div className="space-y-2">
+                <Label>Completed On</Label>
+                <div className="rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm dark:border-zinc-800 dark:bg-zinc-900">
+                  {new Date(selectedGoal?.updatedAt).toLocaleDateString()}
+                </div>
+              </div>
+            )}
+
+            {selectedGoal?.githubRepos && selectedGoal?.githubRepos.length > 0 && (
+              <div className="space-y-2">
+                <Label>GitHub Repositories</Label>
+                <div className="flex flex-wrap gap-2">
+                  {selectedGoal?.githubRepos.map((repo: string) => (
+                    <span
+                      key={repo}
+                      className="rounded-full bg-zinc-100 px-3 py-1 text-xs text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
+                    >
+                      {repo}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button onClick={() => {
+              setIsViewOpen(false);
+              setSelectedGoal(null);
+            }}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -736,10 +1582,17 @@ function EveningCheck() {
 
 // Weekly Roast Report Component
 function WeeklyRoast() {
+  const { data: goals } = trpc.goal.getAll.useQuery();
+  
+  // Calculate goal alignment score
+  const totalGoals = goals?.length || 0;
+  const completedGoals = goals?.filter((g: any) => g.status === 'completed').length || 0;
+  const goalAlignmentScore = totalGoals > 0 ? Math.round((completedGoals / totalGoals) * 100) : 0;
+  
   const weekData = {
-    alignmentScore: 23,
-    totalPlanned: 15,
-    totalCompleted: 5,
+    alignmentScore: goalAlignmentScore,
+    totalPlanned: totalGoals,
+    totalCompleted: completedGoals,
     honestyScore: 42,
     insights: [
       {
@@ -785,16 +1638,26 @@ function WeeklyRoast() {
       {/* Score Cards */}
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
-          <div className="text-sm font-medium text-zinc-500">Alignment Score</div>
+          <div className="text-sm font-medium text-zinc-500">Goal Alignment Score</div>
           <div className="mt-2 flex items-end gap-2">
-            <div className="text-5xl font-bold text-red-600">{weekData.alignmentScore}%</div>
+            <div className={`text-5xl font-bold ${
+              weekData.alignmentScore >= 70 ? 'text-green-600' :
+              weekData.alignmentScore >= 40 ? 'text-orange-600' :
+              'text-red-600'
+            }`}>
+              {weekData.alignmentScore}%
+            </div>
             <div className="mb-2 text-sm text-zinc-500">
-              {weekData.totalCompleted}/{weekData.totalPlanned} tasks
+              {weekData.totalCompleted}/{weekData.totalPlanned} goals
             </div>
           </div>
           <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
             <div
-              className="h-full bg-red-600 transition-all"
+              className={`h-full transition-all ${
+                weekData.alignmentScore >= 70 ? 'bg-green-600' :
+                weekData.alignmentScore >= 40 ? 'bg-orange-600' :
+                'bg-red-600'
+              }`}
               style={{ width: `${weekData.alignmentScore}%` }}
             ></div>
           </div>
