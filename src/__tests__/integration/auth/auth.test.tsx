@@ -139,10 +139,12 @@ describe('Auth Flow', () => {
       
       const emailInput = screen.getByLabelText('Email');
       const passwordInput = screen.getByLabelText('Password');
+      const termsCheckbox = screen.getByRole('checkbox', { name: /I agree to the/i });
       const submitButton = screen.getByRole('button', { name: /sign up/i });
 
       fireEvent.change(emailInput, { target: { value: 'new@test.com' } });
       fireEvent.change(passwordInput, { target: { value: 'password123' } });
+      fireEvent.click(termsCheckbox); // Check terms before submitting
       fireEvent.click(submitButton);
 
       await waitFor(() => {
@@ -164,10 +166,12 @@ describe('Auth Flow', () => {
       
       const emailInput = screen.getByLabelText('Email');
       const passwordInput = screen.getByLabelText('Password');
+      const termsCheckbox = screen.getByRole('checkbox', { name: /I agree to the/i });
       const submitButton = screen.getByRole('button', { name: /sign up/i });
 
       fireEvent.change(emailInput, { target: { value: 'existing@test.com' } });
       fireEvent.change(passwordInput, { target: { value: 'password123' } });
+      fireEvent.click(termsCheckbox); // Check terms before submitting
       fireEvent.click(submitButton);
 
       await waitFor(() => {

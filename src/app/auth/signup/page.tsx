@@ -13,6 +13,7 @@ export default function SignupPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -104,6 +105,38 @@ export default function SignupPage() {
             <p className="mt-1 text-xs text-zinc-500">At least 6 characters</p>
           </div>
 
+          {/* Terms and Privacy Consent */}
+          <div className="flex items-start gap-3">
+            <input
+              id="terms"
+              type="checkbox"
+              checked={acceptedTerms}
+              onChange={(e) => setAcceptedTerms(e.target.checked)}
+              required
+              className="mt-1 h-4 w-4 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-900 dark:border-zinc-700 dark:bg-zinc-900"
+            />
+            <label htmlFor="terms" className="text-sm text-zinc-600 dark:text-zinc-400">
+              I agree to the{' '}
+              <Link 
+                href="/terms" 
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-medium text-zinc-900 underline hover:text-zinc-700 dark:text-zinc-50 dark:hover:text-zinc-300"
+              >
+                Terms of Use
+              </Link>{' '}
+              and{' '}
+              <Link 
+                href="/privacy" 
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-medium text-zinc-900 underline hover:text-zinc-700 dark:text-zinc-50 dark:hover:text-zinc-300"
+              >
+                Privacy Policy
+              </Link>
+            </label>
+          </div>
+
           {error && (
             <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600 dark:bg-red-950/20">
               {error}
@@ -112,7 +145,7 @@ export default function SignupPage() {
 
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || !acceptedTerms}
             className="w-full rounded-lg bg-zinc-900 py-2.5 font-medium text-white transition-colors hover:bg-zinc-800 disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900"
           >
             {loading ? 'Creating account...' : 'Sign Up'}

@@ -58,6 +58,42 @@ export default function Home() {
           </div>
         </div>
       </div>
+
+      {/* Footer */}
+      <footer className="border-t border-zinc-200 bg-white/50 backdrop-blur-sm dark:border-zinc-800 dark:bg-zinc-950/50">
+        <div className="container mx-auto px-4 py-8">
+          <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
+            {/* Copyright */}
+            <div className="text-sm text-zinc-600 dark:text-zinc-400">
+              © {new Date().getFullYear()} GrindProof. All rights reserved.
+            </div>
+
+            {/* Legal Links */}
+            <div className="flex flex-wrap items-center justify-center gap-4 text-sm">
+              <Link 
+                href="/privacy" 
+                className="text-zinc-600 transition-colors hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+              >
+                Privacy Policy
+              </Link>
+              <span className="text-zinc-300 dark:text-zinc-700">•</span>
+              <Link 
+                href="/terms" 
+                className="text-zinc-600 transition-colors hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+              >
+                Terms of Use
+              </Link>
+              <span className="text-zinc-300 dark:text-zinc-700">•</span>
+              <a 
+                href="mailto:support@grindproof.com" 
+                className="text-zinc-600 transition-colors hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+              >
+                Contact
+              </a>
+            </div>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }
