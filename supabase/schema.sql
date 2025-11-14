@@ -55,6 +55,45 @@ CREATE TRIGGER update_routines_updated_at
   FOR EACH ROW 
   EXECUTE FUNCTION update_updated_at_column();
 
+-- Profiles table
+CREATE TABLE IF NOT EXISTS profiles (
+  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  name TEXT,
+  profile_pic_url TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Integrations table
+CREATE TABLE IF NOT EXISTS integrations (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  service_type TEXT NOT NULL,
+  credentials JSONB NOT NULL,
+  status TEXT NOT NULL DEFAULT 'connected' CHECK (status IN ('connected', 'disconnected', 'error')),
+  metadata JSONB,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(user_id, service_type)
+);
+
+-- Create indexes for better query performance
+CREATE INDEX IF NOT EXISTS idx_profiles_id ON profiles(id);
+CREATE INDEX IF NOT EXISTS idx_integrations_user_id ON integrations(user_id);
+CREATE INDEX IF NOT EXISTS idx_integrations_service_type ON integrations(service_type);
+CREATE INDEX IF NOT EXISTS idx_integrations_created_at ON integrations(created_at DESC);
+
+-- Add triggers to automatically update updated_at timestamp
+CREATE TRIGGER update_profiles_updated_at 
+  BEFORE UPDATE ON profiles
+  FOR EACH ROW 
+  EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_integrations_updated_at 
+  BEFORE UPDATE ON integrations
+  FOR EACH ROW 
+  EXECUTE FUNCTION update_updated_at_column();
+
 -- ============================================
 -- Notes:
 -- - Run this SQL in your Supabase SQL Editor

@@ -1,12 +1,13 @@
+/* eslint-disable @next/next/no-img-element */
 'use client';
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import type { User } from '@supabase/supabase-js';
 import { MobileSwipeView } from '@/components/MobileSwipeView';
 import { Logo } from '@/components/Logo';
+import { trpc } from '@/lib/trpc/client';
 
 type ViewMode = 'today' | 'evening' | 'weekly' | 'integrations';
 
@@ -266,7 +267,7 @@ function TodayView() {
       {/* Header */}
       <div>
         <h2 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
-          Today's Tasks ✓
+          Today&apos;s Tasks ✓
         </h2>
         <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
           {filteredTasks.filter(t => t.status === 'done').length} of {filteredTasks.length} completed
@@ -432,7 +433,7 @@ function EveningCheck() {
             Reality Check Time 🔍
           </h2>
           <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400 sm:text-base">
-            Let's see how your day actually went:
+            Let&apos;s see how your day actually went:
           </p>
         </div>
         
@@ -625,7 +626,7 @@ function WeeklyRoast() {
           Weekly Roast Report 🔥
         </h2>
         <p className="mt-2 text-zinc-600 dark:text-zinc-400">
-          Time to face the music. Here's how you really did this week:
+          Time to face the music. Here&apos;s how you really did this week:
         </p>
       </div>
 
@@ -689,7 +690,7 @@ function WeeklyRoast() {
       {/* Action Button */}
       <div className="flex justify-center pt-4">
         <button className="rounded-full bg-zinc-900 px-8 py-4 text-base font-semibold text-white transition-all hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200">
-          I'll Do Better Next Week 💪
+          I&apos;ll Do Better Next Week 💪
         </button>
       </div>
     </div>
@@ -698,92 +699,431 @@ function WeeklyRoast() {
 
 // Integrations Component
 function Integrations() {
-  const integrations = [
+  // Preset avatar URLs
+  const presetAvatars = [
+    'https://api.dicebear.com/7.x/avataaars/svg?seed=default',
+    'https://api.dicebear.com/7.x/avataaars/svg?seed=felix',
+    'https://api.dicebear.com/7.x/avataaars/svg?seed=aurora',
+    'https://api.dicebear.com/7.x/avataaars/svg?seed=zoe',
+    'https://api.dicebear.com/7.x/avataaars/svg?seed=mia',
+    'https://api.dicebear.com/7.x/avataaars/svg?seed=jack',
+    'https://api.dicebear.com/7.x/avataaars/svg?seed=charlie',
+    'https://api.dicebear.com/7.x/avataaars/svg?seed=sam',
+  ];
+
+  // Profile management
+  const { data: profile, isLoading: profileLoading, refetch: refetchProfile } = trpc.profile.getCurrent.useQuery();
+  const updateProfile = trpc.profile.update.useMutation({
+    onSuccess: () => {
+      refetchProfile();
+      setProfileName(profile?.name || '');
+      setProfilePicUrl(profile?.profilePicUrl || '');
+    },
+  });
+
+  const [profileName, setProfileName] = useState('');
+  const [profilePicUrl, setProfilePicUrl] = useState('');
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+
+  // Initialize form when profile loads
+  useEffect(() => {
+    if (profile) {
+      setProfileName(profile.name || '');
+      setProfilePicUrl(profile.profilePicUrl || '');
+    }
+  }, [profile]);
+
+  // Integrations
+  const { data: userIntegrations, isLoading: integrationsLoading, refetch: refetchIntegrations } = trpc.integration.getAll.useQuery();
+  const createIntegration = trpc.integration.create.useMutation({
+    onSuccess: () => {
+      refetchIntegrations();
+    },
+  });
+  const deleteIntegration = trpc.integration.delete.useMutation({
+    onSuccess: () => {
+      refetchIntegrations();
+    },
+  });
+
+  // Available service types
+  const availableServices = [
     {
       id: 'github',
       name: 'GitHub',
       icon: '🐙',
       description: 'Track commits, PRs, and validate dev work automatically',
-      connected: false,
-      stats: null,
     },
     {
       id: 'google-calendar',
       name: 'Google Calendar',
       icon: '📅',
       description: 'Sync events and track meeting attendance',
-      connected: false,
-      stats: null,
     },
   ];
+
+  const handleProfileSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    updateProfile.mutate({
+      name: profileName || undefined,
+      profilePicUrl: profilePicUrl || undefined,
+    });
+    setIsEditingProfile(false);
+  };
+
+  const handleConnect = (serviceType: string) => {
+    // For now, create a placeholder integration
+    // In the future, this would trigger OAuth flow
+    createIntegration.mutate({
+      serviceType,
+      credentials: { placeholder: true },
+      status: 'connected',
+    });
+  };
+
+  const handleDisconnect = (integrationId: string) => {
+    if (confirm('Are you sure you want to disconnect this integration?')) {
+      deleteIntegration.mutate({ id: integrationId });
+    }
+  };
+
+  const isServiceConnected = (serviceType: string) => {
+    return userIntegrations?.some((int) => int.serviceType === serviceType && int.status === 'connected');
+  };
+
+  const getConnectedIntegration = (serviceType: string) => {
+    return userIntegrations?.find((int) => int.serviceType === serviceType);
+  };
 
   return (
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
-          Connected Services 🔗
+          Profile & Integrations 🔗
         </h2>
         <p className="mt-2 text-zinc-600 dark:text-zinc-400">
-          Link your accounts to automatically track and validate your tasks
+          Manage your profile and connect external services
         </p>
       </div>
 
-      <div className="space-y-4">
-        {integrations.map((integration) => (
-          <div
-            key={integration.id}
-            className="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
-          >
-            <div className="flex items-start justify-between">
-              <div className="flex items-start gap-4">
-                <div className="text-4xl">{integration.icon}</div>
-                <div className="flex-1">
-                  <div className="flex items-center gap-3">
-                    <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
-                      {integration.name}
-                    </h3>
-                    {integration.connected ? (
-                      <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-700 dark:bg-green-900 dark:text-green-300">
-                        ✓ Connected
-                      </span>
-                    ) : (
-                      <span className="rounded-full bg-zinc-100 px-3 py-1 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
-                        Not Connected
-                      </span>
-                    )}
-                  </div>
-                  <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-                    {integration.description}
-                  </p>
+      {/* Profile Management Section */}
+      <div className="rounded-xl sm:rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900 overflow-hidden">
+        {/* Header */}
+        <div className="bg-gradient-to-r from-zinc-50 to-zinc-100 dark:from-zinc-800/50 dark:to-zinc-900/50 px-4 sm:px-6 py-3 sm:py-4 border-b border-zinc-200 dark:border-zinc-800">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div>
+              <h3 className="text-lg sm:text-xl font-semibold text-zinc-900 dark:text-zinc-50">
+                Profile Settings
+              </h3>
+              <p className="text-xs sm:text-sm text-zinc-600 dark:text-zinc-400 mt-0.5">
+                Manage your personal information
+              </p>
+            </div>
+            {!isEditingProfile && (
+              <button
+                onClick={() => setIsEditingProfile(true)}
+                className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-zinc-700 bg-white dark:bg-zinc-800 dark:text-zinc-300 rounded-lg border border-zinc-300 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-700 active:bg-zinc-100 dark:active:bg-zinc-600 transition-colors shadow-sm touch-manipulation"
+              >
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                  />
+                </svg>
+                Edit Profile
+              </button>
+            )}
+          </div>
+        </div>
 
-                  {integration.connected && integration.stats && (
-                    <div className="mt-3 flex gap-4 text-sm">
-                      <span className="text-zinc-500">@username</span>
-                      <span className="text-zinc-500">12 commits today</span>
+        {profileLoading ? (
+          <div className="p-8 sm:p-12 text-center">
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-zinc-300 border-t-zinc-900 dark:border-zinc-700 dark:border-t-zinc-50"></div>
+            <p className="text-sm sm:text-base text-zinc-500 dark:text-zinc-400 mt-4">Loading profile...</p>
+          </div>
+        ) : (
+          <form onSubmit={handleProfileSubmit} className="p-4 sm:p-6 md:p-8">
+            {/* Avatar Section - Prominent Display */}
+            <div className="mb-6 sm:mb-8 pb-6 sm:pb-8 border-b border-zinc-200 dark:border-zinc-800">
+              <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-start sm:gap-6">
+                {/* Avatar Display */}
+                <div className="flex-shrink-0">
+                  {profile?.profilePicUrl ? (
+                    <div className="relative">
+                      <img
+                        src={profile.profilePicUrl}
+                        alt="Profile"
+                        className="w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 rounded-xl sm:rounded-2xl object-cover border-3 sm:border-4 border-zinc-200 dark:border-zinc-700 shadow-lg"
+                      />
+                      {isEditingProfile && (
+                        <div className="absolute -bottom-1 -right-1 sm:-bottom-2 sm:-right-2 w-7 h-7 sm:w-8 sm:h-8 bg-zinc-900 dark:bg-zinc-50 rounded-full flex items-center justify-center border-2 border-white dark:border-zinc-900 shadow-md">
+                          <svg
+                            className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white dark:text-zinc-900"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                            />
+                          </svg>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 rounded-xl sm:rounded-2xl bg-gradient-to-br from-zinc-200 to-zinc-300 dark:from-zinc-700 dark:to-zinc-800 flex items-center justify-center border-3 sm:border-4 border-zinc-200 dark:border-zinc-700 shadow-lg">
+                      <span className="text-3xl sm:text-4xl md:text-5xl font-semibold text-zinc-600 dark:text-zinc-300">
+                        {profile?.name?.[0]?.toUpperCase() || profile?.email?.[0]?.toUpperCase() || '?'}
+                      </span>
                     </div>
                   )}
+                </div>
+
+                {/* Avatar Info */}
+                <div className="flex-1 text-center sm:text-left w-full sm:w-auto">
+                  <h4 className="text-base sm:text-lg font-semibold text-zinc-900 dark:text-zinc-50 mb-1">
+                    Profile Picture
+                  </h4>
+                  {!isEditingProfile && (
+                    <p className="text-xs sm:text-sm text-zinc-600 dark:text-zinc-400">
+                      {profile?.profilePicUrl ? 'Custom avatar selected' : 'No avatar selected'}
+                    </p>
+                  )}
+                  {isEditingProfile && (
+                    <p className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-500 mb-0 sm:mb-4">
+                      Choose an avatar from the options below
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Avatar Selection Grid */}
+              {isEditingProfile && (
+                <div className="mt-4 sm:mt-6">
+                  <div className="grid grid-cols-4 gap-2.5 sm:gap-3 md:grid-cols-8 md:gap-4">
+                    {presetAvatars.map((avatarUrl) => (
+                      <button
+                        key={avatarUrl}
+                        type="button"
+                        onClick={() => setProfilePicUrl(avatarUrl)}
+                        className={`group relative aspect-square rounded-lg sm:rounded-xl border-2 overflow-hidden transition-all active:scale-95 touch-manipulation ${
+                          profilePicUrl === avatarUrl
+                            ? 'border-zinc-900 dark:border-zinc-50 ring-2 sm:ring-4 ring-zinc-900/20 dark:ring-zinc-50/20 shadow-md sm:shadow-lg scale-105'
+                            : 'border-zinc-300 dark:border-zinc-700 active:border-zinc-500 dark:active:border-zinc-500'
+                        }`}
+                      >
+                        <img
+                          src={avatarUrl}
+                          alt="Avatar"
+                          className="w-full h-full object-cover"
+                        />
+                        {profilePicUrl === avatarUrl && (
+                          <div className="absolute inset-0 bg-zinc-900/30 dark:bg-zinc-50/30 flex items-center justify-center">
+                            <div className="w-5 h-5 sm:w-6 sm:h-6 bg-zinc-900 dark:bg-zinc-50 rounded-full flex items-center justify-center">
+                              <svg
+                                className="w-3 h-3 sm:w-4 sm:h-4 text-white dark:text-zinc-900"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={3}
+                                  d="M5 13l4 4L19 7"
+                                />
+                              </svg>
+                            </div>
+                          </div>
+                        )}
+                        <div className="absolute inset-0 bg-black/0 group-active:bg-black/10 dark:group-active:bg-white/10 transition-colors" />
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setProfilePicUrl('')}
+                    className="mt-3 sm:mt-4 text-sm font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50 transition-colors touch-manipulation py-1"
+                  >
+                    Clear selection
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Form Fields */}
+            <div className="space-y-4 sm:space-y-6">
+              {/* Name Field */}
+              <div>
+                <label className="block text-sm font-semibold text-zinc-900 dark:text-zinc-50 mb-2">
+                  Display Name
+                </label>
+                {isEditingProfile ? (
+                  <input
+                    type="text"
+                    value={profileName}
+                    onChange={(e) => setProfileName(e.target.value)}
+                    className="w-full px-4 py-3 text-base sm:text-base border-2 border-zinc-300 dark:border-zinc-700 rounded-xl bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-50 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-50 focus:border-transparent transition-all touch-manipulation"
+                    placeholder="Enter your name"
+                  />
+                ) : (
+                  <div className="px-4 py-3 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl border border-zinc-200 dark:border-zinc-700">
+                    <p className="text-base text-zinc-900 dark:text-zinc-50">
+                      {profile?.name || <span className="text-zinc-400 dark:text-zinc-500 italic">Not set</span>}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Email Field */}
+              <div>
+                <label className="block text-sm font-semibold text-zinc-900 dark:text-zinc-50 mb-2">
+                  Email Address
+                </label>
+                <div className="px-4 py-3 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl border border-zinc-200 dark:border-zinc-700">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="text-sm sm:text-base text-zinc-900 dark:text-zinc-50 break-all">
+                      {profile?.email || <span className="text-zinc-400 dark:text-zinc-500 italic">Not set</span>}
+                    </p>
+                    <span className="px-2 py-0.5 text-xs font-medium bg-zinc-200 dark:bg-zinc-700 text-zinc-700 dark:text-zinc-300 rounded-md whitespace-nowrap">
+                      Read-only
+                    </span>
+                  </div>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-500 mt-2">
+                    Email is managed through your account settings
+                  </p>
                 </div>
               </div>
             </div>
 
-            <div className="mt-4">
-              {integration.connected ? (
-                <div className="flex gap-2">
-                  <button className="rounded-lg border border-zinc-200 px-4 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800">
-                    Manage
-                  </button>
-                  <button className="rounded-lg border border-red-200 px-4 py-2 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950/20">
-                    Disconnect
-                  </button>
-                </div>
-              ) : (
-                <button className="rounded-lg bg-zinc-900 px-6 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200">
-                  Connect {integration.name}
+            {/* Action Buttons */}
+            {isEditingProfile && (
+              <div className="flex flex-col gap-3 mt-6 sm:mt-8 pt-6 border-t border-zinc-200 dark:border-zinc-800">
+                <button
+                  type="submit"
+                  disabled={updateProfile.isPending}
+                  className="w-full px-6 py-3.5 bg-zinc-900 text-white rounded-xl font-medium hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm hover:shadow-md active:scale-[0.98] flex items-center justify-center gap-2 touch-manipulation"
+                >
+                  {updateProfile.isPending ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                      <span>Saving...</span>
+                    </>
+                  ) : (
+                    <>
+                      <svg
+                        className="w-5 h-5"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M5 13l4 4L19 7"
+                        />
+                      </svg>
+                      <span>Save Changes</span>
+                    </>
+                  )}
                 </button>
-              )}
-            </div>
-          </div>
-        ))}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsEditingProfile(false);
+                    setProfileName(profile?.name || '');
+                    setProfilePicUrl(profile?.profilePicUrl || '');
+                  }}
+                  className="w-full px-6 py-3.5 border-2 border-zinc-300 dark:border-zinc-700 rounded-xl font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 active:scale-[0.98] transition-all touch-manipulation"
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
+          </form>
+        )}
+      </div>
+
+      {/* Integrations Section */}
+      <div>
+        <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50 mb-4">
+          Connected Services
+        </h3>
+        <div className="space-y-4">
+          {integrationsLoading ? (
+            <p className="text-zinc-500">Loading integrations...</p>
+          ) : (
+            availableServices.map((service) => {
+              const connected = isServiceConnected(service.id);
+              const integration = getConnectedIntegration(service.id);
+
+              return (
+                <div
+                  key={service.id}
+                  className="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-start gap-4">
+                      <div className="text-4xl">{service.icon}</div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3">
+                          <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+                            {service.name}
+                          </h3>
+                          {connected ? (
+                            <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-700 dark:bg-green-900 dark:text-green-300">
+                              ✓ Connected
+                            </span>
+                          ) : (
+                            <span className="rounded-full bg-zinc-100 px-3 py-1 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
+                              Not Connected
+                            </span>
+                          )}
+                        </div>
+                        <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+                          {service.description}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-4">
+                    {connected && integration ? (
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleDisconnect(integration.id)}
+                          disabled={deleteIntegration.isPending}
+                          className="rounded-lg border border-red-200 px-4 py-2 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950/20 disabled:opacity-50"
+                        >
+                          {deleteIntegration.isPending ? 'Disconnecting...' : 'Disconnect'}
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => handleConnect(service.id)}
+                        disabled={createIntegration.isPending}
+                        className="rounded-lg bg-zinc-900 px-6 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200 disabled:opacity-50"
+                      >
+                        {createIntegration.isPending ? 'Connecting...' : `Connect ${service.name}`}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
       </div>
 
       {/* Coming Soon Section */}

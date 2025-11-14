@@ -11,9 +11,9 @@ vi.mock("@/lib/supabase/server", () => ({
 
 describe("Routine Router", () => {
   let mockDb: any;
-  let caller: ReturnType<typeof createTestCaller>;
+  let caller: Awaited<ReturnType<typeof createTestCaller>>;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks();
 
     // Create mock database chain
@@ -38,7 +38,7 @@ describe("Routine Router", () => {
     };
 
     // Create caller with mocked context
-    caller = createTestCaller({
+    caller = await createTestCaller({
       db: mockDb as any,
     } as Partial<Context>);
   });

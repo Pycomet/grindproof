@@ -70,6 +70,63 @@ export type Database = {
         };
         Relationships: [];
       };
+      profiles: {
+        Row: {
+          id: string;
+          name: string | null;
+          profile_pic_url: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id: string;
+          name?: string | null;
+          profile_pic_url?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          name?: string | null;
+          profile_pic_url?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      integrations: {
+        Row: {
+          id: string;
+          user_id: string;
+          service_type: string;
+          credentials: Record<string, unknown>;
+          status: "connected" | "disconnected" | "error";
+          metadata: Record<string, unknown> | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          service_type: string;
+          credentials: Record<string, unknown>;
+          status?: "connected" | "disconnected" | "error";
+          metadata?: Record<string, unknown> | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          service_type?: string;
+          credentials?: Record<string, unknown>;
+          status?: "connected" | "disconnected" | "error";
+          metadata?: Record<string, unknown> | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: {
       [_ in never]: never;

@@ -7,9 +7,10 @@ import type { Context } from "@/server/trpc/context";
  * Create a test caller for tRPC routers
  * This allows you to call tRPC procedures directly in tests
  */
-export const createTestCaller = (context?: Partial<Context>) => {
+export const createTestCaller = async (context?: Partial<Context>) => {
+  const defaultContext = await createContext();
   const testContext = {
-    ...createContext(),
+    ...defaultContext,
     ...context,
   } as Context;
   

@@ -7,7 +7,7 @@ const handler = (req: Request) =>
     endpoint: "/api",
     req,
     router: appRouter,
-    createContext,
+    createContext: () => createContext({ req }),
   });
 
 export { handler as GET, handler as POST };

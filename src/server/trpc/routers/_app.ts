@@ -1,6 +1,8 @@
 import { router } from "../context";
 import { goalRouter } from "./goal";
 import { routineRouter } from "./routine";
+import { profileRouter } from "./profile";
+import { integrationRouter } from "./integration";
 
 /**
  * Main application router
@@ -9,6 +11,8 @@ import { routineRouter } from "./routine";
 export const appRouter = router({
   goal: goalRouter,
   routine: routineRouter,
+  profile: profileRouter,
+  integration: integrationRouter,
 });
 
 export type AppRouter = typeof appRouter;
