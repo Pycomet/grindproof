@@ -1231,12 +1231,18 @@ function EveningCheck() {
     hours: timeRange,
   });
 
+  // Fetch Google Calendar activity with time range
+  const { data: calendarActivity, isLoading: calendarLoading, refetch: refetchCalendar } = trpc.integration.getGoogleCalendarActivity.useQuery({
+    hours: timeRange,
+  });
+
   const handleRefresh = () => {
     setIsRefreshing(true);
-    // Refresh both regular data and GitHub activity
+    // Refresh both regular data and integrations
     Promise.all([
       new Promise((resolve) => setTimeout(resolve, 800)),
       refetchGitHub(),
+      refetchCalendar(),
     ]).then(() => {
       setLastUpdated(new Date());
       setIsRefreshing(false);
@@ -1471,6 +1477,109 @@ function EveningCheck() {
             <div className="text-2xl">🐙</div>
             <div className="text-sm text-zinc-600 dark:text-zinc-400">
               Loading GitHub activity...
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Google Calendar Activity Summary - Only show if Calendar is connected */}
+      {calendarActivity && (
+        <div className="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+          {/* Warning banner if token needs reconnection */}
+          {calendarActivity.needsReconnect && (
+            <div className="mb-4 rounded-lg bg-yellow-50 p-3 dark:bg-yellow-900/20">
+              <div className="flex items-start gap-2">
+                <span className="text-yellow-600 dark:text-yellow-400">⚠️</span>
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
+                    Calendar token expired
+                  </p>
+                  <p className="mt-1 text-xs text-yellow-700 dark:text-yellow-300">
+                    Please{' '}
+                    <button
+                      onClick={() => (window.location.href = '/api/integrations/google-calendar/connect')}
+                      className="font-semibold underline hover:no-underline"
+                    >
+                      reconnect your Google Calendar
+                    </button>{' '}
+                    to continue syncing events.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+            <div className="flex items-center gap-3">
+              <div className="text-2xl">📅</div>
+              <div>
+                <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+                  Calendar Events
+                </h3>
+                <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                  {calendarActivity.email}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+            <div className="rounded-lg bg-zinc-50 p-4 dark:bg-zinc-800/50">
+              <div className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
+                {calendarActivity.totalEvents}
+              </div>
+              <div className="text-xs text-zinc-600 dark:text-zinc-400 mt-1">
+                Total Events
+              </div>
+            </div>
+            <div className="rounded-lg bg-zinc-50 p-4 dark:bg-zinc-800/50">
+              <div className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
+                {calendarActivity.pastEvents}
+              </div>
+              <div className="text-xs text-zinc-600 dark:text-zinc-400 mt-1">
+                Past Events
+              </div>
+            </div>
+            <div className="rounded-lg bg-zinc-50 p-4 dark:bg-zinc-800/50">
+              <div className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
+                {calendarActivity.upcomingEvents}
+              </div>
+              <div className="text-xs text-zinc-600 dark:text-zinc-400 mt-1">
+                Upcoming
+              </div>
+            </div>
+            <div className="rounded-lg bg-zinc-50 p-4 dark:bg-zinc-800/50">
+              <div className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
+                {calendarActivity.acceptedEvents}
+              </div>
+              <div className="text-xs text-zinc-600 dark:text-zinc-400 mt-1">
+                Accepted
+              </div>
+            </div>
+          </div>
+
+          {calendarActivity.totalEvents === 0 && (
+            <div className="mt-4 pt-4 border-t border-zinc-200 dark:border-zinc-800">
+              <p className="text-sm text-zinc-500 dark:text-zinc-400 text-center">
+                {timeRange === 1 
+                  ? 'No events in the last hour'
+                  : timeRange === 24
+                  ? 'No events in the last 24 hours'
+                  : timeRange === 168
+                  ? 'No events in the last 7 days'
+                  : 'No events in the last 30 days'}
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {calendarLoading && (
+        <div className="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+          <div className="flex items-center gap-3">
+            <div className="text-2xl">📅</div>
+            <div className="text-sm text-zinc-600 dark:text-zinc-400">
+              Loading calendar activity...
             </div>
           </div>
         </div>
@@ -1770,7 +1879,7 @@ function Integrations() {
       description: 'Track commits, PRs, and validate dev work automatically',
     },
     {
-      id: 'google-calendar',
+      id: 'google_calendar',
       name: 'Google Calendar',
       icon: '📅',
       description: 'Sync events and track meeting attendance',
@@ -1790,6 +1899,12 @@ function Integrations() {
     // For GitHub, redirect to OAuth flow
     if (serviceType === 'github') {
       window.location.href = '/api/integrations/github/connect';
+      return;
+    }
+    
+    // For Google Calendar, redirect to OAuth flow
+    if (serviceType === 'google_calendar') {
+      window.location.href = '/api/integrations/google-calendar/connect';
       return;
     }
     
@@ -2115,6 +2230,20 @@ function Integrations() {
                         <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
                           {service.description}
                         </p>
+                        {connected && integration && (
+                          <div className="mt-3 text-xs text-zinc-500 dark:text-zinc-400">
+                            {service.id === 'github' && integration.metadata && (integration.metadata as { githubUsername?: string }).githubUsername && (
+                              <span className="flex items-center gap-1">
+                                <span className="font-medium">Connected as:</span> @{(integration.metadata as { githubUsername?: string }).githubUsername}
+                              </span>
+                            )}
+                            {service.id === 'google_calendar' && integration.metadata && (integration.metadata as { email?: string }).email && (
+                              <span className="flex items-center gap-1">
+                                <span className="font-medium">Connected as:</span> {(integration.metadata as { email?: string }).email}
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>

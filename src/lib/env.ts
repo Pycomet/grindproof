@@ -10,8 +10,8 @@ const serverEnvSchema = clientEnvSchema.extend({
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
   NEXT_GITHUB_CLIENT_ID: z.string().min(1),
   NEXT_GITHUB_CLIENT_SECRET: z.string().min(1),
-  NEXT_GOOGLE_CLIENT_ID: z.string().min(1),
-  NEXT_GOOGLE_CLIENT_SECRET: z.string().min(1),
+  NEXT_GOOGLE_CALENDAR_CLIENT_ID: z.string().min(1),
+  NEXT_GOOGLE_CALENDAR_CLIENT_SECRET: z.string().min(1),
 });
 
 function getEnv(): z.infer<typeof serverEnvSchema> {
@@ -26,8 +26,8 @@ function getEnv(): z.infer<typeof serverEnvSchema> {
       SUPABASE_SERVICE_ROLE_KEY: 'test-service-key',
       NEXT_GITHUB_CLIENT_ID: 'test-github-client-id',
       NEXT_GITHUB_CLIENT_SECRET: 'test-github-client-secret',
-      NEXT_GOOGLE_CLIENT_ID: 'test-google-client-id',
-      NEXT_GOOGLE_CLIENT_SECRET: 'test-google-client-secret',
+      NEXT_GOOGLE_CALENDAR_CLIENT_ID: 'test-google-client-id',
+      NEXT_GOOGLE_CALENDAR_CLIENT_SECRET: 'test-google-client-secret',
       NODE_ENV: 'test' as const,
     };
   }
@@ -41,8 +41,8 @@ function getEnv(): z.infer<typeof serverEnvSchema> {
     NODE_ENV: process.env.NODE_ENV || 'development',
     NEXT_GITHUB_CLIENT_ID: process.env.NEXT_GITHUB_CLIENT_ID,
     NEXT_GITHUB_CLIENT_SECRET: process.env.NEXT_GITHUB_CLIENT_SECRET,
-    NEXT_GOOGLE_CLIENT_ID: process.env.NEXT_GOOGLE_CLIENT_ID,
-    NEXT_GOOGLE_CLIENT_SECRET: process.env.NEXT_GOOGLE_CLIENT_SECRET,
+    NEXT_GOOGLE_CALENDAR_CLIENT_ID: process.env.NEXT_GOOGLE_CALENDAR_CLIENT_ID,
+    NEXT_GOOGLE_CALENDAR_CLIENT_SECRET: process.env.NEXT_GOOGLE_CALENDAR_CLIENT_SECRET,
   });
 
   if (!parsed.success) {

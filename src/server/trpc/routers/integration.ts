@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { router, protectedProcedure } from "../context";
+import { env } from "@/lib/env";
 
 /**
  * Integration schemas
@@ -416,6 +417,200 @@ export const integrationRouter = router({
       throw new Error(`Failed to fetch GitHub activity: ${error instanceof Error ? error.message : "Unknown error"}`);
     }
   }),
+
+  getGoogleCalendarActivity: protectedProcedure
+    .input(
+      z.object({
+        hours: z.number().default(24),
+      }).optional()
+    )
+    .query(async ({ ctx, input }) => {
+      const hours = input?.hours ?? 24;
+
+      // Get Google Calendar integration
+      const { data: integration, error: integrationError } = await ctx.db
+        .from("integrations")
+        .select("*")
+        .eq("user_id", ctx.user.id)
+        .eq("service_type", "google_calendar")
+        .eq("status", "connected")
+        .maybeSingle();
+
+      if (integrationError) {
+        throw new Error(`Failed to fetch Google Calendar integration: ${integrationError.message}`);
+      }
+
+      if (!integration) {
+        return null; // No Google Calendar integration connected
+      }
+
+      const credentials = integration.credentials as {
+        accessToken?: string;
+        refreshToken?: string;
+        expiresAt?: string;
+      };
+
+      let accessToken = credentials?.accessToken;
+      const refreshToken = credentials?.refreshToken;
+      const expiresAt = credentials?.expiresAt;
+
+      if (!accessToken) {
+        throw new Error("Google Calendar access token not found");
+      }
+
+      // Check if token is expired and refresh if needed
+      let needsReconnect = false;
+      if (expiresAt) {
+        const expiryDate = new Date(expiresAt);
+        const now = new Date();
+        
+        // If token expires in less than 5 minutes, refresh it
+        if (expiryDate.getTime() - now.getTime() < 5 * 60 * 1000) {
+          if (refreshToken) {
+            try {
+              const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: new URLSearchParams({
+                  client_id: env.NEXT_GOOGLE_CALENDAR_CLIENT_ID,
+                  client_secret: env.NEXT_GOOGLE_CALENDAR_CLIENT_SECRET,
+                  refresh_token: refreshToken,
+                  grant_type: 'refresh_token',
+                }),
+              });
+
+              if (tokenResponse.ok) {
+                const tokenData = await tokenResponse.json() as {
+                  access_token: string;
+                  expires_in: number;
+                };
+                
+                accessToken = tokenData.access_token;
+                const newExpiresAt = new Date(Date.now() + tokenData.expires_in * 1000).toISOString();
+
+                // Update token in database
+                await ctx.db
+                  .from("integrations")
+                  .update({
+                    credentials: {
+                      accessToken,
+                      refreshToken,
+                      expiresAt: newExpiresAt,
+                    },
+                  })
+                  .eq("user_id", ctx.user.id)
+                  .eq("service_type", "google_calendar");
+              } else {
+                console.warn('Failed to refresh Google Calendar token');
+                needsReconnect = true;
+              }
+            } catch (error) {
+              console.error('Error refreshing token:', error);
+              needsReconnect = true;
+            }
+          } else {
+            needsReconnect = true;
+          }
+        }
+      }
+
+      // Calculate time range
+      const timeMin = new Date();
+      timeMin.setHours(timeMin.getHours() - hours);
+      const timeMax = new Date();
+
+      try {
+        // Fetch events from Google Calendar
+        const calendarId = 'primary';
+        const eventsUrl = new URL(`https://www.googleapis.com/calendar/v3/calendars/${calendarId}/events`);
+        eventsUrl.searchParams.set('timeMin', timeMin.toISOString());
+        eventsUrl.searchParams.set('timeMax', timeMax.toISOString());
+        eventsUrl.searchParams.set('singleEvents', 'true');
+        eventsUrl.searchParams.set('orderBy', 'startTime');
+        eventsUrl.searchParams.set('maxResults', '250');
+
+        const eventsResponse = await fetch(eventsUrl.toString(), {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            Accept: 'application/json',
+          },
+        });
+
+        if (!eventsResponse.ok) {
+          const errorText = await eventsResponse.text();
+          console.error('Google Calendar API error:', errorText);
+          throw new Error(`Google Calendar API error: ${eventsResponse.status} ${eventsResponse.statusText}`);
+        }
+
+        interface CalendarEvent {
+          id: string;
+          summary?: string;
+          description?: string;
+          start: {
+            dateTime?: string;
+            date?: string;
+          };
+          end: {
+            dateTime?: string;
+            date?: string;
+          };
+          attendees?: Array<{
+            email: string;
+            responseStatus: string;
+            self?: boolean;
+          }>;
+          status: string;
+          transparency?: string;
+        }
+
+        interface CalendarResponse {
+          items: CalendarEvent[];
+        }
+
+        const calendarData: CalendarResponse = await eventsResponse.json();
+        const events = calendarData.items || [];
+
+        // Count events by type
+        const now = new Date();
+        const pastEvents = events.filter((e) => {
+          const endTime = new Date(e.end.dateTime || e.end.date || '');
+          return endTime < now;
+        });
+
+        const upcomingEvents = events.filter((e) => {
+          const startTime = new Date(e.start.dateTime || e.start.date || '');
+          return startTime > now;
+        });
+
+        // Count by response status
+        const acceptedEvents = events.filter((e) => {
+          if (!e.attendees) return true; // If no attendees, assume accepted
+          const selfAttendee = e.attendees.find((a) => a.self);
+          return !selfAttendee || selfAttendee.responseStatus === 'accepted';
+        });
+
+        const declinedEvents = events.filter((e) => {
+          if (!e.attendees) return false;
+          const selfAttendee = e.attendees.find((a) => a.self);
+          return selfAttendee && selfAttendee.responseStatus === 'declined';
+        });
+
+        return {
+          totalEvents: events.length,
+          pastEvents: pastEvents.length,
+          upcomingEvents: upcomingEvents.length,
+          acceptedEvents: acceptedEvents.length,
+          declinedEvents: declinedEvents.length,
+          email: (integration.metadata as { email?: string })?.email,
+          needsReconnect,
+        };
+      } catch (error) {
+        console.error("Failed to fetch Google Calendar activity:", error);
+        throw new Error(`Failed to fetch Google Calendar activity: ${error instanceof Error ? error.message : "Unknown error"}`);
+      }
+    }),
 });
 
 
