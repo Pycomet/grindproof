@@ -8,6 +8,10 @@ const clientEnvSchema = z.object({
 
 const serverEnvSchema = clientEnvSchema.extend({
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
+  NEXT_GITHUB_CLIENT_ID: z.string().min(1),
+  NEXT_GITHUB_CLIENT_SECRET: z.string().min(1),
+  NEXT_GOOGLE_CLIENT_ID: z.string().min(1),
+  NEXT_GOOGLE_CLIENT_SECRET: z.string().min(1),
 });
 
 function getEnv(): z.infer<typeof serverEnvSchema> {
@@ -20,6 +24,10 @@ function getEnv(): z.infer<typeof serverEnvSchema> {
       NEXT_PUBLIC_SUPABASE_URL: 'https://test.supabase.co',
       NEXT_PUBLIC_SUPABASE_ANON_KEY: 'test-key',
       SUPABASE_SERVICE_ROLE_KEY: 'test-service-key',
+      NEXT_GITHUB_CLIENT_ID: 'test-github-client-id',
+      NEXT_GITHUB_CLIENT_SECRET: 'test-github-client-secret',
+      NEXT_GOOGLE_CLIENT_ID: 'test-google-client-id',
+      NEXT_GOOGLE_CLIENT_SECRET: 'test-google-client-secret',
       NODE_ENV: 'test' as const,
     };
   }
@@ -31,11 +39,36 @@ function getEnv(): z.infer<typeof serverEnvSchema> {
     NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
     NODE_ENV: process.env.NODE_ENV || 'development',
+    NEXT_GITHUB_CLIENT_ID: process.env.NEXT_GITHUB_CLIENT_ID,
+    NEXT_GITHUB_CLIENT_SECRET: process.env.NEXT_GITHUB_CLIENT_SECRET,
+    NEXT_GOOGLE_CLIENT_ID: process.env.NEXT_GOOGLE_CLIENT_ID,
+    NEXT_GOOGLE_CLIENT_SECRET: process.env.NEXT_GOOGLE_CLIENT_SECRET,
   });
 
   if (!parsed.success) {
-    console.error("❌ Invalid environment variables:", parsed.error.flatten().fieldErrors);
-    throw new Error("Invalid environment variables");
+    const fieldErrors = parsed.error.flatten().fieldErrors;
+    const missingVars: string[] = [];
+    const invalidVars: string[] = [];
+    
+    Object.entries(fieldErrors).forEach(([key, errors]) => {
+      if (errors && errors.length > 0) {
+        const value = process.env[key];
+        if (!value || value.trim() === '') {
+          missingVars.push(key);
+        } else {
+          invalidVars.push(`${key}: ${errors[0]}`);
+        }
+      }
+    });
+    
+    if (missingVars.length > 0) {
+      console.error("❌ Missing environment variables:", missingVars.join(", "));
+    }
+    if (invalidVars.length > 0) {
+      console.error("❌ Invalid environment variables:", invalidVars.join(", "));
+    }
+    
+    throw new Error("Invalid environment variables - check console for details");
   }
 
   return parsed.data as z.infer<typeof serverEnvSchema>;
