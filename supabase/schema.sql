@@ -100,6 +100,41 @@ CREATE TRIGGER update_integrations_updated_at
   FOR EACH ROW 
   EXECUTE FUNCTION update_updated_at_column();
 
+-- Tasks table
+CREATE TABLE IF NOT EXISTS tasks (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  goal_id UUID REFERENCES goals(id) ON DELETE SET NULL,
+  title TEXT NOT NULL,
+  description TEXT,
+  due_date TIMESTAMPTZ,
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'completed', 'skipped')),
+  completion_proof TEXT,
+  tags TEXT[],
+  google_calendar_event_id TEXT,
+  is_synced_with_calendar BOOLEAN NOT NULL DEFAULT false,
+  recurrence_pattern JSONB,
+  parent_task_id UUID REFERENCES tasks(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Create indexes for tasks
+CREATE INDEX IF NOT EXISTS idx_tasks_user_id ON tasks(user_id);
+CREATE INDEX IF NOT EXISTS idx_tasks_goal_id ON tasks(goal_id);
+CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);
+CREATE INDEX IF NOT EXISTS idx_tasks_due_date ON tasks(due_date);
+CREATE INDEX IF NOT EXISTS idx_tasks_google_calendar_event_id ON tasks(google_calendar_event_id);
+CREATE INDEX IF NOT EXISTS idx_tasks_parent_task_id ON tasks(parent_task_id);
+CREATE INDEX IF NOT EXISTS idx_tasks_created_at ON tasks(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_tasks_tags ON tasks USING GIN(tags);
+
+-- Add trigger to automatically update updated_at timestamp
+CREATE TRIGGER update_tasks_updated_at 
+  BEFORE UPDATE ON tasks
+  FOR EACH ROW 
+  EXECUTE FUNCTION update_updated_at_column();
+
 -- ============================================
 -- Notes:
 -- - Run this SQL in your Supabase SQL Editor

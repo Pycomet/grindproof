@@ -16,6 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Calendar } from '@/components/ui/calendar';
+import { CreateTaskDialog, EditTaskDialog, CompleteTaskDialog, RescheduleTaskDialog } from '@/components/TaskDialogs';
 
 type ViewMode = 'today' | 'goals' | 'evening' | 'weekly' | 'integrations';
 
@@ -23,10 +24,19 @@ export default function Dashboard() {
   const router = useRouter();
   const [view, setView] = useState<ViewMode>('today');
   const [user, setUser] = useState<User | null>(null);
+  const [isFabTaskDialogOpen, setIsFabTaskDialogOpen] = useState(false);
+  
   const currentTime = new Date().toLocaleTimeString('en-US', { 
     hour: 'numeric', 
     minute: '2-digit',
     hour12: true 
+  });
+
+  const { data: goals } = trpc.goal.getAll.useQuery();
+  const createTaskMutation = trpc.task.create.useMutation({
+    onSuccess: () => {
+      setIsFabTaskDialogOpen(false);
+    },
   });
 
   useEffect(() => {
@@ -40,11 +50,22 @@ export default function Dashboard() {
     router.push('/');
   };
 
+  const handleCreateTaskFromFab = (data: any) => {
+    createTaskMutation.mutate({
+      title: data.title,
+      description: data.description || undefined,
+      dueDate: data.dueDate || undefined,
+      goalId: data.goalId || undefined,
+      tags: data.tags.length > 0 ? data.tags : undefined,
+      syncWithCalendar: data.syncWithCalendar,
+    });
+  };
+
   const views = [
     {
       id: 'today',
       emoji: '✓',
-      title: 'Today',
+      title: 'Tasks',
       content: <TodayView />,
     },
     {
@@ -111,7 +132,7 @@ export default function Dashboard() {
                   : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-50'
               }`}
             >
-              ✓ Today
+              ✓ Tasks
             </button>
             <button
               onClick={() => setView('goals')}
@@ -173,6 +194,7 @@ export default function Dashboard() {
 
       {/* Persistent FAB (Floating Action Button) */}
       <button
+        onClick={() => setIsFabTaskDialogOpen(true)}
         className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-zinc-900 text-white shadow-lg transition-all hover:scale-110 hover:shadow-xl dark:bg-zinc-50 dark:text-zinc-900"
         aria-label="Add Task"
       >
@@ -190,6 +212,15 @@ export default function Dashboard() {
           />
         </svg>
       </button>
+
+      {/* Global Task Creation Dialog */}
+      <CreateTaskDialog
+        open={isFabTaskDialogOpen}
+        onOpenChange={setIsFabTaskDialogOpen}
+        onSubmit={handleCreateTaskFromFab}
+        isPending={createTaskMutation.isPending}
+        goals={goals?.map(g => ({ id: g.id, title: g.title }))}
+      />
     </div>
   );
 }
@@ -197,106 +228,204 @@ export default function Dashboard() {
 // Today View Component
 function TodayView() {
   const [activeFilter, setActiveFilter] = useState('today');
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isCompleteOpen, setIsCompleteOpen] = useState(false);
+  const [isRescheduleOpen, setIsRescheduleOpen] = useState(false);
+  const [selectedTask, setSelectedTask] = useState<any>(null);
   
-  const allTasks = [
-    {
-      id: 1,
-      title: 'Work on AI Assistant',
-      status: 'todo' as const,
-      validation: 'auto' as const,
-      source: 'GitHub',
-      dueDate: 'today',
-    },
-    {
-      id: 2,
-      title: 'Gym session',
-      status: 'todo' as const,
-      validation: 'evidence' as const,
-      source: 'Manual',
-      dueDate: 'today',
-    },
-    {
-      id: 3,
-      title: 'Team standup',
-      status: 'done' as const,
-      validation: 'auto' as const,
-      source: 'Calendar',
-      dueDate: 'today',
-    },
-    {
-      id: 4,
-      title: 'Review pull requests',
-      status: 'todo' as const,
-      validation: 'auto' as const,
-      source: 'GitHub',
-      dueDate: 'week',
-    },
-    {
-      id: 5,
-      title: 'Client presentation prep',
-      status: 'todo' as const,
-      validation: 'evidence' as const,
-      source: 'Manual',
-      dueDate: 'week',
-    },
-    {
-      id: 6,
-      title: 'Write documentation',
-      status: 'done' as const,
-      validation: 'auto' as const,
-      source: 'GitHub',
-      dueDate: 'week',
-    },
-    {
-      id: 7,
-      title: 'Quarterly planning meeting',
-      status: 'done' as const,
-      validation: 'auto' as const,
-      source: 'Calendar',
-      dueDate: 'week',
-    },
-    {
-      id: 8,
-      title: 'Update resume',
-      status: 'todo' as const,
-      validation: 'evidence' as const,
-      source: 'Manual',
-      dueDate: 'overdue',
-    },
-    {
-      id: 9,
-      title: 'Refactor auth module',
-      status: 'todo' as const,
-      validation: 'auto' as const,
-      source: 'GitHub',
-      dueDate: 'overdue',
-    },
-  ];
+  // Get date filters
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const weekEnd = new Date(today);
+  weekEnd.setDate(weekEnd.getDate() + 7);
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
 
-  const filteredTasks = allTasks.filter(task => {
-    if (activeFilter === 'today') return task.dueDate === 'today';
-    if (activeFilter === 'week') return task.dueDate === 'today' || task.dueDate === 'week';
-    if (activeFilter === 'overdue') return task.dueDate === 'overdue';
-    return true; // 'all'
+  // Fetch tasks and goals
+  const { data: allTasks, refetch } = trpc.task.getAll.useQuery();
+  const { data: goals } = trpc.goal.getAll.useQuery();
+  
+  // Mutations
+  const syncMutation = trpc.task.syncFromCalendar.useMutation({
+    onSuccess: () => {
+      refetch();
+      setIsSyncing(false);
+    },
+    onError: () => {
+      setIsSyncing(false);
+    },
   });
 
+  const createMutation = trpc.task.create.useMutation({
+    onSuccess: () => {
+      refetch();
+      setIsCreateOpen(false);
+    },
+  });
+
+  const updateMutation = trpc.task.update.useMutation({
+    onSuccess: () => {
+      refetch();
+      setIsEditOpen(false);
+      setSelectedTask(null);
+    },
+  });
+
+  const completeMutation = trpc.task.complete.useMutation({
+    onSuccess: () => {
+      refetch();
+      setIsCompleteOpen(false);
+      setSelectedTask(null);
+    },
+  });
+
+  const skipMutation = trpc.task.skip.useMutation({
+    onSuccess: () => {
+      refetch();
+      setIsRescheduleOpen(false);
+      setSelectedTask(null);
+    },
+  });
+
+  const rescheduleMutation = trpc.task.reschedule.useMutation({
+    onSuccess: () => {
+      refetch();
+      setIsRescheduleOpen(false);
+      setSelectedTask(null);
+    },
+  });
+
+  const handleSync = () => {
+    setIsSyncing(true);
+    syncMutation.mutate();
+  };
+
+  const handleCreateTask = (data: any) => {
+    createMutation.mutate({
+      title: data.title,
+      description: data.description || undefined,
+      dueDate: data.dueDate || undefined,
+      goalId: data.goalId || undefined,
+      tags: data.tags.length > 0 ? data.tags : undefined,
+      syncWithCalendar: data.syncWithCalendar,
+    });
+  };
+
+  const handleUpdateTask = (data: any) => {
+    if (selectedTask) {
+      updateMutation.mutate({
+        id: selectedTask.id,
+        title: data.title,
+        description: data.description || undefined,
+        dueDate: data.dueDate || undefined,
+        goalId: data.goalId || undefined,
+        tags: data.tags.length > 0 ? data.tags : undefined,
+      });
+    }
+  };
+
+  const handleCompleteTask = (proof: string) => {
+    if (selectedTask) {
+      completeMutation.mutate({
+        id: selectedTask.id,
+        proof: proof || undefined,
+      });
+    }
+  };
+
+  const handleSkipTask = () => {
+    if (selectedTask) {
+      skipMutation.mutate({ id: selectedTask.id });
+    }
+  };
+
+  const handleRescheduleTask = (newDate: Date) => {
+    if (selectedTask) {
+      rescheduleMutation.mutate({
+        id: selectedTask.id,
+        newDueDate: newDate,
+      });
+    }
+  };
+
+  // Filter and sort tasks (completed tasks go to bottom)
+  const filteredTasks = (allTasks || [])
+    .filter(task => {
+      const dueDate = task.dueDate ? new Date(task.dueDate) : null;
+      
+      if (activeFilter === 'today') {
+        return dueDate && dueDate >= today && dueDate < tomorrow;
+      }
+      if (activeFilter === 'week') {
+        return dueDate && dueDate >= today && dueDate < weekEnd;
+      }
+      if (activeFilter === 'overdue') {
+        return dueDate && dueDate < today && task.status === 'pending';
+      }
+      return true; // 'all'
+    })
+    .sort((a, b) => {
+      // Completed tasks go to bottom
+      if (a.status === 'completed' && b.status !== 'completed') return 1;
+      if (a.status !== 'completed' && b.status === 'completed') return -1;
+      
+      // For non-completed tasks, sort by due date (earliest first)
+      if (a.dueDate && b.dueDate) {
+        return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+      }
+      if (a.dueDate) return -1;
+      if (b.dueDate) return 1;
+      
+      // Finally, sort by creation date
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+
+  // Calculate counts
+  const todayCount = (allTasks || []).filter(t => {
+    const dueDate = t.dueDate ? new Date(t.dueDate) : null;
+    return dueDate && dueDate >= today && dueDate < tomorrow;
+  }).length;
+
+  const weekCount = (allTasks || []).filter(t => {
+    const dueDate = t.dueDate ? new Date(t.dueDate) : null;
+    return dueDate && dueDate >= today && dueDate < weekEnd;
+  }).length;
+
+  const overdueCount = (allTasks || []).filter(t => {
+    const dueDate = t.dueDate ? new Date(t.dueDate) : null;
+    return dueDate && dueDate < today && t.status === 'pending';
+  }).length;
+
   const filters = [
-    { id: 'today', label: 'Today', count: allTasks.filter(t => t.dueDate === 'today').length },
-    { id: 'week', label: 'This Week', count: allTasks.filter(t => t.dueDate === 'today' || t.dueDate === 'week').length },
-    { id: 'overdue', label: 'Overdue', count: allTasks.filter(t => t.dueDate === 'overdue').length },
-    { id: 'all', label: 'All', count: allTasks.length },
+    { id: 'today', label: 'Today', count: todayCount },
+    { id: 'week', label: 'This Week', count: weekCount },
+    { id: 'overdue', label: 'Overdue', count: overdueCount },
+    { id: 'all', label: 'All', count: allTasks?.length || 0 },
   ];
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h2 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
-          Today&apos;s Tasks ✓
-        </h2>
-        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-          {filteredTasks.filter(t => t.status === 'done').length} of {filteredTasks.length} completed
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
+            Tasks ✓
+          </h2>
+          <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+            {filteredTasks.filter(t => t.status === 'completed').length} of {filteredTasks.length} completed
+          </p>
+        </div>
+        <button
+          onClick={handleSync}
+          disabled={isSyncing}
+          className="rounded-lg border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800 disabled:opacity-50"
+        >
+          {isSyncing ? '🔄 Syncing...' : '🔄 Sync Calendar'}
+        </button>
       </div>
 
       {/* Filter Chips */}
@@ -326,22 +455,115 @@ function TodayView() {
         {filteredTasks.map((task) => (
           <div
             key={task.id}
-            className={`rounded-lg border p-4 transition-all ${
-              task.status === 'done'
+            className={`rounded-lg border p-3 sm:p-4 transition-all ${
+              task.status === 'completed'
                 ? 'border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950/20'
                 : 'border-zinc-200 bg-white hover:shadow-sm dark:border-zinc-800 dark:bg-zinc-900'
             }`}
           >
-            <div className="flex items-start gap-3">
+            {/* Mobile Layout */}
+            <div className="md:hidden">
+              <div className="flex items-start gap-2">
+                {/* Checkbox */}
+                <button 
+                  className={`mt-0.5 flex h-4 w-4 flex-shrink-0 items-center justify-center rounded border-2 transition-colors ${
+                    task.status === 'completed'
+                      ? 'border-green-600 bg-green-600'
+                      : 'border-zinc-300 hover:border-zinc-400 dark:border-zinc-700'
+                  }`}
+                >
+                  {task.status === 'completed' && (
+                    <svg className="h-2.5 w-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                    </svg>
+                  )}
+                </button>
+
+                {/* Task Content */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <h3 className={`text-sm font-medium truncate ${
+                      task.status === 'completed'
+                        ? 'text-zinc-500 line-through dark:text-zinc-500'
+                        : 'text-zinc-900 dark:text-zinc-50'
+                    }`}>
+                      {task.title}
+                    </h3>
+                    {task.isSyncedWithCalendar && (
+                      <span className="text-xs text-blue-600 dark:text-blue-400 flex-shrink-0">🔗</span>
+                    )}
+                  </div>
+                  
+                  {task.description && (
+                    <p className="mt-1 text-xs text-zinc-600 dark:text-zinc-400 line-clamp-2">{task.description}</p>
+                  )}
+                  
+                  <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                    {task.dueDate && (
+                      <span className="text-xs text-zinc-500">
+                        📅 {new Date(task.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      </span>
+                    )}
+                    {task.tags && task.tags.length > 0 && (
+                      <>
+                        {task.tags.slice(0, 2).map((tag) => (
+                          <span key={tag} className="rounded-full bg-zinc-100 px-1.5 py-0.5 text-xs text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
+                            {tag}
+                          </span>
+                        ))}
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+              
+              {/* Mobile Actions */}
+              <div className="mt-2 flex gap-1.5 pt-2 border-t border-zinc-100 dark:border-zinc-800">
+                <button
+                  onClick={() => {
+                    setSelectedTask(task);
+                    setIsEditOpen(true);
+                  }}
+                  className="flex-1 rounded-md px-2 py-1.5 text-xs font-medium text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-950/20 transition-colors"
+                >
+                  Edit
+                </button>
+                {task.status !== 'completed' && (
+                  <>
+                    <button
+                      onClick={() => {
+                        setSelectedTask(task);
+                        setIsCompleteOpen(true);
+                      }}
+                      className="flex-1 rounded-md px-2 py-1.5 text-xs font-medium text-green-600 hover:bg-green-50 dark:text-green-400 dark:hover:bg-green-950/20 transition-colors"
+                    >
+                      ✓
+                    </button>
+                    <button
+                      onClick={() => {
+                        setSelectedTask(task);
+                        setIsRescheduleOpen(true);
+                      }}
+                      className="flex-1 rounded-md px-2 py-1.5 text-xs font-medium text-amber-600 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-950/20 transition-colors"
+                    >
+                      Skip
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Desktop Layout */}
+            <div className="hidden md:flex items-start gap-3">
               {/* Checkbox */}
               <button 
                 className={`mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded border-2 transition-colors ${
-                  task.status === 'done'
+                  task.status === 'completed'
                     ? 'border-green-600 bg-green-600'
                     : 'border-zinc-300 hover:border-zinc-400 dark:border-zinc-700'
                 }`}
               >
-                {task.status === 'done' && (
+                {task.status === 'completed' && (
                   <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                   </svg>
@@ -352,29 +574,72 @@ function TodayView() {
               <div className="flex-1">
                 <div className="flex items-center gap-2">
                   <h3 className={`font-medium ${
-                    task.status === 'done'
+                    task.status === 'completed'
                       ? 'text-zinc-500 line-through dark:text-zinc-500'
                       : 'text-zinc-900 dark:text-zinc-50'
                   }`}>
                     {task.title}
                   </h3>
-                  <span className="text-xs text-zinc-400">
-                    {task.validation === 'auto' ? '🤖' : '📸'} {task.source}
-                  </span>
+                  {task.isSyncedWithCalendar && (
+                    <span className="text-xs text-blue-600 dark:text-blue-400">🔗</span>
+                  )}
+                  {task.tags && task.tags.length > 0 && (
+                    <div className="flex gap-1">
+                      {task.tags.slice(0, 2).map((tag) => (
+                        <span key={tag} className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
+                {task.description && (
+                  <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">{task.description}</p>
+                )}
+                {task.dueDate && (
+                  <p className="mt-1 text-xs text-zinc-500">
+                    Due: {new Date(task.dueDate).toLocaleDateString()}
+                  </p>
+                )}
               </div>
 
-              {/* Actions */}
-              {task.status !== 'done' && (
-                <div className="flex gap-1">
-                  <button className="rounded px-2 py-1 text-xs font-medium text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800">
-                    ✏️
-                  </button>
-                  <button className="rounded px-2 py-1 text-xs font-medium text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800">
-                    ⏭
-                  </button>
-                </div>
-              )}
+              {/* Desktop Actions */}
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    setSelectedTask(task);
+                    setIsEditOpen(true);
+                  }}
+                  className="rounded-md px-3 py-1.5 text-xs font-medium text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-950/20 transition-colors"
+                  title="Edit task"
+                >
+                  Edit
+                </button>
+                {task.status !== 'completed' && (
+                  <>
+                    <button
+                      onClick={() => {
+                        setSelectedTask(task);
+                        setIsCompleteOpen(true);
+                      }}
+                      className="rounded-md px-3 py-1.5 text-xs font-medium text-green-600 hover:bg-green-50 dark:text-green-400 dark:hover:bg-green-950/20 transition-colors"
+                      title="Mark as complete"
+                    >
+                      Complete
+                    </button>
+                    <button
+                      onClick={() => {
+                        setSelectedTask(task);
+                        setIsRescheduleOpen(true);
+                      }}
+                      className="rounded-md px-3 py-1.5 text-xs font-medium text-amber-600 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-950/20 transition-colors"
+                      title="Skip or reschedule"
+                    >
+                      Skip
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
           </div>
         ))}
@@ -388,12 +653,63 @@ function TodayView() {
             No tasks yet
           </h3>
           <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-            Add your first task to get started
+            Add your first task to get started or sync from Google Calendar
           </p>
-          <button className="mt-4 rounded-lg bg-zinc-900 px-6 py-2 text-sm font-semibold text-white transition-colors hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200">
-            + Add Task
-          </button>
+          <div className="mt-4 flex justify-center gap-2">
+            <button
+              onClick={() => setIsCreateOpen(true)}
+              className="rounded-lg bg-zinc-900 px-6 py-2 text-sm font-semibold text-white transition-colors hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+            >
+              + Add Task
+            </button>
+            <button
+              onClick={handleSync}
+              disabled={isSyncing}
+              className="rounded-lg border border-zinc-300 px-6 py-2 text-sm font-semibold text-zinc-700 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800 disabled:opacity-50"
+            >
+              {isSyncing ? 'Syncing...' : '🔄 Sync Calendar'}
+            </button>
+          </div>
         </div>
+      )}
+
+      {/* Dialogs */}
+      <CreateTaskDialog
+        open={isCreateOpen}
+        onOpenChange={setIsCreateOpen}
+        onSubmit={handleCreateTask}
+        isPending={createMutation.isPending}
+        goals={goals?.map(g => ({ id: g.id, title: g.title }))}
+      />
+
+      {selectedTask && (
+        <>
+          <EditTaskDialog
+            open={isEditOpen}
+            onOpenChange={setIsEditOpen}
+            onSubmit={handleUpdateTask}
+            isPending={updateMutation.isPending}
+            goals={goals?.map(g => ({ id: g.id, title: g.title }))}
+            task={selectedTask}
+          />
+
+          <CompleteTaskDialog
+            open={isCompleteOpen}
+            onOpenChange={setIsCompleteOpen}
+            onSubmit={handleCompleteTask}
+            isPending={completeMutation.isPending}
+            taskTitle={selectedTask.title}
+          />
+
+          <RescheduleTaskDialog
+            open={isRescheduleOpen}
+            onOpenChange={setIsRescheduleOpen}
+            onSkip={handleSkipTask}
+            onReschedule={handleRescheduleTask}
+            isPending={skipMutation.isPending || rescheduleMutation.isPending}
+            taskTitle={selectedTask.title}
+          />
+        </>
       )}
     </div>
   );
@@ -405,6 +721,7 @@ function GoalsView() {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isViewOpen, setIsViewOpen] = useState(false);
+  const [isCreateTaskOpen, setIsCreateTaskOpen] = useState(false);
   const [selectedGoal, setSelectedGoal] = useState<any>(null);
   const [showCalendar, setShowCalendar] = useState(false);
   const [showCompleted, setShowCompleted] = useState(false);
@@ -419,8 +736,16 @@ function GoalsView() {
   });
 
   const { data: goals, refetch } = trpc.goal.getAll.useQuery();
+  const { data: allTasks } = trpc.task.getAll.useQuery();
   const { data: githubIntegration } = trpc.integration.getByServiceType.useQuery({ serviceType: 'github' });
   const { data: githubActivity } = trpc.integration.getGitHubActivity.useQuery({ hours: 24 * 30 }); // Last 30 days for more repos
+  
+  const createTaskMutation = trpc.task.create.useMutation({
+    onSuccess: () => {
+      setIsCreateTaskOpen(false);
+      setSelectedGoal(null);
+    },
+  });
   
   const createMutation = trpc.goal.create.useMutation({
     onSuccess: () => {
@@ -521,6 +846,23 @@ function GoalsView() {
   const activeGoals = goals?.filter((g: any) => g.status !== 'completed') || [];
   const completedGoals = goals?.filter((g: any) => g.status === 'completed') || [];
   const totalGoals = goals?.length || 0;
+
+  const getTaskCountsForGoal = (goalId: string) => {
+    const goalTasks = allTasks?.filter(t => t.goalId === goalId) || [];
+    const completed = goalTasks.filter(t => t.status === 'completed').length;
+    return { total: goalTasks.length, completed };
+  };
+
+  const handleCreateTaskForGoal = (data: any) => {
+    createTaskMutation.mutate({
+      title: data.title,
+      description: data.description || undefined,
+      dueDate: data.dueDate || undefined,
+      goalId: selectedGoal?.id || undefined,
+      tags: data.tags.length > 0 ? data.tags : undefined,
+      syncWithCalendar: data.syncWithCalendar,
+    });
+  };
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
@@ -777,6 +1119,34 @@ function GoalsView() {
                         {goal.description}
                       </p>
                     )}
+
+                    {/* Task Counts and Warning */}
+                    {(() => {
+                      const { total, completed } = getTaskCountsForGoal(goal.id);
+                      return (
+                        <div className="space-y-2">
+                          {total === 0 ? (
+                            <div className="rounded-lg bg-amber-50 border border-amber-200 p-3 dark:bg-amber-900/20 dark:border-amber-900">
+                              <p className="text-xs text-amber-800 dark:text-amber-200">
+                                ⚠️ No tasks yet. Add tasks to start tracking progress!
+                              </p>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                                Tasks: {completed}/{total} completed
+                              </span>
+                              <div className="flex-1 h-2 bg-zinc-200 dark:bg-zinc-800 rounded-full overflow-hidden max-w-[100px]">
+                                <div
+                                  className="h-full bg-green-600 transition-all"
+                                  style={{ width: `${total > 0 ? (completed / total) * 100 : 0}%` }}
+                                />
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
 
                     {/* Metadata */}
                     <div className="flex flex-wrap items-center gap-3 text-xs text-zinc-500 dark:text-zinc-400">
@@ -1072,6 +1442,74 @@ function GoalsView() {
                 </div>
               </div>
             )}
+
+            {/* Tasks Section */}
+            {selectedGoal && (() => {
+              const goalTasks = (allTasks || []).filter(t => t.goalId === selectedGoal.id);
+              const completed = goalTasks.filter(t => t.status === 'completed').length;
+              return (
+                <div className="space-y-2 border-t border-zinc-200 dark:border-zinc-800 pt-4">
+                  <div className="flex items-center justify-between">
+                    <Label>Tasks ({completed}/{goalTasks.length} completed)</Label>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setIsEditOpen(false);
+                        setTimeout(() => setIsCreateTaskOpen(true), 100);
+                      }}
+                      className="text-xs"
+                    >
+                      + Add Task
+                    </Button>
+                  </div>
+                  {goalTasks.length === 0 ? (
+                    <div className="rounded-lg bg-amber-50 border border-amber-200 p-3 dark:bg-amber-900/20 dark:border-amber-900">
+                      <p className="text-xs text-amber-800 dark:text-amber-200">
+                        No tasks yet. Click "+ Add Task" to get started!
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2 max-h-60 overflow-y-auto">
+                      {goalTasks.map(task => (
+                        <div
+                          key={task.id}
+                          className={`flex items-center gap-2 rounded-lg border p-2 ${
+                            task.status === 'completed'
+                              ? 'bg-green-50 border-green-200 dark:bg-green-950/20 dark:border-green-900'
+                              : 'bg-zinc-50 border-zinc-200 dark:bg-zinc-900 dark:border-zinc-800'
+                          }`}
+                        >
+                          <div className={`flex h-4 w-4 flex-shrink-0 items-center justify-center rounded border ${
+                            task.status === 'completed'
+                              ? 'border-green-600 bg-green-600'
+                              : 'border-zinc-400'
+                          }`}>
+                            {task.status === 'completed' && (
+                              <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                              </svg>
+                            )}
+                          </div>
+                          <span className={`flex-1 text-sm ${
+                            task.status === 'completed'
+                              ? 'text-zinc-600 line-through dark:text-zinc-400'
+                              : 'text-zinc-900 dark:text-zinc-50'
+                          }`}>
+                            {task.title}
+                          </span>
+                          {task.dueDate && (
+                            <span className="text-xs text-zinc-500">
+                              {new Date(task.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => {
@@ -1216,6 +1654,18 @@ function GoalsView() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Create Task Dialog from Goal */}
+      {selectedGoal && (
+        <CreateTaskDialog
+          open={isCreateTaskOpen}
+          onOpenChange={setIsCreateTaskOpen}
+          onSubmit={handleCreateTaskForGoal}
+          isPending={createTaskMutation.isPending}
+          goals={goals?.map(g => ({ id: g.id, title: g.title }))}
+          initialGoalId={selectedGoal.id}
+        />
+      )}
     </div>
   );
 }
