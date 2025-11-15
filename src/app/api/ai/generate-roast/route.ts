@@ -1,0 +1,420 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { GoogleGenerativeAI } from '@google/generative-ai';
+import { env } from '@/lib/env';
+import { createServerClient } from '@/lib/supabase/server';
+import { analyzeUserData } from '@/lib/ai/data-analyzer';
+
+// Initialize Gemini AI
+const genAI = new GoogleGenerativeAI(env.NEXT_GOOGLE_GEMINI_API_KEY);
+
+const WEEKLY_ROAST_PROMPT = `
+You are GrindProof's accountability coach generating a Weekly Roast Report.
+
+Based on the user's weekly data, generate a brutally honest but supportive assessment.
+
+Provide insights as JSON with these fields:
+- insights: Array of 3-5 key observations, each with:
+  - emoji: Single emoji representing the insight
+  - text: Concise observation (50-80 chars)
+  - severity: 'high' (problem), 'medium' (warning), or 'positive' (win)
+- recommendations: Array of 2-3 specific actions to improve next week (50-100 chars each)
+- weekSummary: One sentence summary of their week (100-150 chars)
+
+Focus on:
+1. Actual vs planned (Did they do what they said?)
+2. Pattern detection (What keeps happening?)
+3. Real progress vs busy work
+4. Evidence quality (Are they proving it?)
+5. New project addiction (Starting more than finishing?)
+
+Be direct but supportive. Call out BS, celebrate real wins.
+
+Return ONLY valid JSON in this format:
+{
+  "insights": [
+    {
+      "emoji": "💻",
+      "text": "Planned AI work 5x → Did it 1x",
+      "severity": "high"
+    }
+  ],
+  "recommendations": [
+    "Finish one existing goal before starting a new one",
+    "Set realistic daily task limits (you're overcommitting)"
+  ],
+  "weekSummary": "Mixed week: good intentions, but execution didn't match the plan."
+}
+`;
+
+interface WeeklyMetrics {
+  weekStart: Date;
+  weekEnd: Date;
+  alignmentScore: number;
+  honestyScore: number;
+  completionRate: number;
+  newProjectsStarted: number;
+  evidenceSubmissions: number;
+  tasksPlanned: number;
+  tasksCompleted: number;
+  tasksSkipped: number;
+  tasksOverdue: number;
+}
+
+function getWeekBoundaries(weekStart?: string): { start: Date; end: Date } {
+  let start: Date;
+  
+  if (weekStart) {
+    start = new Date(weekStart);
+  } else {
+    // Default to current week (Sunday start)
+    start = new Date();
+    start.setDate(start.getDate() - start.getDay());
+  }
+  
+  start.setHours(0, 0, 0, 0);
+  
+  const end = new Date(start);
+  end.setDate(start.getDate() + 7);
+  
+  return { start, end };
+}
+
+async function calculateWeeklyMetrics(
+  userId: string,
+  supabase: any,
+  weekStart: Date,
+  weekEnd: Date
+): Promise<WeeklyMetrics> {
+  // Fetch tasks for the week
+  const { data: tasks } = await supabase
+    .from('tasks')
+    .select('*')
+    .eq('user_id', userId)
+    .gte('created_at', weekStart.toISOString())
+    .lt('created_at', weekEnd.toISOString());
+
+  const weekTasks = tasks || [];
+
+  // Fetch goals created this week
+  const { data: goals } = await supabase
+    .from('goals')
+    .select('*')
+    .eq('user_id', userId)
+    .gte('created_at', weekStart.toISOString())
+    .lt('created_at', weekEnd.toISOString());
+
+  const weekGoals = goals || [];
+
+  // Fetch all active goals to check completion percentage
+  const { data: activeGoals } = await supabase
+    .from('goals')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('status', 'active');
+
+  const activeGoalIds = (activeGoals || []).map(g => g.id);
+
+  // Fetch all tasks for active goals to calculate completion rates
+  let allGoalTasks = [];
+  if (activeGoalIds.length > 0) {
+    const { data: goalTasks } = await supabase
+      .from('tasks')
+      .select('*')
+      .eq('user_id', userId)
+      .in('goal_id', activeGoalIds);
+    
+    allGoalTasks = goalTasks || [];
+  }
+
+  // Count new goals created while existing goals are under 50% complete
+  let newProjectsStarted = 0;
+  for (const goal of weekGoals) {
+    const goalsUnder50 = activeGoalIds.filter(gid => {
+      const tasks = allGoalTasks.filter(t => t.goal_id === gid);
+      if (tasks.length === 0) return true;
+      const completed = tasks.filter(t => t.status === 'completed').length;
+      return completed / tasks.length < 0.5;
+    });
+    
+    if (goalsUnder50.length >= 3) {
+      newProjectsStarted++;
+    }
+  }
+
+  // Fetch evidence submitted this week (need task IDs first)
+  const { data: allUserTasks } = await supabase
+    .from('tasks')
+    .select('id')
+    .eq('user_id', userId);
+
+  const userTaskIds = (allUserTasks || []).map(t => t.id);
+
+  let evidenceSubmissions = 0;
+  if (userTaskIds.length > 0) {
+    const { data: evidence } = await supabase
+      .from('evidence')
+      .select('*')
+      .in('task_id', userTaskIds)
+      .gte('submitted_at', weekStart.toISOString())
+      .lt('submitted_at', weekEnd.toISOString());
+
+    evidenceSubmissions = (evidence || []).length;
+  }
+
+  // Calculate metrics
+  const completed = weekTasks.filter(t => t.status === 'completed');
+  const skipped = weekTasks.filter(t => t.status === 'skipped');
+  const pending = weekTasks.filter(t => t.status === 'pending');
+  const overdue = pending.filter(t => {
+    if (!t.due_date) return false;
+    return new Date(t.due_date) < new Date();
+  });
+
+  // Tasks that were supposed to be done this week (due date in week range)
+  const { data: plannedTasks } = await supabase
+    .from('tasks')
+    .select('*')
+    .eq('user_id', userId)
+    .gte('due_date', weekStart.toISOString())
+    .lt('due_date', weekEnd.toISOString());
+
+  const planned = plannedTasks || [];
+  const plannedCompleted = planned.filter(t => t.status === 'completed');
+
+  // Alignment score: planned vs actually completed
+  const alignmentScore = planned.length > 0 
+    ? plannedCompleted.length / planned.length 
+    : weekTasks.length > 0 
+      ? completed.length / weekTasks.length 
+      : 0;
+
+  // Honesty score: evidence submissions vs tasks completed
+  const honestyScore = completed.length > 0 
+    ? Math.min(evidenceSubmissions / completed.length, 1.0) 
+    : 0;
+
+  // Completion rate: completed / (completed + pending + skipped)
+  const totalTasksWithStatus = weekTasks.length;
+  const completionRate = totalTasksWithStatus > 0 
+    ? completed.length / totalTasksWithStatus 
+    : 0;
+
+  return {
+    weekStart,
+    weekEnd,
+    alignmentScore: Math.round(alignmentScore * 100) / 100,
+    honestyScore: Math.round(honestyScore * 100) / 100,
+    completionRate: Math.round(completionRate * 100) / 100,
+    newProjectsStarted,
+    evidenceSubmissions,
+    tasksPlanned: planned.length,
+    tasksCompleted: completed.length,
+    tasksSkipped: skipped.length,
+    tasksOverdue: overdue.length,
+  };
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const supabase = await createServerClient();
+    
+    // Authenticate user
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    // Parse request body
+    let weekStartStr: string | undefined;
+    try {
+      const body = await request.json();
+      weekStartStr = body.weekStart;
+    } catch {
+      // Body is optional
+    }
+
+    // Calculate week boundaries
+    const { start: weekStart, end: weekEnd } = getWeekBoundaries(weekStartStr);
+
+    // Calculate weekly metrics
+    const metrics = await calculateWeeklyMetrics(user.id, supabase, weekStart, weekEnd);
+
+    // Get comprehensive user analysis
+    const analysis = await analyzeUserData(user.id, supabase);
+
+    // Fetch existing patterns
+    const { data: patterns } = await (supabase as any)
+      .from('patterns')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('confidence', { ascending: false })
+      .limit(5);
+
+    // Prepare data for AI
+    const roastData = {
+      week: {
+        start: weekStart.toISOString().split('T')[0],
+        end: weekEnd.toISOString().split('T')[0],
+      },
+      metrics: {
+        alignmentScore: Math.round(metrics.alignmentScore * 100),
+        honestyScore: Math.round(metrics.honestyScore * 100),
+        completionRate: Math.round(metrics.completionRate * 100),
+        tasksPlanned: metrics.tasksPlanned,
+        tasksCompleted: metrics.tasksCompleted,
+        tasksSkipped: metrics.tasksSkipped,
+        tasksOverdue: metrics.tasksOverdue,
+        newProjectsStarted: metrics.newProjectsStarted,
+        evidenceSubmissions: metrics.evidenceSubmissions,
+      },
+      patterns: (patterns || []).map(p => ({
+        type: p.pattern_type,
+        description: p.description,
+        confidence: Math.round(p.confidence * 100),
+      })),
+      overall: {
+        totalGoals: analysis.goalStats.total,
+        activeGoals: analysis.goalStats.active,
+        goalsUnder50Percent: analysis.goalStats.activeUnder50Percent,
+        totalTasks: analysis.taskStats.total,
+        overdueTasksTotal: analysis.taskStats.overdue,
+      },
+    };
+
+    // Generate roast with AI
+    const model = genAI.getGenerativeModel({
+      model: 'gemini-2.5-flash',
+      systemInstruction: WEEKLY_ROAST_PROMPT,
+    });
+
+    const result = await model.generateContent(
+      `Generate a Weekly Roast Report based on this data:\n\n${JSON.stringify(roastData, null, 2)}`
+    );
+    const response = await result.response;
+    const text = response.text();
+
+    // Parse AI response
+    let aiInsights: any = {
+      insights: [],
+      recommendations: [],
+      weekSummary: 'Week complete. Keep pushing forward.',
+    };
+
+    try {
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        aiInsights = JSON.parse(jsonMatch[0]);
+      }
+    } catch (parseError) {
+      console.error('Failed to parse AI response:', parseError);
+      // Use fallback insights
+      aiInsights = {
+        insights: [
+          {
+            emoji: '📊',
+            text: `${metrics.tasksCompleted}/${metrics.tasksPlanned} tasks completed this week`,
+            severity: metrics.completionRate >= 0.7 ? 'positive' : 'medium',
+          },
+        ],
+        recommendations: ['Focus on completing pending tasks before adding new ones'],
+        weekSummary: 'Week analyzed. Review your metrics above.',
+      };
+    }
+
+    // Save accountability score to database
+    const weekStartDate = weekStart.toISOString().split('T')[0];
+
+    // Check if score already exists for this week
+    const { data: existingScore } = await (supabase as any)
+      .from('accountability_scores')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('week_start', weekStartDate)
+      .maybeSingle();
+
+    if (existingScore) {
+      // Update existing score
+      await (supabase as any)
+        .from('accountability_scores')
+        .update({
+          alignment_score: metrics.alignmentScore,
+          honesty_score: metrics.honestyScore,
+          completion_rate: metrics.completionRate,
+          new_projects_started: metrics.newProjectsStarted,
+          evidence_submissions: metrics.evidenceSubmissions,
+        })
+        .eq('id', existingScore.id);
+    } else {
+      // Create new score
+      await (supabase as any)
+        .from('accountability_scores')
+        .insert({
+          user_id: user.id,
+          week_start: weekStartDate,
+          alignment_score: metrics.alignmentScore,
+          honesty_score: metrics.honestyScore,
+          completion_rate: metrics.completionRate,
+          new_projects_started: metrics.newProjectsStarted,
+          evidence_submissions: metrics.evidenceSubmissions,
+        });
+    }
+
+    // Return roast data
+    return NextResponse.json({
+      success: true,
+      weekStart: weekStartDate,
+      alignmentScore: metrics.alignmentScore,
+      honestyScore: metrics.honestyScore,
+      completionRate: metrics.completionRate,
+      newProjectsStarted: metrics.newProjectsStarted,
+      evidenceSubmissions: metrics.evidenceSubmissions,
+      metrics: {
+        tasksPlanned: metrics.tasksPlanned,
+        tasksCompleted: metrics.tasksCompleted,
+        tasksSkipped: metrics.tasksSkipped,
+        tasksOverdue: metrics.tasksOverdue,
+      },
+      insights: aiInsights.insights || [],
+      recommendations: aiInsights.recommendations || [],
+      weekSummary: aiInsights.weekSummary,
+    });
+
+  } catch (error: any) {
+    console.error('Roast generation error:', error);
+
+    // Handle Gemini API errors
+    if (error.message?.includes('quota') || error.message?.includes('RESOURCE_EXHAUSTED')) {
+      return NextResponse.json(
+        {
+          error: 'AI roast generation temporarily unavailable due to quota limits. Please try again later.',
+          errorType: 'quota_exceeded',
+        },
+        { status: 429 }
+      );
+    }
+
+    if (error.message?.includes('invalid') || error.message?.includes('API key')) {
+      return NextResponse.json(
+        {
+          error: 'AI roast generation temporarily unavailable due to configuration issue.',
+          errorType: 'service_unavailable',
+        },
+        { status: 503 }
+      );
+    }
+
+    return NextResponse.json(
+      {
+        error: 'Failed to generate roast. Please try again.',
+        errorType: 'unknown',
+        details: error.message,
+      },
+      { status: 500 }
+    );
+  }
+}
+

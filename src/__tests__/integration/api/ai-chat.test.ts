@@ -187,5 +187,278 @@ describe('AI Chat API Route', () => {
       // Conversation context fetching is tested indirectly via the mock
     });
   });
+
+  describe('Command Detection and Routing', () => {
+    beforeEach(() => {
+      // Mock fetch for command endpoints
+      global.fetch = vi.fn();
+    });
+
+    it('should detect "roast me" command and route to roast endpoint', async () => {
+      const mockRoastResponse = {
+        ok: true,
+        json: async () => ({
+          success: true,
+          alignmentScore: 0.75,
+          honestyScore: 0.80,
+          completionRate: 0.70,
+          insights: [
+            { emoji: '💪', text: 'Great work this week!', severity: 'positive' },
+          ],
+          recommendations: ['Keep it up'],
+          weekSummary: 'Solid week overall',
+        }),
+      };
+
+      (global.fetch as any).mockResolvedValue(mockRoastResponse);
+
+      const messages = [{ role: 'user', content: 'roast me' }];
+      const request = new NextRequest('http://localhost:3000/api/ai/chat', {
+        method: 'POST',
+        body: JSON.stringify({ messages }),
+      });
+
+      const response = await POST(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(data.commandExecuted).toBe('roast');
+      expect(data.text).toContain('Weekly Roast Report');
+      expect(data.text).toContain('Solid week overall');
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/ai/generate-roast'),
+        expect.any(Object)
+      );
+    });
+
+    it('should detect "generate roast" command variation', async () => {
+      const mockRoastResponse = {
+        ok: true,
+        json: async () => ({
+          success: true,
+          alignmentScore: 0.60,
+          honestyScore: 0.50,
+          completionRate: 0.55,
+          insights: [],
+          recommendations: [],
+          weekSummary: 'Average week',
+        }),
+      };
+
+      (global.fetch as any).mockResolvedValue(mockRoastResponse);
+
+      const messages = [{ role: 'user', content: 'generate roast' }];
+      const request = new NextRequest('http://localhost:3000/api/ai/chat', {
+        method: 'POST',
+        body: JSON.stringify({ messages }),
+      });
+
+      const response = await POST(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(data.commandExecuted).toBe('roast');
+    });
+
+    it('should detect "weekly report" command variation', async () => {
+      const mockRoastResponse = {
+        ok: true,
+        json: async () => ({
+          success: true,
+          alignmentScore: 0.85,
+          honestyScore: 0.90,
+          completionRate: 0.88,
+          insights: [],
+          recommendations: [],
+          weekSummary: 'Excellent week',
+        }),
+      };
+
+      (global.fetch as any).mockResolvedValue(mockRoastResponse);
+
+      const messages = [{ role: 'user', content: 'show me my weekly report' }];
+      const request = new NextRequest('http://localhost:3000/api/ai/chat', {
+        method: 'POST',
+        body: JSON.stringify({ messages }),
+      });
+
+      const response = await POST(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(data.commandExecuted).toBe('roast');
+    });
+
+    it('should detect "analyze patterns" command and route to patterns endpoint', async () => {
+      const mockPatternsResponse = {
+        ok: true,
+        json: async () => ({
+          success: true,
+          patternsDetected: 3,
+          patterns: [
+            {
+              type: 'procrastination',
+              description: 'Tasks completed late',
+              confidence: 0.75,
+              action: 'created',
+            },
+            {
+              type: 'task_skipping',
+              description: 'High skip rate',
+              confidence: 0.60,
+              action: 'updated',
+            },
+          ],
+        }),
+      };
+
+      (global.fetch as any).mockResolvedValue(mockPatternsResponse);
+
+      const messages = [{ role: 'user', content: 'analyze patterns' }];
+      const request = new NextRequest('http://localhost:3000/api/ai/chat', {
+        method: 'POST',
+        body: JSON.stringify({ messages }),
+      });
+
+      const response = await POST(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(data.commandExecuted).toBe('patterns');
+      expect(data.text).toContain('Pattern Analysis');
+      expect(data.text).toContain('procrastination');
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/ai/analyze-patterns'),
+        expect.any(Object)
+      );
+    });
+
+    it('should detect "what patterns" command variation', async () => {
+      const mockPatternsResponse = {
+        ok: true,
+        json: async () => ({
+          success: true,
+          patternsDetected: 0,
+          patterns: [],
+        }),
+      };
+
+      (global.fetch as any).mockResolvedValue(mockPatternsResponse);
+
+      const messages = [{ role: 'user', content: 'what patterns do you see?' }];
+      const request = new NextRequest('http://localhost:3000/api/ai/chat', {
+        method: 'POST',
+        body: JSON.stringify({ messages }),
+      });
+
+      const response = await POST(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(data.commandExecuted).toBe('patterns');
+      expect(data.text).toContain('No significant patterns detected yet');
+    });
+
+    it('should handle roast endpoint errors gracefully', async () => {
+      const mockErrorResponse = {
+        ok: false,
+        status: 429,
+        json: async () => ({
+          error: 'Quota exceeded',
+        }),
+      };
+
+      (global.fetch as any).mockResolvedValue(mockErrorResponse);
+
+      const messages = [{ role: 'user', content: 'roast me' }];
+      const request = new NextRequest('http://localhost:3000/api/ai/chat', {
+        method: 'POST',
+        body: JSON.stringify({ messages }),
+      });
+
+      const response = await POST(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(429);
+      expect(data.error).toBe('Quota exceeded');
+    });
+
+    it('should handle patterns endpoint errors gracefully', async () => {
+      const mockErrorResponse = {
+        ok: false,
+        status: 500,
+        json: async () => ({
+          error: 'Internal server error',
+        }),
+      };
+
+      (global.fetch as any).mockResolvedValue(mockErrorResponse);
+
+      const messages = [{ role: 'user', content: 'analyze patterns' }];
+      const request = new NextRequest('http://localhost:3000/api/ai/chat', {
+        method: 'POST',
+        body: JSON.stringify({ messages }),
+      });
+
+      const response = await POST(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(500);
+      expect(data.error).toContain('Failed to analyze patterns');
+    });
+
+    it('should not detect commands in normal conversation', async () => {
+      const messages = [{ role: 'user', content: 'How do I add a task?' }];
+      const request = new NextRequest('http://localhost:3000/api/ai/chat', {
+        method: 'POST',
+        body: JSON.stringify({ messages }),
+      });
+
+      const response = await POST(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(data).not.toHaveProperty('commandExecuted');
+      expect(data).toHaveProperty('text');
+      expect(global.fetch).not.toHaveBeenCalled();
+    });
+
+    it('should pass cookies to command endpoints for authentication', async () => {
+      const mockRoastResponse = {
+        ok: true,
+        json: async () => ({
+          success: true,
+          alignmentScore: 0.70,
+          honestyScore: 0.65,
+          completionRate: 0.68,
+          insights: [],
+          recommendations: [],
+          weekSummary: 'Week analyzed',
+        }),
+      };
+
+      (global.fetch as any).mockResolvedValue(mockRoastResponse);
+
+      const messages = [{ role: 'user', content: 'roast me' }];
+      const request = new NextRequest('http://localhost:3000/api/ai/chat', {
+        method: 'POST',
+        headers: {
+          Cookie: 'session=abc123',
+        },
+        body: JSON.stringify({ messages }),
+      });
+
+      await POST(request);
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            Cookie: 'session=abc123',
+          }),
+        })
+      );
+    });
+  });
 });
 

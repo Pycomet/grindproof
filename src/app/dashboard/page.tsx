@@ -2485,47 +2485,70 @@ function EveningCheck() {
 
 // Weekly Roast Report Component
 function WeeklyRoast() {
-  // Use AppContext
-  const { goals } = useApp();
-  
-  // Calculate goal alignment score
-  const totalGoals = goals.length || 0;
-  const completedGoals = goals.filter((g: any) => g.status === 'completed').length || 0;
-  const goalAlignmentScore = totalGoals > 0 ? Math.round((completedGoals / totalGoals) * 100) : 0;
-  
-  const weekData = {
-    alignmentScore: goalAlignmentScore,
-    totalPlanned: totalGoals,
-    totalCompleted: completedGoals,
-    honestyScore: 42,
-    insights: [
-      {
-        emoji: '💻',
-        text: 'Planned AI work 5x → Did it 1x',
-        severity: 'high' as const,
-      },
-      {
-        emoji: '💪',
-        text: '"Gym" 4x → Proved it 1x',
-        severity: 'high' as const,
-      },
-      {
-        emoji: '🚀',
-        text: 'Started 2 new projects instead',
-        severity: 'medium' as const,
-      },
-      {
-        emoji: '✅',
-        text: 'Most honest day: Tuesday',
-        severity: 'positive' as const,
-      },
-      {
-        emoji: '🚩',
-        text: 'Biggest bullshit day: Thursday',
-        severity: 'high' as const,
-      },
-    ],
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [roastData, setRoastData] = useState<any>(null);
+
+  // Get current week start (Sunday)
+  const getCurrentWeekStart = () => {
+    const now = new Date();
+    const start = new Date(now);
+    start.setDate(now.getDate() - now.getDay());
+    start.setHours(0, 0, 0, 0);
+    return start;
   };
+
+  const weekStart = getCurrentWeekStart();
+
+  // Fetch existing accountability score for current week
+  const { data: existingScore, refetch } = trpc.accountabilityScore.getByWeek.useQuery({
+    weekStart,
+  });
+
+  const handleGenerateRoast = async (regenerate: boolean = false) => {
+    setIsGenerating(true);
+    setError(null);
+
+    try {
+      const response = await fetch('/api/ai/generate-roast', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          weekStart: weekStart.toISOString(),
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to generate roast');
+      }
+
+      const data = await response.json();
+      setRoastData(data);
+      
+      // Refetch the accountability score
+      await refetch();
+    } catch (err: any) {
+      console.error('Error generating roast:', err);
+      setError(err.message || 'Failed to generate roast. Please try again.');
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  // Use roast data from API or existing score
+  const displayData = roastData || (existingScore ? {
+    alignmentScore: existingScore.alignmentScore || 0,
+    honestyScore: existingScore.honestyScore || 0,
+    completionRate: existingScore.completionRate || 0,
+    newProjectsStarted: existingScore.newProjectsStarted || 0,
+    evidenceSubmissions: existingScore.evidenceSubmissions || 0,
+    insights: [],
+    recommendations: [],
+    weekSummary: 'Roast generated. Review your metrics above.',
+  } : null);
 
   return (
     <div className="space-y-6">
@@ -2537,81 +2560,193 @@ function WeeklyRoast() {
         <p className="mt-2 text-zinc-600 dark:text-zinc-400">
           Time to face the music. Here&apos;s how you really did this week:
         </p>
+        {existingScore && (
+          <p className="mt-1 text-xs text-zinc-500">
+            Generated: {new Date(existingScore.createdAt).toLocaleDateString()}
+          </p>
+        )}
       </div>
 
-      {/* Score Cards */}
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div className="rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
-          <div className="text-sm font-medium text-zinc-500">Goal Alignment Score</div>
-          <div className="mt-2 flex items-end gap-2">
-            <div className={`text-5xl font-bold ${
-              weekData.alignmentScore >= 70 ? 'text-green-600' :
-              weekData.alignmentScore >= 40 ? 'text-orange-600' :
-              'text-red-600'
-            }`}>
-              {weekData.alignmentScore}%
-            </div>
-            <div className="mb-2 text-sm text-zinc-500">
-              {weekData.totalCompleted}/{weekData.totalPlanned} goals
-            </div>
-          </div>
-          <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
-            <div
-              className={`h-full transition-all ${
-                weekData.alignmentScore >= 70 ? 'bg-green-600' :
-                weekData.alignmentScore >= 40 ? 'bg-orange-600' :
-                'bg-red-600'
-              }`}
-              style={{ width: `${weekData.alignmentScore}%` }}
-            ></div>
-          </div>
+      {/* Error Message */}
+      {error && (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-800 dark:border-red-800 dark:bg-red-900/20 dark:text-red-200">
+          <p className="font-medium">Error</p>
+          <p className="text-sm">{error}</p>
         </div>
+      )}
 
-        <div className="rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
-          <div className="text-sm font-medium text-zinc-500">Honesty Score</div>
-          <div className="mt-2 flex items-end gap-2">
-            <div className="text-5xl font-bold text-orange-600">{weekData.honestyScore}%</div>
-            <div className="mb-2 text-sm text-zinc-500">proof provided</div>
-          </div>
-          <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
-            <div
-              className="h-full bg-orange-600 transition-all"
-              style={{ width: `${weekData.honestyScore}%` }}
-            ></div>
-          </div>
+      {/* Loading State */}
+      {isGenerating && (
+        <div className="rounded-xl border border-zinc-200 bg-white p-12 text-center dark:border-zinc-800 dark:bg-zinc-900">
+          <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-4 border-zinc-200 border-t-blue-600 dark:border-zinc-700 dark:border-t-blue-400"></div>
+          <p className="text-lg font-medium text-zinc-900 dark:text-zinc-50">
+            Analyzing your week...
+          </p>
+          <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+            Crunching the numbers and detecting patterns
+          </p>
         </div>
-      </div>
+      )}
 
-      {/* Insights */}
-      <div className="rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
-        <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
-          The Uncomfortable Truth
-        </h3>
-        <div className="mt-4 space-y-3">
-          {weekData.insights.map((insight, idx) => (
-            <div
-              key={idx}
-              className={`flex items-start gap-3 rounded-lg p-4 ${
-                insight.severity === 'high'
-                  ? 'bg-red-50 dark:bg-red-950/20'
-                  : insight.severity === 'medium'
-                  ? 'bg-orange-50 dark:bg-orange-950/20'
-                  : 'bg-green-50 dark:bg-green-950/20'
-              }`}
+      {/* No Roast Generated Yet */}
+      {!displayData && !isGenerating && (
+        <div className="rounded-xl border border-zinc-200 bg-white p-12 text-center dark:border-zinc-800 dark:bg-zinc-900">
+          <div className="mb-4 text-6xl">📊</div>
+          <h3 className="text-xl font-semibold text-zinc-900 dark:text-zinc-50">
+            Ready for Your Weekly Roast?
+          </h3>
+          <p className="mt-2 text-zinc-600 dark:text-zinc-400">
+            Generate an AI-powered analysis of your week&apos;s performance
+          </p>
+          <button
+            onClick={() => handleGenerateRoast(false)}
+            disabled={isGenerating}
+            className="mt-6 rounded-full bg-zinc-900 px-8 py-4 text-base font-semibold text-white transition-all hover:bg-zinc-800 disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+          >
+            Generate This Week&apos;s Roast 🔥
+          </button>
+        </div>
+      )}
+
+      {/* Display Roast Data */}
+      {displayData && !isGenerating && (
+        <>
+          {/* Score Cards */}
+          <div className="grid gap-4 sm:grid-cols-3">
+            <div className="rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
+              <div className="text-sm font-medium text-zinc-500">Alignment Score</div>
+              <div className="mt-2 flex items-end gap-2">
+                <div className={`text-4xl font-bold ${
+                  displayData.alignmentScore >= 0.7 ? 'text-green-600' :
+                  displayData.alignmentScore >= 0.4 ? 'text-orange-600' :
+                  'text-red-600'
+                }`}>
+                  {Math.round(displayData.alignmentScore * 100)}%
+                </div>
+              </div>
+              <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
+                <div
+                  className={`h-full transition-all ${
+                    displayData.alignmentScore >= 0.7 ? 'bg-green-600' :
+                    displayData.alignmentScore >= 0.4 ? 'bg-orange-600' :
+                    'bg-red-600'
+                  }`}
+                  style={{ width: `${Math.round(displayData.alignmentScore * 100)}%` }}
+                ></div>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
+              <div className="text-sm font-medium text-zinc-500">Honesty Score</div>
+              <div className="mt-2 flex items-end gap-2">
+                <div className={`text-4xl font-bold ${
+                  displayData.honestyScore >= 0.7 ? 'text-green-600' :
+                  displayData.honestyScore >= 0.4 ? 'text-orange-600' :
+                  'text-red-600'
+                }`}>
+                  {Math.round(displayData.honestyScore * 100)}%
+                </div>
+              </div>
+              <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
+                <div
+                  className={`h-full transition-all ${
+                    displayData.honestyScore >= 0.7 ? 'bg-green-600' :
+                    displayData.honestyScore >= 0.4 ? 'bg-orange-600' :
+                    'bg-red-600'
+                  }`}
+                  style={{ width: `${Math.round(displayData.honestyScore * 100)}%` }}
+                ></div>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
+              <div className="text-sm font-medium text-zinc-500">Completion Rate</div>
+              <div className="mt-2 flex items-end gap-2">
+                <div className={`text-4xl font-bold ${
+                  displayData.completionRate >= 0.7 ? 'text-green-600' :
+                  displayData.completionRate >= 0.4 ? 'text-orange-600' :
+                  'text-red-600'
+                }`}>
+                  {Math.round(displayData.completionRate * 100)}%
+                </div>
+              </div>
+              <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
+                <div
+                  className={`h-full transition-all ${
+                    displayData.completionRate >= 0.7 ? 'bg-green-600' :
+                    displayData.completionRate >= 0.4 ? 'bg-orange-600' :
+                    'bg-red-600'
+                  }`}
+                  style={{ width: `${Math.round(displayData.completionRate * 100)}%` }}
+                ></div>
+              </div>
+            </div>
+          </div>
+
+          {/* Week Summary */}
+          {displayData.weekSummary && (
+            <div className="rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
+              <p className="text-lg text-zinc-900 dark:text-zinc-50">
+                {displayData.weekSummary}
+              </p>
+            </div>
+          )}
+
+          {/* Insights */}
+          {displayData.insights && displayData.insights.length > 0 && (
+            <div className="rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
+              <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+                The Uncomfortable Truth
+              </h3>
+              <div className="mt-4 space-y-3">
+                {displayData.insights.map((insight: any, idx: number) => (
+                  <div
+                    key={idx}
+                    className={`flex items-start gap-3 rounded-lg p-4 ${
+                      insight.severity === 'high'
+                        ? 'bg-red-50 dark:bg-red-950/20'
+                        : insight.severity === 'medium'
+                        ? 'bg-orange-50 dark:bg-orange-950/20'
+                        : 'bg-green-50 dark:bg-green-950/20'
+                    }`}
+                  >
+                    <span className="text-2xl">{insight.emoji}</span>
+                    <span className="flex-1 text-zinc-900 dark:text-zinc-50">{insight.text}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Recommendations */}
+          {displayData.recommendations && displayData.recommendations.length > 0 && (
+            <div className="rounded-xl border border-blue-200 bg-blue-50 p-6 dark:border-blue-800 dark:bg-blue-950/20">
+              <h3 className="text-lg font-semibold text-blue-900 dark:text-blue-50">
+                Next Week&apos;s Challenge
+              </h3>
+              <ul className="mt-4 space-y-2">
+                {displayData.recommendations.map((rec: string, idx: number) => (
+                  <li key={idx} className="flex items-start gap-2 text-blue-900 dark:text-blue-50">
+                    <span className="font-bold">{idx + 1}.</span>
+                    <span>{rec}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Regenerate Button */}
+          <div className="flex justify-center pt-4">
+            <button
+              onClick={() => handleGenerateRoast(true)}
+              disabled={isGenerating}
+              className="rounded-full bg-zinc-900 px-8 py-4 text-base font-semibold text-white transition-all hover:bg-zinc-800 disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
             >
-              <span className="text-2xl">{insight.emoji}</span>
-              <span className="flex-1 text-zinc-900 dark:text-zinc-50">{insight.text}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Action Button */}
-      <div className="flex justify-center pt-4">
-        <button className="rounded-full bg-zinc-900 px-8 py-4 text-base font-semibold text-white transition-all hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200">
-          I&apos;ll Do Better Next Week 💪
-        </button>
-      </div>
+              {existingScore ? 'Regenerate Roast 🔄' : 'I\'ll Do Better Next Week 💪'}
+            </button>
+          </div>
+        </>
+      )}
     </div>
   );
 }
