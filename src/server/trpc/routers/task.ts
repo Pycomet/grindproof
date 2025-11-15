@@ -5,14 +5,6 @@ import { env } from "@/lib/env";
 /**
  * Task schemas
  */
-export const recurrencePatternSchema = z.object({
-  type: z.enum(["daily", "weekly", "monthly", "custom"]),
-  interval: z.number().min(1).default(1),
-  daysOfWeek: z.array(z.number().min(0).max(6)).optional(),
-  endDate: z.date().optional(),
-  rrule: z.string().optional(), // Google Calendar RRULE format
-});
-
 export const taskSchema = z.object({
   id: z.string(),
   userId: z.string(),
@@ -28,7 +20,7 @@ export const taskSchema = z.object({
   tags: z.array(z.string()).nullable(),
   googleCalendarEventId: z.string().nullable(),
   isSyncedWithCalendar: z.boolean(),
-  recurrencePattern: recurrencePatternSchema.nullable(),
+  recurrenceRule: z.string().nullable(),
   parentTaskId: z.string().nullable(),
   createdAt: z.date(),
   updatedAt: z.date(),
@@ -41,9 +33,10 @@ export const createTaskSchema = z.object({
   startTime: z.date().optional(),
   endTime: z.date().optional(),
   reminders: z.array(z.enum(['15min', '1hour', '1day'])).optional(),
+  priority: z.enum(['high', 'medium', 'low']).default('medium'),
   goalId: z.string().optional(),
   tags: z.array(z.string()).optional(),
-  recurrencePattern: recurrencePatternSchema.optional(),
+  recurrenceRule: z.string().optional(),
   syncWithCalendar: z.boolean().default(true),
 });
 
@@ -55,10 +48,13 @@ export const updateTaskSchema = z.object({
   startTime: z.date().optional().nullable(),
   endTime: z.date().optional().nullable(),
   reminders: z.array(z.enum(['15min', '1hour', '1day'])).optional().nullable(),
+  priority: z.enum(['high', 'medium', 'low']).optional(),
   goalId: z.string().optional(),
   tags: z.array(z.string()).optional(),
   status: z.enum(["pending", "completed", "skipped"]).optional(),
-  recurrencePattern: recurrencePatternSchema.optional(),
+  recurrenceRule: z.string().optional(),
+  completionProof: z.string().optional().nullable(),
+  syncWithCalendar: z.boolean().optional(),
 });
 
 /**
@@ -80,7 +76,7 @@ function mapTaskFromDb(task: any): z.infer<typeof taskSchema> {
     tags: task.tags || null,
     googleCalendarEventId: task.google_calendar_event_id || null,
     isSyncedWithCalendar: task.is_synced_with_calendar || false,
-    recurrencePattern: task.recurrence_pattern || null,
+    recurrenceRule: task.recurrence_rule || null,
     parentTaskId: task.parent_task_id || null,
     createdAt: new Date(task.created_at),
     updatedAt: new Date(task.updated_at),
@@ -99,7 +95,7 @@ async function createGoogleCalendarEvent(
     startTime?: Date;
     endTime?: Date;
     reminders?: string[];
-    recurrencePattern?: z.infer<typeof recurrencePatternSchema> | null;
+    recurrenceRule?: string;
   }
 ) {
   const event: any = {
@@ -116,10 +112,12 @@ async function createGoogleCalendarEvent(
       endISO: task.endTime.toISOString()
     });
     event.start = { 
-      dateTime: task.startTime.toISOString()
+      dateTime: task.startTime.toISOString(),
+      timeZone: 'UTC'
     };
     event.end = { 
-      dateTime: task.endTime.toISOString()
+      dateTime: task.endTime.toISOString(),
+      timeZone: 'UTC'
     };
   } 
   // Handle due date with optional time
@@ -138,9 +136,13 @@ async function createGoogleCalendarEvent(
       event.start = { date: dateStr };
       event.end = { date: dateStr };
     } else {
-      event.start = { dateTime: dueDate.toISOString() };
+      event.start = { 
+        dateTime: dueDate.toISOString(),
+        timeZone: 'UTC'
+      };
       event.end = { 
-        dateTime: new Date(dueDate.getTime() + 60 * 60 * 1000).toISOString() // 1 hour duration
+        dateTime: new Date(dueDate.getTime() + 60 * 60 * 1000).toISOString(), // 1 hour duration
+        timeZone: 'UTC'
       };
     }
   }
@@ -161,8 +163,13 @@ async function createGoogleCalendarEvent(
   }
 
   // Add recurrence rule if provided
-  if (task.recurrencePattern?.rrule) {
-    event.recurrence = [task.recurrencePattern.rrule];
+  if (task.recurrenceRule) {
+    // Google Calendar expects RRULE: prefix
+    const rruleFormatted = task.recurrenceRule.startsWith('RRULE:') 
+      ? task.recurrenceRule 
+      : `RRULE:${task.recurrenceRule}`;
+    event.recurrence = [rruleFormatted];
+    console.log('Adding recurrence rule to Google Calendar:', rruleFormatted);
   }
 
   console.log('Final event object being sent to Google Calendar:', JSON.stringify(event, null, 2));
@@ -202,6 +209,7 @@ async function updateGoogleCalendarEvent(
     startTime?: Date;
     endTime?: Date;
     reminders?: string[];
+    recurrenceRule?: string;
   }
 ) {
   const event: any = {};
@@ -212,8 +220,14 @@ async function updateGoogleCalendarEvent(
   // Handle scheduled time blocks (startTime/endTime take priority)
   if (updates.startTime !== undefined && updates.endTime !== undefined) {
     if (updates.startTime && updates.endTime) {
-      event.start = { dateTime: updates.startTime.toISOString() };
-      event.end = { dateTime: updates.endTime.toISOString() };
+      event.start = { 
+        dateTime: updates.startTime.toISOString(),
+        timeZone: 'UTC'
+      };
+      event.end = { 
+        dateTime: updates.endTime.toISOString(),
+        timeZone: 'UTC'
+      };
     }
   }
   // Handle due date
@@ -231,9 +245,13 @@ async function updateGoogleCalendarEvent(
         event.start = { date: dateStr };
         event.end = { date: dateStr };
       } else {
-        event.start = { dateTime: dueDate.toISOString() };
+        event.start = { 
+          dateTime: dueDate.toISOString(),
+          timeZone: 'UTC'
+        };
         event.end = { 
-          dateTime: new Date(dueDate.getTime() + 60 * 60 * 1000).toISOString()
+          dateTime: new Date(dueDate.getTime() + 60 * 60 * 1000).toISOString(),
+          timeZone: 'UTC'
         };
       }
     }
@@ -251,6 +269,21 @@ async function updateGoogleCalendarEvent(
       };
     } else {
       event.reminders = { useDefault: true };
+    }
+  }
+
+  // Update recurrence rule if provided
+  if (updates.recurrenceRule !== undefined) {
+    if (updates.recurrenceRule) {
+      // Google Calendar expects RRULE: prefix
+      const rruleFormatted = updates.recurrenceRule.startsWith('RRULE:') 
+        ? updates.recurrenceRule 
+        : `RRULE:${updates.recurrenceRule}`;
+      event.recurrence = [rruleFormatted];
+      console.log('Updating recurrence rule in Google Calendar:', rruleFormatted);
+    } else {
+      // If explicitly set to null/undefined, remove recurrence
+      event.recurrence = [];
     }
   }
 
@@ -425,7 +458,7 @@ export const taskRouter = router({
                   startTime: input.startTime,
                   endTime: input.endTime,
                   reminders: input.reminders,
-                  recurrencePattern: input.recurrencePattern || null,
+                  recurrenceRule: input.recurrenceRule || undefined,
                 }
               );
               googleCalendarEventId = calendarEvent.id;
@@ -448,11 +481,12 @@ export const taskRouter = router({
           start_time: input.startTime ? input.startTime.toISOString() : null,
           end_time: input.endTime ? input.endTime.toISOString() : null,
           reminders: input.reminders || null,
+          priority: input.priority || 'medium',
           goal_id: input.goalId || null,
           tags: input.tags || null,
           google_calendar_event_id: googleCalendarEventId,
           is_synced_with_calendar: !!googleCalendarEventId,
-          recurrence_pattern: input.recurrencePattern || null,
+          recurrence_rule: input.recurrenceRule || null,
           status: "pending",
         })
         .select()
@@ -487,50 +521,69 @@ export const taskRouter = router({
         throw new Error("Task not found or access denied");
       }
 
-      // If task is synced with calendar, update the calendar event
-      if (existingTask.is_synced_with_calendar && existingTask.google_calendar_event_id) {
+      let googleCalendarEventId: string | null = existingTask.google_calendar_event_id;
+      let isSyncedWithCalendar = existingTask.is_synced_with_calendar;
+
+      // Get Google Calendar integration if we need it
+      const { data: integration } = await ctx.db
+        .from("integrations")
+        .select("*")
+        .eq("user_id", ctx.user.id)
+        .eq("service_type", "google_calendar")
+        .eq("status", "connected")
+        .maybeSingle();
+
+      const credentials = integration?.credentials as { accessToken?: string } | undefined;
+      const accessToken = credentials?.accessToken;
+
+      // Handle calendar sync
+      if (input.syncWithCalendar && accessToken) {
         try {
-          const { data: integration } = await ctx.db
-            .from("integrations")
-            .select("*")
-            .eq("user_id", ctx.user.id)
-            .eq("service_type", "google_calendar")
-            .eq("status", "connected")
-            .maybeSingle();
-
-          if (integration) {
-            const credentials = integration.credentials as {
-              accessToken?: string;
-            };
-            const accessToken = credentials?.accessToken;
-
-            if (accessToken) {
-              // Only include fields that were actually provided in the update
-              const calendarUpdates: {
-                title?: string;
-                description?: string;
-                dueDate?: Date;
-                startTime?: Date;
-                endTime?: Date;
-                reminders?: string[];
-              } = {};
-              
-              if (input.title !== undefined) calendarUpdates.title = input.title;
-              if (input.description !== undefined) calendarUpdates.description = input.description;
-              if (input.dueDate !== undefined) calendarUpdates.dueDate = input.dueDate;
-              if (input.startTime !== undefined) calendarUpdates.startTime = input.startTime || undefined;
-              if (input.endTime !== undefined) calendarUpdates.endTime = input.endTime || undefined;
-              if (input.reminders !== undefined) calendarUpdates.reminders = input.reminders || undefined;
-              
-              await updateGoogleCalendarEvent(
-                accessToken,
-                existingTask.google_calendar_event_id,
-                calendarUpdates
-              );
-            }
+          // If task is already synced, update the existing event
+          if (existingTask.is_synced_with_calendar && existingTask.google_calendar_event_id) {
+            // Only include fields that were actually provided in the update
+            const calendarUpdates: {
+              title?: string;
+              description?: string;
+              dueDate?: Date;
+              startTime?: Date;
+              endTime?: Date;
+              reminders?: string[];
+              recurrenceRule?: string;
+            } = {};
+            
+            if (input.title !== undefined) calendarUpdates.title = input.title;
+            if (input.description !== undefined) calendarUpdates.description = input.description;
+            if (input.dueDate !== undefined) calendarUpdates.dueDate = input.dueDate;
+            if (input.startTime !== undefined) calendarUpdates.startTime = input.startTime || undefined;
+            if (input.endTime !== undefined) calendarUpdates.endTime = input.endTime || undefined;
+            if (input.reminders !== undefined) calendarUpdates.reminders = input.reminders || undefined;
+            if (input.recurrenceRule !== undefined) calendarUpdates.recurrenceRule = input.recurrenceRule || undefined;
+            
+            await updateGoogleCalendarEvent(
+              accessToken,
+              existingTask.google_calendar_event_id,
+              calendarUpdates
+            );
+          } else {
+            // Task is not synced yet, create a new calendar event
+            const calendarEvent = await createGoogleCalendarEvent(
+              accessToken,
+              {
+                title: input.title || existingTask.title,
+                description: input.description !== undefined ? input.description : (existingTask.description || undefined),
+                dueDate: input.dueDate !== undefined ? input.dueDate : (existingTask.due_date ? new Date(existingTask.due_date) : undefined),
+                startTime: input.startTime !== undefined ? (input.startTime || undefined) : (existingTask.start_time ? new Date(existingTask.start_time) : undefined),
+                endTime: input.endTime !== undefined ? (input.endTime || undefined) : (existingTask.end_time ? new Date(existingTask.end_time) : undefined),
+                reminders: input.reminders !== undefined ? (input.reminders || undefined) : (Array.isArray(existingTask.reminders) ? existingTask.reminders as string[] : undefined),
+                recurrenceRule: input.recurrenceRule !== undefined ? input.recurrenceRule : (existingTask.recurrence_rule || undefined),
+              }
+            );
+            googleCalendarEventId = calendarEvent.id;
+            isSyncedWithCalendar = true;
           }
         } catch (error) {
-          console.error("Failed to update calendar event:", error);
+          console.error("Failed to sync with calendar:", error);
           // Continue updating task even if calendar sync fails
         }
       }
@@ -548,11 +601,28 @@ export const taskRouter = router({
         updateData.end_time = input.endTime ? input.endTime.toISOString() : null;
       if (input.reminders !== undefined)
         updateData.reminders = input.reminders || null;
+      if (input.priority !== undefined) updateData.priority = input.priority;
       if (input.goalId !== undefined) updateData.goal_id = input.goalId || null;
       if (input.tags !== undefined) updateData.tags = input.tags || null;
       if (input.status !== undefined) updateData.status = input.status;
-      if (input.recurrencePattern !== undefined)
-        updateData.recurrence_pattern = input.recurrencePattern || null;
+      if (input.recurrenceRule !== undefined)
+        updateData.recurrence_rule = input.recurrenceRule || null;
+      // Only allow completion_proof to be set/updated if task is completed
+      if (input.completionProof !== undefined) {
+        const finalStatus = input.status !== undefined ? input.status : existingTask.status;
+        if (finalStatus === 'completed') {
+          updateData.completion_proof = input.completionProof || null;
+        } else if (input.completionProof) {
+          // If trying to set completion_proof on non-completed task, ignore it
+          console.warn('Attempted to set completion_proof on non-completed task, ignoring');
+        }
+      }
+      
+      // Update calendar sync fields if they changed
+      if (input.syncWithCalendar !== undefined) {
+        updateData.is_synced_with_calendar = isSyncedWithCalendar;
+        updateData.google_calendar_event_id = googleCalendarEventId;
+      }
 
       const { data, error } = await ctx.db
         .from("tasks")
@@ -905,6 +975,7 @@ export const taskRouter = router({
       };
       status: string;
       recurrence?: string[];
+      recurringEventId?: string;
       reminders?: {
         useDefault?: boolean;
         overrides?: Array<{
@@ -935,6 +1006,10 @@ export const taskRouter = router({
     const tasksToCreate: any[] = [];
     const tasksToUpdate: any[] = [];
     const tasksToDelete: string[] = [];
+    
+    // Group recurring events by recurringEventId
+    const recurringEventsMap = new Map<string, CalendarEvent[]>();
+    const masterEventIds = new Set<string>();
 
     // Process each event (no DB calls in loop)
     for (const event of events) {
@@ -948,6 +1023,23 @@ export const taskRouter = router({
           console.log(`Queued task ${existingTaskId} for deletion`);
         }
         continue;
+      }
+
+      // Check if this is a recurring event
+      if (event.recurringEventId) {
+        // This is an instance of a recurring series
+        if (!recurringEventsMap.has(event.recurringEventId)) {
+          recurringEventsMap.set(event.recurringEventId, []);
+        }
+        recurringEventsMap.get(event.recurringEventId)!.push(event);
+        masterEventIds.add(event.recurringEventId);
+      } else if (event.recurrence && event.recurrence.length > 0) {
+        // This is the master recurring event
+        masterEventIds.add(event.id);
+        if (!recurringEventsMap.has(event.id)) {
+          recurringEventsMap.set(event.id, []);
+        }
+        recurringEventsMap.get(event.id)!.push(event);
       }
 
       const eventTitle = event.summary || "Untitled Event";
@@ -984,6 +1076,19 @@ export const taskRouter = router({
         
         if (reminders.length === 0) reminders = null;
       }
+      
+      // Extract recurrence rule from event
+      let recurrenceRule = null;
+      if (event.recurrence && event.recurrence.length > 0) {
+        // Find RRULE in recurrence array (starts with "RRULE:")
+        const rrule = event.recurrence.find((r: string) => r.startsWith('RRULE:'));
+        if (rrule) {
+          recurrenceRule = rrule.replace('RRULE:', '');
+        }
+      }
+      
+      // Determine recurring event ID (master event ID for the series)
+      const recurringEventId = event.recurringEventId || (event.recurrence ? event.id : null);
 
       if (existingTaskId) {
         // Queue for update
@@ -995,6 +1100,8 @@ export const taskRouter = router({
           start_time: startTime ? startTime.toISOString() : null,
           end_time: endTime ? endTime.toISOString() : null,
           reminders: reminders,
+          recurrence_rule: recurrenceRule,
+          recurring_event_id: recurringEventId,
         });
       } else {
         // Queue for creation
@@ -1010,6 +1117,8 @@ export const taskRouter = router({
           is_synced_with_calendar: true,
           status: "pending",
           tags: ["calendar"],
+          recurrence_rule: recurrenceRule,
+          recurring_event_id: recurringEventId,
         });
       }
     }
@@ -1049,6 +1158,8 @@ export const taskRouter = router({
               start_time: task.start_time,
               end_time: task.end_time,
               reminders: task.reminders,
+              recurrence_rule: task.recurrence_rule,
+              recurring_event_id: task.recurring_event_id,
             })
             .eq("id", task.id)
         )
@@ -1077,5 +1188,55 @@ export const taskRouter = router({
       total: events.length,
     };
   }),
+
+  /**
+   * Update all tasks in a recurring series
+   */
+  updateRecurringSeries: protectedProcedure
+    .input(z.object({
+      recurringEventId: z.string(),
+      updates: updateTaskSchema.omit({ id: true }),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      // Get all tasks with this recurring_event_id
+      const { data: tasks, error: fetchError } = await ctx.db
+        .from("tasks")
+        .select("*")
+        .eq("user_id", ctx.user.id)
+        .eq("recurring_event_id", input.recurringEventId);
+
+      if (fetchError) {
+        throw new Error(`Failed to fetch recurring tasks: ${fetchError.message}`);
+      }
+
+      if (!tasks || tasks.length === 0) {
+        throw new Error("No recurring tasks found");
+      }
+
+      // Build update data
+      const updateData: Record<string, unknown> = {};
+      if (input.updates.title !== undefined) updateData.title = input.updates.title;
+      if (input.updates.description !== undefined) updateData.description = input.updates.description || null;
+      if (input.updates.priority !== undefined) updateData.priority = input.updates.priority;
+      if (input.updates.goalId !== undefined) updateData.goal_id = input.updates.goalId || null;
+      if (input.updates.tags !== undefined) updateData.tags = input.updates.tags || null;
+      if (input.updates.reminders !== undefined) updateData.reminders = input.updates.reminders || null;
+
+      // Update all tasks in the series
+      const { error: updateError } = await ctx.db
+        .from("tasks")
+        .update(updateData)
+        .eq("user_id", ctx.user.id)
+        .eq("recurring_event_id", input.recurringEventId);
+
+      if (updateError) {
+        throw new Error(`Failed to update recurring tasks: ${updateError.message}`);
+      }
+
+      return {
+        success: true,
+        updatedCount: tasks.length,
+      };
+    }),
 });
 

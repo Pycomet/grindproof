@@ -18,6 +18,37 @@ vi.mock('@/lib/trpc/provider', () => ({
   ),
 }));
 
+// Mock AppContext
+vi.mock('@/contexts/AppContext', () => ({
+  AppProvider: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="app-provider">{children}</div>
+  ),
+  useApp: () => ({
+    tasks: [],
+    goals: [],
+    integrations: [],
+    user: null,
+    isLoading: false,
+    isHydrated: false,
+    syncStatus: 'idle',
+    refreshAll: vi.fn(),
+    refreshTasks: vi.fn(),
+    setSyncStatus: vi.fn(),
+    setUser: vi.fn(),
+    addTask: vi.fn(),
+    updateTask: vi.fn(),
+    deleteTask: vi.fn(),
+    addGoal: vi.fn(),
+    updateGoal: vi.fn(),
+    deleteGoal: vi.fn(),
+    addIntegration: vi.fn(),
+    updateIntegration: vi.fn(),
+    deleteIntegration: vi.fn(),
+    refreshGoals: vi.fn(),
+    refreshIntegrations: vi.fn(),
+  }),
+}));
+
 // Mock fonts
 vi.mock('next/font/google', () => ({
   Geist: () => ({ variable: '--font-geist-sans' }),

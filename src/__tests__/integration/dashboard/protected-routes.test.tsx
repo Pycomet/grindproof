@@ -3,6 +3,8 @@ import { render, screen, waitFor } from '@testing-library/react';
 import Dashboard from '@/app/dashboard/page';
 import { supabase } from '@/lib/supabase/client';
 import { trpc } from '@/lib/trpc/client';
+import { useApp } from '@/contexts/AppContext';
+import { mockAppContext, setupTRPCMocks } from '../../helpers/app-context-mock';
 
 const mockPush = vi.fn();
 
@@ -56,7 +58,28 @@ vi.mock('@/lib/trpc/client', () => ({
         useMutation: vi.fn(),
       },
     },
+    integration: {
+      getAll: {
+        useQuery: vi.fn(),
+      },
+    },
   },
+}));
+
+// Mock AppContext
+vi.mock('@/contexts/AppContext', () => ({
+  useApp: vi.fn(),
+  AppProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}));
+
+vi.mock('@/hooks/useOfflineSync', () => ({
+  useOfflineSync: () => ({
+    isOnline: true,
+    isSyncing: false,
+    pendingCount: 0,
+    queueMutation: vi.fn(),
+    forceSync: vi.fn(),
+  }),
 }));
 
 describe('Protected Routes - Dashboard', () => {
@@ -76,17 +99,53 @@ describe('Protected Routes - Dashboard', () => {
       error: null,
     } as any);
 
+    // Mock AppContext
+    vi.mocked(useApp).mockReturnValue({
+      tasks: [],
+      goals: [],
+      integrations: [],
+      user: { id: '123', email: 'test@test.com' } as any,
+      isLoading: false,
+      isHydrated: true,
+      syncStatus: 'idle',
+      refreshAll: vi.fn().mockResolvedValue(undefined),
+      refreshTasks: vi.fn().mockResolvedValue(undefined),
+      refreshGoals: vi.fn().mockResolvedValue(undefined),
+      refreshIntegrations: vi.fn().mockResolvedValue(undefined),
+      setSyncStatus: vi.fn(),
+      setUser: vi.fn(),
+      addTask: vi.fn(),
+      updateTask: vi.fn(),
+      deleteTask: vi.fn(),
+      addGoal: vi.fn(),
+      updateGoal: vi.fn(),
+      deleteGoal: vi.fn(),
+      addIntegration: vi.fn(),
+      updateIntegration: vi.fn(),
+      deleteIntegration: vi.fn(),
+      isGoogleCalendarConnected: vi.fn(() => false),
+    });
+
     // Mock tRPC queries
     vi.mocked(trpc.goal.getAll.useQuery).mockReturnValue({
       data: [],
       isLoading: false,
       error: null,
+      refetch: vi.fn().mockResolvedValue({ data: [] }),
     } as any);
 
     vi.mocked(trpc.task.getAll.useQuery).mockReturnValue({
       data: [],
       isLoading: false,
       error: null,
+      refetch: vi.fn().mockResolvedValue({ data: [] }),
+    } as any);
+
+    vi.mocked(trpc.integration.getAll.useQuery).mockReturnValue({
+      data: [],
+      isLoading: false,
+      error: null,
+      refetch: vi.fn().mockResolvedValue({ data: [] }),
     } as any);
 
     // Mock tRPC mutations
@@ -293,35 +352,58 @@ describe('Protected Routes - Dashboard', () => {
       error: null,
     } as any);
 
+    const mockTasks = [
+      {
+        id: 'task-1',
+        userId: '123',
+        title: 'Complete testing',
+        description: 'Finish all unit tests',
+        dueDate: new Date(),
+        startTime: null,
+        endTime: null,
+        status: 'pending' as const,
+        completionProof: null,
+        tags: ['work'],
+        googleCalendarEventId: null,
+        isSyncedWithCalendar: false,
+        parentTaskId: null,
+        goalId: null,
+        goal_id: null,
+        reminders: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    ];
+
+    // Mock AppContext with tasks
+    vi.mocked(useApp).mockReturnValue(
+      mockAppContext({
+        tasks: mockTasks as any,
+        goals: [],
+        user: { id: '123', email: 'test@test.com' } as any,
+      })
+    );
+
     // Mock tRPC queries with some tasks
     vi.mocked(trpc.goal.getAll.useQuery).mockReturnValue({
       data: [],
       isLoading: false,
       error: null,
+      refetch: vi.fn().mockResolvedValue({ data: [] }),
     } as any);
 
     vi.mocked(trpc.task.getAll.useQuery).mockReturnValue({
-      data: [
-        {
-          id: 'task-1',
-          userId: '123',
-          title: 'Complete testing',
-          description: 'Finish all unit tests',
-          dueDate: new Date(),
-          status: 'pending' as const,
-          completionProof: null,
-          tags: ['work'],
-          googleCalendarEventId: null,
-          isSyncedWithCalendar: false,
-          recurrencePattern: null,
-          parentTaskId: null,
-          goalId: null,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-      ],
+      data: mockTasks,
       isLoading: false,
       error: null,
+      refetch: vi.fn().mockResolvedValue({ data: mockTasks }),
+    } as any);
+
+    vi.mocked(trpc.integration.getAll.useQuery).mockReturnValue({
+      data: [],
+      isLoading: false,
+      error: null,
+      refetch: vi.fn().mockResolvedValue({ data: [] }),
     } as any);
 
     // Mock tRPC mutations

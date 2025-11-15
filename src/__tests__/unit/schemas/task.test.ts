@@ -3,65 +3,9 @@ import {
   taskSchema,
   createTaskSchema,
   updateTaskSchema,
-  recurrencePatternSchema,
 } from '@/server/trpc/routers/task';
 
 describe('Task Schemas', () => {
-  describe('recurrencePatternSchema', () => {
-    it('should validate a valid daily recurrence pattern', () => {
-      const pattern = {
-        type: 'daily' as const,
-        interval: 1,
-      };
-
-      const result = recurrencePatternSchema.safeParse(pattern);
-      expect(result.success).toBe(true);
-    });
-
-    it('should validate a valid weekly recurrence pattern', () => {
-      const pattern = {
-        type: 'weekly' as const,
-        interval: 2,
-        daysOfWeek: [1, 3, 5], // Monday, Wednesday, Friday
-        endDate: new Date('2024-12-31'),
-      };
-
-      const result = recurrencePatternSchema.safeParse(pattern);
-      expect(result.success).toBe(true);
-    });
-
-    it('should validate RRULE format', () => {
-      const pattern = {
-        type: 'custom' as const,
-        interval: 1,
-        rrule: 'FREQ=WEEKLY;BYDAY=MO,WE,FR',
-      };
-
-      const result = recurrencePatternSchema.safeParse(pattern);
-      expect(result.success).toBe(true);
-    });
-
-    it('should reject invalid interval', () => {
-      const pattern = {
-        type: 'daily' as const,
-        interval: 0,
-      };
-
-      const result = recurrencePatternSchema.safeParse(pattern);
-      expect(result.success).toBe(false);
-    });
-
-    it('should reject invalid days of week', () => {
-      const pattern = {
-        type: 'weekly' as const,
-        interval: 1,
-        daysOfWeek: [7, 8], // Invalid day numbers
-      };
-
-      const result = recurrencePatternSchema.safeParse(pattern);
-      expect(result.success).toBe(false);
-    });
-  });
 
   describe('taskSchema', () => {
     it('should validate a complete task', () => {
@@ -80,10 +24,7 @@ describe('Task Schemas', () => {
         tags: ['work', 'urgent'],
         googleCalendarEventId: 'event123',
         isSyncedWithCalendar: true,
-        recurrencePattern: {
-          type: 'daily' as const,
-          interval: 1,
-        },
+        recurrenceRule: 'FREQ=DAILY;INTERVAL=1',
         parentTaskId: null,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -109,7 +50,7 @@ describe('Task Schemas', () => {
         tags: null,
         googleCalendarEventId: null,
         isSyncedWithCalendar: false,
-        recurrencePattern: null,
+        recurrenceRule: null,
         parentTaskId: null,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -132,7 +73,7 @@ describe('Task Schemas', () => {
         tags: null,
         googleCalendarEventId: null,
         isSyncedWithCalendar: false,
-        recurrencePattern: null,
+        recurrenceRule: null,
         parentTaskId: null,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -151,10 +92,7 @@ describe('Task Schemas', () => {
         dueDate: new Date('2024-12-31'),
         goalId: '123',
         tags: ['work', 'learning'],
-        recurrencePattern: {
-          type: 'daily' as const,
-          interval: 1,
-        },
+        recurrenceRule: 'FREQ=DAILY;INTERVAL=1',
         syncWithCalendar: true,
       };
 
@@ -201,11 +139,7 @@ describe('Task Schemas', () => {
         goalId: '456',
         tags: ['updated'],
         status: 'completed' as const,
-        recurrencePattern: {
-          type: 'weekly' as const,
-          interval: 1,
-          daysOfWeek: [1, 3, 5],
-        },
+        recurrenceRule: 'FREQ=WEEKLY;BYDAY=MO,WE,FR',
       };
 
       const result = updateTaskSchema.safeParse(data);

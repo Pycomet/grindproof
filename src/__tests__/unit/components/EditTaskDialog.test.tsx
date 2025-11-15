@@ -134,13 +134,13 @@ describe('EditTaskDialog', () => {
       />
     );
 
-    const goalSelect = screen.getByRole('combobox');
+    const goalSelect = screen.getByLabelText(/Link to Goal/i);
     fireEvent.change(goalSelect, { target: { value: 'goal-2' } });
 
     expect(goalSelect).toHaveValue('goal-2');
   });
 
-  it('displays calendar sync checkbox', () => {
+  it('displays calendar sync checkbox when connected', () => {
     render(
       <EditTaskDialog
         open={true}
@@ -149,11 +149,29 @@ describe('EditTaskDialog', () => {
         isPending={false}
         goals={mockGoals}
         task={mockTask}
+        isCalendarConnected={true}
       />
     );
 
     const checkbox = screen.getByLabelText(/sync with google calendar/i);
     expect(checkbox).toBeChecked();
+  });
+
+  it('hides calendar sync checkbox when not connected', () => {
+    render(
+      <EditTaskDialog
+        open={true}
+        onOpenChange={mockOnOpenChange}
+        onSubmit={mockOnSubmit}
+        isPending={false}
+        goals={mockGoals}
+        task={mockTask}
+        isCalendarConnected={false}
+      />
+    );
+
+    const checkbox = screen.queryByLabelText(/sync with google calendar/i);
+    expect(checkbox).not.toBeInTheDocument();
   });
 
   it('submits form with updated data', async () => {
@@ -315,7 +333,7 @@ describe('EditTaskDialog', () => {
       />
     );
 
-    const goalSelect = screen.getByRole('combobox');
+    const goalSelect = screen.getByLabelText(/Link to Goal/i);
     expect(goalSelect).toHaveValue('');
   });
 

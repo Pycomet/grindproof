@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,9 +26,13 @@ interface TaskFormData {
   startTime: Date | undefined;
   endTime: Date | undefined;
   reminders: string[];
+  priority: 'high' | 'medium' | 'low';
   goalId: string;
   tags: string[];
   syncWithCalendar: boolean;
+  recurrenceRule?: string;
+  recurringEventId?: string;
+  completionProof?: string;
 }
 
 interface CreateTaskDialogProps {
@@ -37,6 +42,7 @@ interface CreateTaskDialogProps {
   isPending: boolean;
   goals?: Array<{ id: string; title: string }>;
   initialGoalId?: string;
+  isCalendarConnected?: boolean;
 }
 
 export function CreateTaskDialog({
@@ -46,6 +52,7 @@ export function CreateTaskDialog({
   isPending,
   goals = [],
   initialGoalId,
+  isCalendarConnected = false,
 }: CreateTaskDialogProps) {
   const [formData, setFormData] = useState<TaskFormData>({
     title: '',
@@ -54,9 +61,12 @@ export function CreateTaskDialog({
     startTime: undefined,
     endTime: undefined,
     reminders: [],
+    priority: 'medium',
     goalId: initialGoalId || '',
     tags: [],
     syncWithCalendar: true,
+    recurrenceRule: undefined,
+    recurringEventId: undefined,
   });
   const [showCalendar, setShowCalendar] = useState(false);
   const [hasSchedule, setHasSchedule] = useState(false);
@@ -72,9 +82,12 @@ export function CreateTaskDialog({
       startTime: undefined,
       endTime: undefined,
       reminders: [],
+      priority: 'medium',
       goalId: initialGoalId || '',
       tags: [],
       syncWithCalendar: true,
+      recurrenceRule: undefined,
+      recurringEventId: undefined,
     });
     setTagInput('');
     setHasSchedule(false);
@@ -99,17 +112,37 @@ export function CreateTaskDialog({
 
   const commonTags = ['work', 'learning', 'personal', 'health', 'urgent'];
 
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.05,
+      },
+    },
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 10 },
+    visible: { opacity: 1, y: 0 },
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="sm:max-w-[425px] md:max-w-2xl">
         <DialogHeader>
           <DialogTitle>Create New Task</DialogTitle>
           <DialogDescription>
             Add a new task to your list. Optionally sync with Google Calendar.
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-4 py-4">
-          <div className="space-y-2">
+        <motion.div 
+          className="space-y-4 py-4"
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+        >
+          <motion.div className="space-y-2" variants={itemVariants}>
             <Label htmlFor="title">Title *</Label>
             <Input
               id="title"
@@ -117,9 +150,9 @@ export function CreateTaskDialog({
               value={formData.title}
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
             />
-          </div>
+          </motion.div>
 
-          <div className="space-y-2">
+          <motion.div className="space-y-2" variants={itemVariants}>
             <Label htmlFor="description">Description</Label>
             <Textarea
               id="description"
@@ -128,9 +161,9 @@ export function CreateTaskDialog({
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               rows={3}
             />
-          </div>
+          </motion.div>
 
-          <div className="space-y-2">
+          <motion.div className="space-y-2" variants={itemVariants}>
             <Label>Due Date</Label>
             <Button
               variant="outline"
@@ -150,9 +183,9 @@ export function CreateTaskDialog({
                 className="rounded-md border"
               />
             )}
-          </div>
+          </motion.div>
 
-          <div className="space-y-2">
+          <motion.div className="space-y-2" variants={itemVariants}>
             <div className="flex items-center gap-2">
               <input
                 type="checkbox"
@@ -192,9 +225,9 @@ export function CreateTaskDialog({
                 </div>
               </div>
             )}
-          </div>
+          </motion.div>
 
-          <div className="space-y-2">
+          <motion.div className="space-y-2" variants={itemVariants}>
             <Label>Reminders</Label>
             <div className="flex flex-wrap gap-2">
               {['15min', '1hour', '1day'].map((reminder) => {
@@ -222,10 +255,24 @@ export function CreateTaskDialog({
                 );
               })}
             </div>
-          </div>
+          </motion.div>
+
+          <motion.div className="space-y-2" variants={itemVariants}>
+            <Label htmlFor="priority">Priority</Label>
+            <select
+              id="priority"
+              value={formData.priority}
+              onChange={(e) => setFormData({ ...formData, priority: e.target.value as 'high' | 'medium' | 'low' })}
+              className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+            >
+              <option value="high">🔴 High Priority</option>
+              <option value="medium">🟡 Medium Priority</option>
+              <option value="low">🟢 Low Priority</option>
+            </select>
+          </motion.div>
 
           {goals.length > 0 && (
-            <div className="space-y-2">
+            <motion.div className="space-y-2" variants={itemVariants}>
               <Label htmlFor="goal">Link to Goal (Optional)</Label>
               <select
                 id="goal"
@@ -240,10 +287,10 @@ export function CreateTaskDialog({
                   </option>
                 ))}
               </select>
-            </div>
+            </motion.div>
           )}
 
-          <div className="space-y-2">
+          <motion.div className="space-y-2" variants={itemVariants}>
             <Label>Tags</Label>
             <div className="flex gap-2">
               <Input
@@ -302,23 +349,40 @@ export function CreateTaskDialog({
                 ))}
               </div>
             )}
-          </div>
+          </motion.div>
 
-          <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              id="syncCalendar"
-              checked={formData.syncWithCalendar}
-              onChange={(e) =>
-                setFormData({ ...formData, syncWithCalendar: e.target.checked })
-              }
-              className="h-4 w-4 rounded border-zinc-300 dark:border-zinc-700"
-            />
-            <Label htmlFor="syncCalendar" className="font-normal">
-              Sync with Google Calendar
-            </Label>
-          </div>
-        </div>
+          {isCalendarConnected && (
+            <>
+              <motion.div className="space-y-2" variants={itemVariants}>
+                <Label htmlFor="recurrenceRule">Recurrence Rule (RRULE - Optional)</Label>
+                <Input
+                  id="recurrenceRule"
+                  placeholder="e.g., FREQ=DAILY;INTERVAL=1 or FREQ=WEEKLY;BYDAY=MO,WE,FR"
+                  value={formData.recurrenceRule || ''}
+                  onChange={(e) => setFormData({ ...formData, recurrenceRule: e.target.value || undefined })}
+                  className="text-sm"
+                />
+                <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                  Leave empty for one-time tasks. Use RRULE format for recurring tasks.
+                </p>
+              </motion.div>
+              <motion.div className="flex items-center gap-2" variants={itemVariants}>
+                <input
+                  type="checkbox"
+                  id="syncCalendar"
+                  checked={formData.syncWithCalendar}
+                  onChange={(e) =>
+                    setFormData({ ...formData, syncWithCalendar: e.target.checked })
+                  }
+                  className="h-4 w-4 rounded border-zinc-300 dark:border-zinc-700"
+                />
+                <Label htmlFor="syncCalendar" className="font-normal">
+                  Sync with Google Calendar
+                </Label>
+              </motion.div>
+            </>
+          )}
+        </motion.div>
         <DialogFooter>
           <Button
             variant="outline"
@@ -331,9 +395,12 @@ export function CreateTaskDialog({
                 startTime: undefined,
                 endTime: undefined,
                 reminders: [],
+                priority: 'medium',
                 goalId: initialGoalId || '',
                 tags: [],
                 syncWithCalendar: true,
+                recurrenceRule: undefined,
+                recurringEventId: undefined
               });
               setTagInput('');
               setHasSchedule(false);
@@ -412,6 +479,7 @@ interface EditTaskDialogProps {
   onSubmit: (data: Partial<TaskFormData>) => void;
   isPending: boolean;
   goals?: Array<{ id: string; title: string }>;
+  isCalendarConnected?: boolean;
   task: {
     id: string;
     title: string;
@@ -420,9 +488,14 @@ interface EditTaskDialogProps {
     startTime?: Date | null;
     endTime?: Date | null;
     reminders?: string[] | null;
+    priority?: 'high' | 'medium' | 'low';
     goalId?: string | null;
     tags?: string[] | null;
     isSyncedWithCalendar: boolean;
+    recurrenceRule?: string | null;
+    recurringEventId?: string | null;
+    completionProof?: string | null;
+    status?: 'pending' | 'completed' | 'skipped';
   };
 }
 
@@ -432,6 +505,7 @@ export function EditTaskDialog({
   onSubmit,
   isPending,
   goals = [],
+  isCalendarConnected = false,
   task,
 }: EditTaskDialogProps) {
   const [formData, setFormData] = useState<TaskFormData>({
@@ -441,9 +515,13 @@ export function EditTaskDialog({
     startTime: task.startTime ? new Date(task.startTime) : undefined,
     endTime: task.endTime ? new Date(task.endTime) : undefined,
     reminders: task.reminders || [],
+    priority: task.priority || 'medium',
     goalId: task.goalId || '',
     tags: task.tags || [],
     syncWithCalendar: task.isSyncedWithCalendar,
+    recurrenceRule: task.recurrenceRule || undefined,
+    recurringEventId: task.recurringEventId || undefined,
+    completionProof: task.completionProof || undefined,
   });
   const [showCalendar, setShowCalendar] = useState(false);
   const [hasSchedule, setHasSchedule] = useState(!!(task.startTime && task.endTime));
@@ -451,7 +529,6 @@ export function EditTaskDialog({
 
   // Update form when task changes
   useEffect(() => {
-    console.log('EditTaskDialog: task prop changed:', task);
     setFormData({
       title: task.title,
       description: task.description || '',
@@ -459,9 +536,13 @@ export function EditTaskDialog({
       startTime: task.startTime ? new Date(task.startTime) : undefined,
       endTime: task.endTime ? new Date(task.endTime) : undefined,
       reminders: task.reminders || [],
+      priority: task.priority || 'medium',
       goalId: task.goalId || '',
       tags: task.tags || [],
       syncWithCalendar: task.isSyncedWithCalendar,
+      recurrenceRule: task.recurrenceRule || undefined,
+      recurringEventId: task.recurringEventId || undefined,
+      completionProof: task.completionProof || undefined,
     });
     setHasSchedule(!!(task.startTime && task.endTime));
   }, [task]);
@@ -489,15 +570,35 @@ export function EditTaskDialog({
 
   const commonTags = ['work', 'learning', 'personal', 'health', 'urgent'];
 
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.05,
+      },
+    },
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 10 },
+    visible: { opacity: 1, y: 0 },
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="sm:max-w-[425px] md:max-w-md">
         <DialogHeader>
           <DialogTitle>Edit Task</DialogTitle>
           <DialogDescription>Update task details</DialogDescription>
         </DialogHeader>
-        <div className="space-y-4 py-4">
-          <div className="space-y-2">
+        <motion.div 
+          className="space-y-4 py-4"
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+        >
+          <motion.div className="space-y-2" variants={itemVariants}>
             <Label htmlFor="edit-title">Title *</Label>
             <Input
               id="edit-title"
@@ -506,9 +607,9 @@ export function EditTaskDialog({
               placeholder="What needs to be done?"
               autoFocus
             />
-          </div>
+          </motion.div>
 
-          <div className="space-y-2">
+          <motion.div className="space-y-2" variants={itemVariants}>
             <Label htmlFor="edit-description">Description</Label>
             <Textarea
               id="edit-description"
@@ -517,9 +618,9 @@ export function EditTaskDialog({
               placeholder="Add more details..."
               rows={3}
             />
-          </div>
+          </motion.div>
 
-          <div className="space-y-2">
+          <motion.div className="space-y-2" variants={itemVariants}>
             <Label>Due Date</Label>
             <div className="space-y-2">
               <Button
@@ -549,17 +650,17 @@ export function EditTaskDialog({
                   onClick={() => setFormData({ ...formData, dueDate: undefined })}
                   className="text-xs"
                 >
-                  Clear date
-                </Button>
-              )}
-            </div>
+                Clear date
+              </Button>
+            )}
           </div>
+        </motion.div>
 
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="edit-hasSchedule"
+        <motion.div className="space-y-2" variants={itemVariants}>
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="edit-hasSchedule"
                 checked={hasSchedule}
                 onChange={(e) => {
                   setHasSchedule(e.target.checked);
@@ -595,9 +696,9 @@ export function EditTaskDialog({
                 </div>
               </div>
             )}
-          </div>
+          </motion.div>
 
-          <div className="space-y-2">
+          <motion.div className="space-y-2" variants={itemVariants}>
             <Label>Reminders</Label>
             <div className="flex flex-wrap gap-2">
               {['15min', '1hour', '1day'].map((reminder) => {
@@ -625,10 +726,24 @@ export function EditTaskDialog({
                 );
               })}
             </div>
-          </div>
+          </motion.div>
+
+          <motion.div className="space-y-2" variants={itemVariants}>
+            <Label htmlFor="edit-priority">Priority</Label>
+            <select
+              id="edit-priority"
+              value={formData.priority}
+              onChange={(e) => setFormData({ ...formData, priority: e.target.value as 'high' | 'medium' | 'low' })}
+              className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+            >
+              <option value="high">🔴 High Priority</option>
+              <option value="medium">🟡 Medium Priority</option>
+              <option value="low">🟢 Low Priority</option>
+            </select>
+          </motion.div>
 
           {goals.length > 0 && (
-            <div className="space-y-2">
+            <motion.div className="space-y-2" variants={itemVariants}>
               <Label htmlFor="edit-goal">Link to Goal</Label>
               <select
                 id="edit-goal"
@@ -643,10 +758,10 @@ export function EditTaskDialog({
                   </option>
                 ))}
               </select>
-            </div>
+            </motion.div>
           )}
 
-          <div className="space-y-2">
+          <motion.div className="space-y-2" variants={itemVariants}>
             <Label>Tags</Label>
             <div className="flex gap-2">
               <Input
@@ -703,26 +818,59 @@ export function EditTaskDialog({
                       ×
                     </button>
                   </span>
-                ))}
-              </div>
-            )}
-          </div>
+                  ))}
+                </div>
+              )}
+            </motion.div>
 
-          <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              id="edit-syncCalendar"
-              checked={formData.syncWithCalendar}
-              onChange={(e) =>
-                setFormData({ ...formData, syncWithCalendar: e.target.checked })
-              }
-              className="h-4 w-4 rounded border-zinc-300 dark:border-zinc-700"
-            />
-            <Label htmlFor="edit-syncCalendar" className="font-normal">
-              Sync with Google Calendar
-            </Label>
-          </div>
-        </div>
+            {isCalendarConnected && (
+              <>
+                <motion.div className="space-y-2" variants={itemVariants}>
+                  <Label htmlFor="edit-recurrenceRule">Recurrence Rule (RRULE - Optional)</Label>
+                  <Input
+                    id="edit-recurrenceRule"
+                    placeholder="e.g., FREQ=DAILY;INTERVAL=1 or FREQ=WEEKLY;BYDAY=MO,WE,FR"
+                    value={formData.recurrenceRule || ''}
+                    onChange={(e) => setFormData({ ...formData, recurrenceRule: e.target.value || undefined })}
+                    className="text-sm"
+                  />
+                  {formData.recurringEventId && (
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                      Series ID: {formData.recurringEventId}
+                    </p>
+                  )}
+                </motion.div>
+                <motion.div className="flex items-center gap-2" variants={itemVariants}>
+                  <input
+                    type="checkbox"
+                    id="edit-syncCalendar"
+                    checked={formData.syncWithCalendar}
+                    onChange={(e) =>
+                      setFormData({ ...formData, syncWithCalendar: e.target.checked })
+                    }
+                    className="h-4 w-4 rounded border-zinc-300 dark:border-zinc-700"
+                  />
+                  <Label htmlFor="edit-syncCalendar" className="font-normal">
+                    Sync with Google Calendar
+                  </Label>
+                </motion.div>
+              </>
+            )}
+            
+            {task.status === 'completed' && (
+              <motion.div className="space-y-2" variants={itemVariants}>
+                <Label htmlFor="completionProof">Proof of Completion</Label>
+                <Textarea
+                  id="completionProof"
+                  placeholder="Add or update proof of completion..."
+                  value={formData.completionProof || ''}
+                  onChange={(e) => setFormData({ ...formData, completionProof: e.target.value || undefined })}
+                  rows={3}
+                  className="text-sm"
+                />
+              </motion.div>
+            )}
+          </motion.div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isPending}>
             Cancel
@@ -743,6 +891,96 @@ interface RescheduleTaskDialogProps {
   onReschedule: (newDate: Date) => void;
   isPending: boolean;
   taskTitle: string;
+}
+
+interface RecurringTaskEditDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onEditSingle: () => void;
+  onEditAll: () => void;
+  taskTitle: string;
+}
+
+export function RecurringTaskEditDialog({
+  open,
+  onOpenChange,
+  onEditSingle,
+  onEditAll,
+  taskTitle,
+}: RecurringTaskEditDialogProps) {
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.05,
+      },
+    },
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 10 },
+    visible: { opacity: 1, y: 0 },
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[425px] md:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Edit Recurring Task</DialogTitle>
+          <DialogDescription>
+            This is a recurring event. Choose how you want to apply your changes.
+          </DialogDescription>
+        </DialogHeader>
+        <motion.div 
+          className="space-y-4 py-4"
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+        >
+          <motion.div variants={itemVariants}>
+            <p className="text-sm text-zinc-700 dark:text-zinc-300">
+              Task: <span className="font-medium">{taskTitle}</span>
+            </p>
+          </motion.div>
+
+          <motion.div className="space-y-2" variants={itemVariants}>
+            <Button
+              onClick={() => {
+                onEditSingle();
+                onOpenChange(false);
+              }}
+              className="w-full justify-start"
+              variant="outline"
+            >
+              <div className="flex flex-col items-start text-left">
+                <span className="font-medium">This event only</span>
+                <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                  Only modify this instance of the recurring task
+                </span>
+              </div>
+            </Button>
+
+            <Button
+              onClick={() => {
+                onEditAll();
+                onOpenChange(false);
+              }}
+              className="w-full justify-start"
+              variant="outline"
+            >
+              <div className="flex flex-col items-start text-left">
+                <span className="font-medium">All events in the series</span>
+                <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                  Apply changes to all recurring instances
+                </span>
+              </div>
+            </Button>
+          </motion.div>
+        </motion.div>
+      </DialogContent>
+    </Dialog>
+  );
 }
 
 export function RescheduleTaskDialog({

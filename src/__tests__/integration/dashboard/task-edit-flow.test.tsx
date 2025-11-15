@@ -3,6 +3,8 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import Dashboard from '@/app/dashboard/page';
 import { trpc } from '@/lib/trpc/client';
 import { supabase } from '@/lib/supabase/client';
+import { useApp } from '@/contexts/AppContext';
+import { mockAppContext } from '../../helpers/app-context-mock';
 
 const mockPush = vi.fn();
 
@@ -55,7 +57,27 @@ vi.mock('@/lib/trpc/client', () => ({
         useMutation: vi.fn(),
       },
     },
+    integration: {
+      getAll: {
+        useQuery: vi.fn(),
+      },
+    },
   },
+}));
+
+vi.mock('@/contexts/AppContext', () => ({
+  useApp: vi.fn(),
+  AppProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}));
+
+vi.mock('@/hooks/useOfflineSync', () => ({
+  useOfflineSync: () => ({
+    isOnline: true,
+    isSyncing: false,
+    pendingCount: 0,
+    queueMutation: vi.fn(),
+    forceSync: vi.fn(),
+  }),
 }));
 
 describe('Task Edit Flow', () => {
@@ -77,7 +99,6 @@ describe('Task Edit Flow', () => {
       tags: ['work'],
       googleCalendarEventId: null,
       isSyncedWithCalendar: false,
-      recurrencePattern: null,
       parentTaskId: null,
       goalId: 'goal-1',
       createdAt: new Date(),
@@ -94,7 +115,6 @@ describe('Task Edit Flow', () => {
       tags: null,
       googleCalendarEventId: 'cal-123',
       isSyncedWithCalendar: true,
-      recurrencePattern: null,
       parentTaskId: null,
       goalId: null,
       createdAt: new Date(),
@@ -126,6 +146,15 @@ describe('Task Edit Flow', () => {
       error: null,
     } as any);
 
+    // Mock AppContext
+    vi.mocked(useApp).mockReturnValue(
+      mockAppContext({
+        tasks: mockTasks as any,
+        goals: mockGoals as any,
+        user: mockUser as any,
+      })
+    );
+
     vi.mocked(trpc.goal.getAll.useQuery).mockReturnValue({
       data: mockGoals,
       isLoading: false,
@@ -137,6 +166,15 @@ describe('Task Edit Flow', () => {
 
     vi.mocked(trpc.task.getAll.useQuery).mockReturnValue({
       data: mockTasks,
+      isLoading: false,
+      isError: false,
+      isSuccess: true,
+      error: null,
+      refetch: vi.fn(),
+    } as any);
+
+    vi.mocked(trpc.integration.getAll.useQuery).mockReturnValue({
+      data: [],
       isLoading: false,
       isError: false,
       isSuccess: true,
@@ -404,7 +442,6 @@ describe('Task Edit Flow', () => {
           goalId: null,
           isSyncedWithCalendar: false,
           googleCalendarEventId: null,
-          recurrencePattern: null,
           createdAt: new Date(),
           updatedAt: new Date(),
           startTime: null,
@@ -423,7 +460,6 @@ describe('Task Edit Flow', () => {
           goalId: null,
           isSyncedWithCalendar: true,
           googleCalendarEventId: 'event-123',
-          recurrencePattern: null,
           createdAt: new Date(),
           updatedAt: new Date(),
           startTime: null,
@@ -442,7 +478,6 @@ describe('Task Edit Flow', () => {
           goalId: null,
           isSyncedWithCalendar: false,
           googleCalendarEventId: null,
-          recurrencePattern: null,
           createdAt: new Date(),
           updatedAt: new Date(),
           startTime: null,
@@ -451,11 +486,26 @@ describe('Task Edit Flow', () => {
         },
       ];
 
+      // Add goal_id to all tasks for AppContext compatibility
+      const tasksWithGoalId = mockTasksWithSkipped.map(task => ({
+        ...task,
+        goal_id: task.goalId,
+      }));
+
+      // Mock AppContext with skipped tasks
+      vi.mocked(useApp).mockReturnValue(
+        mockAppContext({
+          tasks: tasksWithGoalId as any,
+          goals: mockGoals as any,
+          user: mockUser as any,
+        })
+      );
+
       vi.mocked(trpc.task.getAll.useQuery).mockReturnValue({
         data: mockTasksWithSkipped,
         isLoading: false,
         isError: false,
-        refetch: vi.fn(),
+        refetch: vi.fn().mockResolvedValue({ data: mockTasksWithSkipped }),
       } as any);
     });
 

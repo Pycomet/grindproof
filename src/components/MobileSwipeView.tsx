@@ -27,11 +27,19 @@ export function MobileSwipeView({ views, initialView = 0 }: SwipeViewProps) {
   ];
 
   const handleDragEnd = (e: any, info: PanInfo) => {
-    const threshold = 50;
+    const swipeThreshold = 100; // Distance threshold
+    const velocityThreshold = 300; // Velocity threshold
     const velocity = info.velocity.x;
     const offset = info.offset.x;
 
-    if (Math.abs(velocity) > 500 || Math.abs(offset) > threshold) {
+    // Velocity-based swipe detection for natural feel
+    const shouldSwipe = Math.abs(velocity) > velocityThreshold || Math.abs(offset) > swipeThreshold;
+    
+    // Higher velocity = easier swipe, more responsive feel
+    const velocityFactor = Math.abs(velocity) / 1000;
+    const effectiveThreshold = swipeThreshold * (1 - Math.min(velocityFactor, 0.7));
+
+    if (shouldSwipe && Math.abs(offset) > effectiveThreshold) {
       if (offset > 0 && currentIndex > 0) {
         // Swipe right - go to previous
         setDirection(-1);
@@ -115,12 +123,19 @@ export function MobileSwipeView({ views, initialView = 0 }: SwipeViewProps) {
           animate="center"
           exit="exit"
           transition={{
-            x: { type: 'spring', stiffness: 300, damping: 30 },
-            opacity: { duration: 0.2 },
+            x: { 
+              type: 'spring', 
+              stiffness: 400, 
+              damping: 40,
+              mass: 0.8,
+              velocity: direction * 50,
+            },
+            opacity: { duration: 0.15 },
           }}
           drag="x"
           dragConstraints={{ left: 0, right: 0 }}
-          dragElastic={0.2}
+          dragElastic={0.3}
+          dragMomentum={true}
           onDragEnd={handleDragEnd}
           className="absolute inset-0 flex h-full w-full flex-col"
         >

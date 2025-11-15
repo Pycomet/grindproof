@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 import { TRPCProvider } from "@/lib/trpc/provider";
+import { AppProvider } from "@/contexts/AppContext";
 import { InstallPWA } from "@/components/InstallPWA";
 import { UpdateNotification } from "@/components/UpdateNotification";
 
@@ -75,9 +76,11 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} ${spaceGrotesk.variable} antialiased`}
       >
         <TRPCProvider>
-          {children}
-          <InstallPWA />
-          <UpdateNotification />
+          <AppProvider>
+            {children}
+            <InstallPWA />
+            <UpdateNotification />
+          </AppProvider>
         </TRPCProvider>
       </body>
     </html>

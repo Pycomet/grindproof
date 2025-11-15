@@ -3,6 +3,8 @@ import { render, screen, fireEvent, waitFor, within } from '@testing-library/rea
 import Dashboard from '@/app/dashboard/page';
 import { trpc } from '@/lib/trpc/client';
 import { supabase } from '@/lib/supabase/client';
+import { useApp } from '@/contexts/AppContext';
+import { mockAppContext } from '../../helpers/app-context-mock';
 
 const mockPush = vi.fn();
 
@@ -65,6 +67,9 @@ vi.mock('@/lib/trpc/client', () => ({
       },
     },
     integration: {
+      getAll: {
+        useQuery: vi.fn(),
+      },
       getByServiceType: {
         useQuery: vi.fn(),
       },
@@ -73,6 +78,21 @@ vi.mock('@/lib/trpc/client', () => ({
       },
     },
   },
+}));
+
+vi.mock('@/contexts/AppContext', () => ({
+  useApp: vi.fn(),
+  AppProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}));
+
+vi.mock('@/hooks/useOfflineSync', () => ({
+  useOfflineSync: () => ({
+    isOnline: true,
+    isSyncing: false,
+    pendingCount: 0,
+    queueMutation: vi.fn(),
+    forceSync: vi.fn(),
+  }),
 }));
 
 describe('Goal-Task Display', () => {
@@ -86,28 +106,40 @@ describe('Goal-Task Display', () => {
     {
       id: 'goal-1',
       userId: '123',
+      user_id: '123',
       title: 'Launch Feature',
       description: 'Build and launch new feature',
       status: 'active' as const,
       priority: 'high' as const,
       timeHorizon: 'monthly' as const,
+      time_horizon: 'monthly' as const,
       targetDate: new Date('2024-12-31'),
+      target_date: new Date('2024-12-31').toISOString(),
       githubRepos: null,
+      github_repos: null,
       createdAt: new Date(),
+      created_at: new Date().toISOString(),
       updatedAt: new Date(),
+      updated_at: new Date().toISOString(),
     },
     {
       id: 'goal-2',
       userId: '123',
+      user_id: '123',
       title: 'Empty Goal',
       description: 'Goal with no tasks',
       status: 'active' as const,
       priority: 'medium' as const,
       timeHorizon: 'weekly' as const,
+      time_horizon: 'weekly' as const,
       targetDate: null,
+      target_date: null,
       githubRepos: null,
+      github_repos: null,
       createdAt: new Date(),
+      created_at: new Date().toISOString(),
       updatedAt: new Date(),
+      updated_at: new Date().toISOString(),
     },
   ];
 
@@ -115,53 +147,107 @@ describe('Goal-Task Display', () => {
     {
       id: 'task-1',
       userId: '123',
+      user_id: '123',
       title: 'Design UI',
       description: null,
       dueDate: new Date('2024-12-25'),
+      due_date: new Date('2024-12-25').toISOString(),
+      startTime: null,
+      start_time: null,
+      endTime: null,
+      end_time: null,
+      reminders: null,
       status: 'completed' as const,
+      priority: 'medium' as const,
       completionProof: null,
+      completion_proof: null,
       tags: ['design'],
       googleCalendarEventId: null,
+      google_calendar_event_id: null,
       isSyncedWithCalendar: false,
-      recurrencePattern: null,
+      is_synced_with_calendar: false,
+      recurrenceRule: null,
+      recurrence_rule: null,
+      recurringEventId: null,
+      recurring_event_id: null,
       parentTaskId: null,
+      parent_task_id: null,
       goalId: 'goal-1',
+      goal_id: 'goal-1',
       createdAt: new Date(),
+      created_at: new Date().toISOString(),
       updatedAt: new Date(),
+      updated_at: new Date().toISOString(),
     },
     {
       id: 'task-2',
       userId: '123',
+      user_id: '123',
       title: 'Implement Backend',
       description: null,
       dueDate: new Date('2024-12-28'),
+      due_date: new Date('2024-12-28').toISOString(),
+      startTime: null,
+      start_time: null,
+      endTime: null,
+      end_time: null,
+      reminders: null,
       status: 'pending' as const,
+      priority: 'medium' as const,
       completionProof: null,
+      completion_proof: null,
       tags: ['backend'],
       googleCalendarEventId: null,
+      google_calendar_event_id: null,
       isSyncedWithCalendar: false,
-      recurrencePattern: null,
+      is_synced_with_calendar: false,
+      recurrenceRule: null,
+      recurrence_rule: null,
+      recurringEventId: null,
+      recurring_event_id: null,
       parentTaskId: null,
+      parent_task_id: null,
       goalId: 'goal-1',
+      goal_id: 'goal-1',
       createdAt: new Date(),
+      created_at: new Date().toISOString(),
       updatedAt: new Date(),
+      updated_at: new Date().toISOString(),
     },
     {
       id: 'task-3',
       userId: '123',
+      user_id: '123',
       title: 'Write Tests',
       description: null,
       dueDate: new Date('2024-12-30'),
+      due_date: new Date('2024-12-30').toISOString(),
+      startTime: null,
+      start_time: null,
+      endTime: null,
+      end_time: null,
+      reminders: null,
       status: 'pending' as const,
+      priority: 'medium' as const,
       completionProof: null,
+      completion_proof: null,
       tags: ['testing'],
       googleCalendarEventId: null,
+      google_calendar_event_id: null,
       isSyncedWithCalendar: false,
-      recurrencePattern: null,
+      is_synced_with_calendar: false,
+      recurrenceRule: null,
+      recurrence_rule: null,
+      recurringEventId: null,
+      recurring_event_id: null,
       parentTaskId: null,
+      parent_task_id: null,
       goalId: 'goal-1',
+      goal_id: 'goal-1',
       createdAt: new Date(),
+      created_at: new Date().toISOString(),
       updatedAt: new Date(),
+      updated_at: new Date().toISOString(),
     },
   ];
 
@@ -172,6 +258,15 @@ describe('Goal-Task Display', () => {
       data: { user: mockUser as any },
       error: null,
     } as any);
+
+    // Mock AppContext
+    vi.mocked(useApp).mockReturnValue(
+      mockAppContext({
+        tasks: mockTasks as any,
+        goals: mockGoals as any,
+        user: mockUser as any,
+      })
+    );
 
     vi.mocked(trpc.goal.getAll.useQuery).mockReturnValue({
       data: mockGoals,
@@ -184,6 +279,15 @@ describe('Goal-Task Display', () => {
 
     vi.mocked(trpc.task.getAll.useQuery).mockReturnValue({
       data: mockTasks,
+      isLoading: false,
+      isError: false,
+      isSuccess: true,
+      error: null,
+      refetch: vi.fn(),
+    } as any);
+
+    vi.mocked(trpc.integration.getAll.useQuery).mockReturnValue({
+      data: [],
       isLoading: false,
       isError: false,
       isSuccess: true,
@@ -319,9 +423,13 @@ describe('Goal-Task Display', () => {
       const goalsTab = screen.getByRole('button', { name: /🎯 goals/i });
       fireEvent.click(goalsTab);
 
-      await waitFor(() => {
-        expect(screen.getByText('Launch Feature')).toBeInTheDocument();
-      });
+      // Wait for goals view to load and goal to appear
+      await waitFor(
+        () => {
+          expect(screen.getByText('Launch Feature')).toBeInTheDocument();
+        },
+        { timeout: 5000 }
+      );
 
       // Click Edit button for first goal
       const editButtons = screen.getAllByText('Edit');
@@ -339,18 +447,31 @@ describe('Goal-Task Display', () => {
       const goalsTab = screen.getByRole('button', { name: /🎯 goals/i });
       fireEvent.click(goalsTab);
 
+      // Wait for goals view to load and goal to appear
+      await waitFor(
+        () => {
+          expect(screen.getByText('Launch Feature')).toBeInTheDocument();
+        },
+        { timeout: 5000 }
+      );
+
+      // Wait a bit for the UI to stabilize after tab switch
       await waitFor(() => {
-        expect(screen.getByText('Launch Feature')).toBeInTheDocument();
+        const editButtons = screen.getAllByText('Edit');
+        expect(editButtons.length).toBeGreaterThan(0);
       });
 
       const editButtons = screen.getAllByText('Edit');
       fireEvent.click(editButtons[0]);
 
-      await waitFor(() => {
-        expect(screen.getByText('Design UI')).toBeInTheDocument();
-        expect(screen.getByText('Implement Backend')).toBeInTheDocument();
-        expect(screen.getByText('Write Tests')).toBeInTheDocument();
-      });
+      await waitFor(
+        () => {
+          expect(screen.getByText('Design UI')).toBeInTheDocument();
+          expect(screen.getByText('Implement Backend')).toBeInTheDocument();
+          expect(screen.getByText('Write Tests')).toBeInTheDocument();
+        },
+        { timeout: 5000 }
+      );
     });
 
     it('shows completed tasks with checkmark', async () => {
@@ -359,9 +480,13 @@ describe('Goal-Task Display', () => {
       const goalsTab = screen.getByRole('button', { name: /🎯 goals/i });
       fireEvent.click(goalsTab);
 
-      await waitFor(() => {
-        expect(screen.getByText('Launch Feature')).toBeInTheDocument();
-      });
+      // Wait for goals view to load and goal to appear
+      await waitFor(
+        () => {
+          expect(screen.getByText('Launch Feature')).toBeInTheDocument();
+        },
+        { timeout: 5000 }
+      );
 
       const editButtons = screen.getAllByText('Edit');
       fireEvent.click(editButtons[0]);
@@ -385,9 +510,13 @@ describe('Goal-Task Display', () => {
       const goalsTab = screen.getByRole('button', { name: /🎯 goals/i });
       fireEvent.click(goalsTab);
 
-      await waitFor(() => {
-        expect(screen.getByText('Launch Feature')).toBeInTheDocument();
-      });
+      // Wait for goals view to load and goal to appear
+      await waitFor(
+        () => {
+          expect(screen.getByText('Launch Feature')).toBeInTheDocument();
+        },
+        { timeout: 5000 }
+      );
 
       const editButtons = screen.getAllByText('Edit');
       fireEvent.click(editButtons[0]);
@@ -407,9 +536,13 @@ describe('Goal-Task Display', () => {
       const goalsTab = screen.getByRole('button', { name: /🎯 goals/i });
       fireEvent.click(goalsTab);
 
-      await waitFor(() => {
-        expect(screen.getByText('Launch Feature')).toBeInTheDocument();
-      });
+      // Wait for goals view to load and goal to appear
+      await waitFor(
+        () => {
+          expect(screen.getByText('Launch Feature')).toBeInTheDocument();
+        },
+        { timeout: 5000 }
+      );
 
       const editButtons = screen.getAllByText('Edit');
       fireEvent.click(editButtons[0]);
@@ -428,9 +561,13 @@ describe('Goal-Task Display', () => {
       const goalsTab = screen.getByRole('button', { name: /🎯 goals/i });
       fireEvent.click(goalsTab);
 
-      await waitFor(() => {
-        expect(screen.getByText('Launch Feature')).toBeInTheDocument();
-      });
+      // Wait for goals view to load and goal to appear
+      await waitFor(
+        () => {
+          expect(screen.getByText('Launch Feature')).toBeInTheDocument();
+        },
+        { timeout: 5000 }
+      );
 
       const editButtons = screen.getAllByText('Edit');
       fireEvent.click(editButtons[0]);
@@ -470,9 +607,13 @@ describe('Goal-Task Display', () => {
       const goalsTab = screen.getByRole('button', { name: /🎯 goals/i });
       fireEvent.click(goalsTab);
 
-      await waitFor(() => {
-        expect(screen.getByText('Launch Feature')).toBeInTheDocument();
-      });
+      // Wait for goals view to load and goal to appear
+      await waitFor(
+        () => {
+          expect(screen.getByText('Launch Feature')).toBeInTheDocument();
+        },
+        { timeout: 5000 }
+      );
 
       // Button should NOT be on goal cards
       const addTaskOnCardButtons = screen.queryAllByText('+ Add Task to This Goal');
@@ -495,9 +636,13 @@ describe('Goal-Task Display', () => {
       const goalsTab = screen.getByRole('button', { name: /🎯 goals/i });
       fireEvent.click(goalsTab);
 
-      await waitFor(() => {
-        expect(screen.getByText('Launch Feature')).toBeInTheDocument();
-      });
+      // Wait for goals view to load and goal to appear
+      await waitFor(
+        () => {
+          expect(screen.getByText('Launch Feature')).toBeInTheDocument();
+        },
+        { timeout: 5000 }
+      );
 
       // Open edit dialog
       const editButtons = screen.getAllByText('Edit');
@@ -528,25 +673,51 @@ describe('Goal-Task Display', () => {
       const manyTasks = Array.from({ length: 10 }, (_, i) => ({
         id: `task-${i}`,
         userId: '123',
+        user_id: '123',
         title: `Task ${i}`,
         description: null,
         dueDate: new Date(),
+        due_date: new Date().toISOString(),
+        startTime: null,
+        start_time: null,
+        endTime: null,
+        end_time: null,
         status: 'pending' as const,
+        priority: 'medium' as const,
         completionProof: null,
+        completion_proof: null,
         tags: null,
         googleCalendarEventId: null,
+        google_calendar_event_id: null,
         isSyncedWithCalendar: false,
-        recurrencePattern: null,
+        is_synced_with_calendar: false,
+        recurrenceRule: null,
+        recurringEventId: null,
         parentTaskId: null,
+        parent_task_id: null,
         goalId: 'goal-1',
+        goal_id: 'goal-1',
+        reminders: null,
         createdAt: new Date(),
+        created_at: new Date().toISOString(),
         updatedAt: new Date(),
+        updated_at: new Date().toISOString(),
       }));
+
+      // Update AppContext mock with many tasks
+      vi.mocked(useApp).mockReturnValue(
+        mockAppContext({
+          tasks: manyTasks as any,
+          goals: mockGoals as any,
+          user: mockUser as any,
+        })
+      );
 
       vi.mocked(trpc.task.getAll.useQuery).mockReturnValue({
         data: manyTasks,
         isLoading: false,
         error: null,
+        refetch: vi.fn().mockResolvedValue({ data: manyTasks }),
       } as any);
 
       render(<Dashboard />);
@@ -554,9 +725,13 @@ describe('Goal-Task Display', () => {
       const goalsTab = screen.getByRole('button', { name: /🎯 goals/i });
       fireEvent.click(goalsTab);
 
-      await waitFor(() => {
-        expect(screen.getByText('Launch Feature')).toBeInTheDocument();
-      });
+      // Wait for goals view to load and goal to appear
+      await waitFor(
+        () => {
+          expect(screen.getByText('Launch Feature')).toBeInTheDocument();
+        },
+        { timeout: 5000 }
+      );
 
       const editButtons = screen.getAllByText('Edit');
       fireEvent.click(editButtons[0]);

@@ -72,7 +72,6 @@ describe('Task Router Integration Tests', () => {
           tags: null,
           google_calendar_event_id: null,
           is_synced_with_calendar: false,
-          recurrence_pattern: null,
           parent_task_id: null,
           goal_id: null,
           created_at: new Date().toISOString(),
@@ -104,10 +103,7 @@ describe('Task Router Integration Tests', () => {
           dueDate,
           goalId,
           tags: ['work', 'urgent'],
-          recurrencePattern: {
-            type: 'daily',
-            interval: 1,
-          },
+          recurrenceRule: 'FREQ=DAILY;INTERVAL=1',
           syncWithCalendar: false,
         });
 
@@ -116,10 +112,7 @@ describe('Task Router Integration Tests', () => {
         expect(task.dueDate).toEqual(dueDate);
         expect(task.goalId).toBe(goalId);
         expect(task.tags).toEqual(['work', 'urgent']);
-        expect(task.recurrencePattern).toEqual({
-          type: 'daily',
-          interval: 1,
-        });
+        expect(task.recurrenceRule).toBe('FREQ=DAILY;INTERVAL=1');
       });
 
       it('should create task and sync with Google Calendar when enabled', async () => {
@@ -497,47 +490,33 @@ describe('Task Router Integration Tests', () => {
     });
   });
 
-  describe('Recurrence Patterns', () => {
+  describe('Recurrence Rules', () => {
     it('should create task with daily recurrence', async () => {
       const task = await caller.task.create({
         title: 'Daily Task',
-        recurrencePattern: {
-          type: 'daily',
-          interval: 1,
-        },
+        recurrenceRule: 'FREQ=DAILY;INTERVAL=1',
       });
 
-      expect(task.recurrencePattern).toBeDefined();
-      expect(task.recurrencePattern?.type).toBe('daily');
-      expect(task.recurrencePattern?.interval).toBe(1);
+      expect(task.recurrenceRule).toBeDefined();
+      expect(task.recurrenceRule).toBe('FREQ=DAILY;INTERVAL=1');
     });
 
     it('should create task with weekly recurrence', async () => {
       const task = await caller.task.create({
         title: 'Weekly Task',
-        recurrencePattern: {
-          type: 'weekly',
-          interval: 1,
-          daysOfWeek: [1, 3, 5], // Mon, Wed, Fri
-        },
+        recurrenceRule: 'FREQ=WEEKLY;BYDAY=MO,WE,FR',
       });
 
-      expect(task.recurrencePattern?.type).toBe('weekly');
-      expect(task.recurrencePattern?.daysOfWeek).toEqual([1, 3, 5]);
+      expect(task.recurrenceRule).toBe('FREQ=WEEKLY;BYDAY=MO,WE,FR');
     });
 
     it('should create task with custom RRULE', async () => {
       const task = await caller.task.create({
         title: 'Custom Recurrence Task',
-        recurrencePattern: {
-          type: 'custom',
-          interval: 1,
-          rrule: 'FREQ=WEEKLY;BYDAY=MO,WE,FR;UNTIL=20241231',
-        },
+        recurrenceRule: 'FREQ=WEEKLY;BYDAY=MO,WE,FR;UNTIL=20241231',
       });
 
-      expect(task.recurrencePattern?.type).toBe('custom');
-      expect(task.recurrencePattern?.rrule).toBe('FREQ=WEEKLY;BYDAY=MO,WE,FR;UNTIL=20241231');
+      expect(task.recurrenceRule).toBe('FREQ=WEEKLY;BYDAY=MO,WE,FR;UNTIL=20241231');
     });
   });
 });

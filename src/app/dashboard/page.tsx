@@ -4,10 +4,11 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
-import type { User } from '@supabase/supabase-js';
+import { motion, AnimatePresence } from 'framer-motion';
 import { MobileSwipeView } from '@/components/MobileSwipeView';
 import { Logo } from '@/components/Logo';
 import { trpc } from '@/lib/trpc/client';
+import { useApp } from '@/contexts/AppContext';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,28 +17,30 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Calendar } from '@/components/ui/calendar';
-import { CreateTaskDialog, EditTaskDialog, CompleteTaskDialog, RescheduleTaskDialog } from '@/components/TaskDialogs';
+import { CreateTaskDialog, EditTaskDialog, CompleteTaskDialog, RescheduleTaskDialog, RecurringTaskEditDialog } from '@/components/TaskDialogs';
+import { useOfflineSync } from '@/hooks/useOfflineSync';
+import { TaskListSkeleton, GoalListSkeleton } from '@/components/LoadingSkeletons';
 
 type ViewMode = 'today' | 'goals' | 'evening' | 'weekly' | 'integrations';
 
 export default function Dashboard() {
   const router = useRouter();
   const [view, setView] = useState<ViewMode>('today');
-  const [user, setUser] = useState<User | null>(null);
   const [isFabTaskDialogOpen, setIsFabTaskDialogOpen] = useState(false);
+  
+  // Use AppContext instead of individual queries
+  const { user, goals, setUser, refreshTasks, refreshIntegrations, isGoogleCalendarConnected } = useApp();
+  const { isOnline, pendingCount } = useOfflineSync();
   
   const currentTime = new Date().toLocaleTimeString('en-US', { 
     hour: 'numeric', 
     minute: '2-digit',
     hour12: true 
   });
-
-  const { data: goals } = trpc.goal.getAll.useQuery();
-  const { refetch: refetchAllTasks } = trpc.task.getAll.useQuery();
   
   const createTaskMutation = trpc.task.create.useMutation({
     onSuccess: async () => {
-      await refetchAllTasks();
+      await refreshTasks();
       setIsFabTaskDialogOpen(false);
     },
   });
@@ -46,10 +49,25 @@ export default function Dashboard() {
     supabase.auth.getUser().then(({ data: { user } }) => {
       setUser(user);
     });
-  }, []);
+  }, [setUser]);
+
+  // Check if we just came back from OAuth and refresh integrations
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('integration') === 'success') {
+      // Small delay to ensure database is updated
+      setTimeout(async () => {
+        await refreshIntegrations();
+      }, 500);
+      
+      // Clean up URL
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, [refreshIntegrations]);
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
+    setUser(null);
     router.push('/');
   };
 
@@ -64,6 +82,7 @@ export default function Dashboard() {
       goalId: data.goalId || undefined,
       tags: data.tags.length > 0 ? data.tags : undefined,
       syncWithCalendar: data.syncWithCalendar,
+      recurrenceRule: data.recurrenceRule || undefined,
     });
   };
 
@@ -191,11 +210,63 @@ export default function Dashboard() {
 
       {/* Desktop Content - Hidden on Mobile */}
       <main className="hidden md:block mx-auto max-w-5xl px-4 py-8">
-        {view === 'today' && <TodayView />}
-        {view === 'goals' && <GoalsView />}
-        {view === 'evening' && <EveningCheck />}
-        {view === 'weekly' && <WeeklyRoast />}
-        {view === 'integrations' && <Integrations />}
+        <AnimatePresence mode="wait">
+          {view === 'today' && (
+            <motion.div
+              key="today"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              transition={{ duration: 0.3, ease: 'easeInOut' }}
+            >
+              <TodayView />
+            </motion.div>
+          )}
+          {view === 'goals' && (
+            <motion.div
+              key="goals"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              transition={{ duration: 0.3, ease: 'easeInOut' }}
+            >
+              <GoalsView />
+            </motion.div>
+          )}
+          {view === 'evening' && (
+            <motion.div
+              key="evening"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              transition={{ duration: 0.3, ease: 'easeInOut' }}
+            >
+              <EveningCheck />
+            </motion.div>
+          )}
+          {view === 'weekly' && (
+            <motion.div
+              key="weekly"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              transition={{ duration: 0.3, ease: 'easeInOut' }}
+            >
+              <WeeklyRoast />
+            </motion.div>
+          )}
+          {view === 'integrations' && (
+            <motion.div
+              key="integrations"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              transition={{ duration: 0.3, ease: 'easeInOut' }}
+            >
+              <Integrations />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </main>
 
       {/* Persistent FAB (Floating Action Button) */}
@@ -226,6 +297,7 @@ export default function Dashboard() {
         onSubmit={handleCreateTaskFromFab}
         isPending={createTaskMutation.isPending}
         goals={goals?.map(g => ({ id: g.id, title: g.title }))}
+        isCalendarConnected={isGoogleCalendarConnected()}
       />
     </div>
   );
@@ -239,7 +311,13 @@ function TodayView() {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isCompleteOpen, setIsCompleteOpen] = useState(false);
   const [isRescheduleOpen, setIsRescheduleOpen] = useState(false);
+  const [isRecurringEditOpen, setIsRecurringEditOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<any>(null);
+  const [pendingRecurringAction, setPendingRecurringAction] = useState<'edit-single' | 'edit-all' | null>(null);
+  
+  // Use AppContext instead of tRPC queries
+  const { tasks: allTasks, goals, refreshTasks, isLoading, isHydrated, isGoogleCalendarConnected } = useApp();
+  const isCalendarConnected = isGoogleCalendarConnected();
   
   // Get date filters
   const today = new Date();
@@ -248,24 +326,23 @@ function TodayView() {
   tomorrow.setDate(tomorrow.getDate() + 1);
   const weekEnd = new Date(today);
   weekEnd.setDate(weekEnd.getDate() + 7);
+  const nextWeekStart = new Date(today);
+  nextWeekStart.setDate(nextWeekStart.getDate() + 7);
+  const nextWeekEnd = new Date(today);
+  nextWeekEnd.setDate(nextWeekEnd.getDate() + 14);
+  const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+  monthEnd.setHours(23, 59, 59, 999);
   const yesterday = new Date(today);
   yesterday.setDate(yesterday.getDate() - 1);
-
-  // Fetch tasks and goals
-  const { data: allTasks, refetch } = trpc.task.getAll.useQuery(undefined, {
-    refetchOnWindowFocus: false,
-    refetchOnMount: true,
-  });
-  const { data: goals } = trpc.goal.getAll.useQuery();
   
   // Mutations
   const syncMutation = trpc.task.syncFromCalendar.useMutation({
     onSuccess: async (data) => {
       // Show sync results
       const messages = [];
-      if (data.created > 0) messages.push(`${data.created} created`);
-      if (data.updated > 0) messages.push(`${data.updated} updated`);
-      if (data.deleted > 0) messages.push(`${data.deleted} deleted`);
+      if (data.created > 0) messages.push(`${data.created} tasks created`);
+      if (data.updated > 0) messages.push(`${data.updated} tasks updated`);
+      if (data.deleted > 0) messages.push(`${data.deleted} tasks deleted`);
       
       if (messages.length > 0) {
         console.log(`✅ Calendar synced: ${messages.join(', ')}`);
@@ -273,35 +350,51 @@ function TodayView() {
         console.log('✅ Calendar synced: Already up to date');
       }
       
-      // Force refetch after a small delay to ensure DB operations complete
+      // Refresh tasks from context
       await new Promise(resolve => setTimeout(resolve, 100));
-      await refetch();
+      await refreshTasks();
       setIsSyncing(false);
     },
     onError: (error) => {
       setIsSyncing(false);
-      console.error('❌ Calendar sync failed:', error.message);
+      alert(`❌ Calendar sync failed!\n\nError: ${error.message}\n\nPlease check your calendar connection and try again.`);
     },
   });
 
   const createMutation = trpc.task.create.useMutation({
-    onSuccess: async () => {
-      await refetch();
+    onSuccess: async (data) => {
+      await refreshTasks();
       setIsCreateOpen(false);
+      // Show success feedback if calendar synced
+      if (data.isSyncedWithCalendar) {
+        console.log('✅ Task created and synced with Google Calendar');
+      }
+    },
+    onError: (error) => {
+      console.error('❌ Failed to create task:', error.message);
+      alert(`❌ Failed to create task!\n\nError: ${error.message}`);
     },
   });
 
   const updateMutation = trpc.task.update.useMutation({
-    onSuccess: async () => {
-      await refetch();
+    onSuccess: async (data) => {
+      await refreshTasks();
       setIsEditOpen(false);
       setSelectedTask(null);
+      // Show success feedback if calendar synced
+      if (data.isSyncedWithCalendar) {
+        console.log('✅ Task updated and synced with Google Calendar');
+      }
+    },
+    onError: (error) => {
+      console.error('❌ Failed to update task:', error.message);
+      alert(`❌ Failed to update task!\n\nError: ${error.message}`);
     },
   });
 
   const completeMutation = trpc.task.complete.useMutation({
     onSuccess: async () => {
-      await refetch();
+      await refreshTasks();
       setIsCompleteOpen(false);
       setSelectedTask(null);
     },
@@ -309,7 +402,7 @@ function TodayView() {
 
   const skipMutation = trpc.task.skip.useMutation({
     onSuccess: async () => {
-      await refetch();
+      await refreshTasks();
       setIsRescheduleOpen(false);
       setSelectedTask(null);
     },
@@ -317,7 +410,7 @@ function TodayView() {
 
   const rescheduleMutation = trpc.task.reschedule.useMutation({
     onSuccess: async () => {
-      await refetch();
+      await refreshTasks();
       setIsRescheduleOpen(false);
       setSelectedTask(null);
     },
@@ -325,7 +418,7 @@ function TodayView() {
 
   const deleteTaskMutation = trpc.task.delete.useMutation({
     onSuccess: async () => {
-      await refetch();
+      await refreshTasks();
       setSelectedTask(null);
     },
   });
@@ -346,6 +439,7 @@ function TodayView() {
       goalId: data.goalId || undefined,
       tags: data.tags.length > 0 ? data.tags : undefined,
       syncWithCalendar: data.syncWithCalendar,
+      recurrenceRule: data.recurrenceRule || undefined,
     });
   };
 
@@ -361,6 +455,9 @@ function TodayView() {
         reminders: data.reminders !== undefined ? (data.reminders && data.reminders.length > 0 ? data.reminders : undefined) : undefined,
         goalId: data.goalId || undefined,
         tags: data.tags.length > 0 ? data.tags : undefined,
+        syncWithCalendar: data.syncWithCalendar,
+        recurrenceRule: data.recurrenceRule || undefined,
+        completionProof: data.completionProof || undefined,
       });
     }
   };
@@ -416,17 +513,30 @@ function TodayView() {
       if (activeFilter === 'week') {
         return dueDate && dueDate >= today && dueDate < weekEnd;
       }
+      if (activeFilter === 'nextweek') {
+        return dueDate && dueDate >= nextWeekStart && dueDate < nextWeekEnd;
+      }
+      if (activeFilter === 'month') {
+        return dueDate && dueDate >= today && dueDate <= monthEnd;
+      }
       if (activeFilter === 'overdue') {
         return dueDate && dueDate < today && task.status === 'pending';
       }
       return true; // 'all' (excluding skipped)
     })
     .sort((a, b) => {
-      // Completed tasks go to bottom
-      if (a.status === 'completed' && b.status !== 'completed') return 1;
-      if (a.status !== 'completed' && b.status === 'completed') return -1;
+      // Completed/skipped go to bottom (by availability)
+      if ((a.status === 'completed' || a.status === 'skipped') && 
+          b.status === 'pending') return 1;
+      if (a.status === 'pending' && 
+          (b.status === 'completed' || b.status === 'skipped')) return -1;
       
-      // For non-completed tasks, sort by due date (earliest first)
+      // Sort by priority (high > medium > low) for urgency
+      const priorityWeight = { high: 3, medium: 2, low: 1 };
+      const priorityDiff = (priorityWeight[b.priority] || 2) - (priorityWeight[a.priority] || 2);
+      if (priorityDiff !== 0) return priorityDiff;
+      
+      // Then by due date (earlier = more urgent)
       if (a.dueDate && b.dueDate) {
         return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
       }
@@ -450,6 +560,18 @@ function TodayView() {
     return dueDate && dueDate >= today && dueDate < weekEnd;
   }).length;
 
+  const nextWeekCount = (allTasks || []).filter(t => {
+    if (t.status === 'skipped') return false;
+    const dueDate = t.dueDate ? new Date(t.dueDate) : null;
+    return dueDate && dueDate >= nextWeekStart && dueDate < nextWeekEnd;
+  }).length;
+
+  const monthCount = (allTasks || []).filter(t => {
+    if (t.status === 'skipped') return false;
+    const dueDate = t.dueDate ? new Date(t.dueDate) : null;
+    return dueDate && dueDate >= today && dueDate <= monthEnd;
+  }).length;
+
   const overdueCount = (allTasks || []).filter(t => {
     if (t.status === 'skipped') return false;
     const dueDate = t.dueDate ? new Date(t.dueDate) : null;
@@ -463,6 +585,8 @@ function TodayView() {
   const filters = [
     { id: 'today', label: 'Today', count: todayCount },
     { id: 'week', label: 'This Week', count: weekCount },
+    { id: 'nextweek', label: 'Next Week', count: nextWeekCount },
+    { id: 'month', label: 'This Month', count: monthCount },
     { id: 'overdue', label: 'Overdue', count: overdueCount },
     { id: 'all', label: 'All', count: allCount },
     { id: 'skipped', label: 'Skipped', count: skippedCount },
@@ -480,22 +604,24 @@ function TodayView() {
             {filteredTasks.filter(t => t.status === 'completed').length} of {filteredTasks.length} completed
           </p>
         </div>
-        <button
-          onClick={handleSync}
-          disabled={isSyncing}
-          className="rounded-lg border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed"
-          title="Sync tasks with Google Calendar"
-        >
-          {isSyncing ? (
-            <span className="flex items-center gap-2">
-              <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-              Syncing...
-            </span>
-          ) : '🔄 Sync Calendar'}
-        </button>
+        {isCalendarConnected && (
+          <button
+            onClick={handleSync}
+            disabled={isSyncing}
+            className="rounded-lg border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Sync tasks with Google Calendar"
+          >
+            {isSyncing ? (
+              <span className="flex items-center gap-2">
+                <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Syncing...
+              </span>
+            ) : '🔄 Sync Calendar'}
+          </button>
+        )}
       </div>
 
       {/* Filter Chips */}
@@ -521,11 +647,23 @@ function TodayView() {
       </div>
 
       {/* Task List */}
-      <div className="space-y-3">
-        {filteredTasks.map((task) => (
-          <div
-            key={task.id}
-            className={`rounded-lg border p-3 sm:p-4 transition-all ${
+      {!isHydrated || isLoading ? (
+        <TaskListSkeleton count={5} />
+      ) : (
+        <div className="space-y-3">
+          <AnimatePresence mode="popLayout">
+            {filteredTasks.map((task, index) => (
+            <motion.div
+              key={task.id}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ 
+                duration: 0.2,
+                delay: index < 10 ? index * 0.05 : 0,
+              }}
+              layout
+              className={`rounded-lg border p-3 sm:p-4 transition-all ${
               task.status === 'completed'
                 ? 'border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950/20'
                 : task.status === 'skipped'
@@ -573,6 +711,12 @@ function TodayView() {
                     {task.isSyncedWithCalendar && (
                       <span className="text-xs text-blue-600 dark:text-blue-400 flex-shrink-0">🔗</span>
                     )}
+                    {task.recurrenceRule && (
+                      <span className="text-xs text-purple-600 dark:text-purple-400 flex-shrink-0" title="Recurring task">🔁</span>
+                    )}
+                    {task.recurringEventId && (
+                      <span className="text-xs text-indigo-600 dark:text-indigo-400 flex-shrink-0" title={`Series ID: ${task.recurringEventId}`}>📆</span>
+                    )}
                   </div>
                   
                   {task.description && (
@@ -605,23 +749,34 @@ function TodayView() {
                       </>
                     )}
                   </div>
+                  
+                  {/* Show completion proof if task is completed and has proof */}
+                  {task.status === 'completed' && task.completionProof && (
+                    <div className="mt-2 rounded-md bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-900 p-2">
+                      <p className="text-xs font-medium text-green-700 dark:text-green-300">✓ Proof of Completion:</p>
+                      <p className="mt-0.5 text-xs text-green-600 dark:text-green-400 break-words">{task.completionProof}</p>
+                    </div>
+                  )}
                 </div>
               </div>
               
               {/* Mobile Actions */}
               <div className="mt-2 flex gap-1.5 pt-2 border-t border-zinc-100 dark:border-zinc-800">
-                {task.status === 'pending' && (
-                  <button
-                    onClick={() => {
-                      console.log('Opening edit dialog with task:', task);
-                      setSelectedTask(task);
+                <button
+                  onClick={() => {
+                    console.log('Opening edit dialog with task:', task);
+                    setSelectedTask(task);
+                    // Check if task is recurring
+                    if (task.recurringEventId) {
+                      setIsRecurringEditOpen(true);
+                    } else {
                       setIsEditOpen(true);
-                    }}
-                    className="flex-1 rounded-md px-2 py-1.5 text-xs font-medium text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-950/20 transition-colors"
-                  >
-                    Edit
-                  </button>
-                )}
+                    }
+                  }}
+                  className="flex-1 rounded-md px-2 py-1.5 text-xs font-medium text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-950/20 transition-colors"
+                >
+                  Edit
+                </button>
                 {task.status !== 'completed' && task.status !== 'skipped' && (
                   <>
                     <button
@@ -693,6 +848,12 @@ function TodayView() {
                   {task.isSyncedWithCalendar && (
                     <span className="text-xs text-blue-600 dark:text-blue-400">🔗</span>
                   )}
+                  {task.recurrenceRule && (
+                    <span className="text-xs text-purple-600 dark:text-purple-400" title="Recurring task">🔁</span>
+                  )}
+                  {task.recurringEventId && (
+                    <span className="text-xs text-indigo-600 dark:text-indigo-400" title={`Series ID: ${task.recurringEventId}`}>📆</span>
+                  )}
                   {task.tags && task.tags.length > 0 && (
                     <div className="flex gap-1">
                       {task.tags.slice(0, 2).map((tag) => (
@@ -705,6 +866,13 @@ function TodayView() {
                 </div>
                 {task.description && (
                   <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">{task.description}</p>
+                )}
+                {/* Show completion proof if task is completed and has proof */}
+                {task.status === 'completed' && task.completionProof && (
+                  <div className="mt-2 rounded-md bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-900 p-2">
+                    <p className="text-xs font-medium text-green-700 dark:text-green-300">✓ Proof of Completion:</p>
+                    <p className="mt-0.5 text-xs text-green-600 dark:text-green-400 break-words">{task.completionProof}</p>
+                  </div>
                 )}
                 <div className="mt-1 flex flex-wrap items-center gap-2">
                   {task.startTime && task.endTime && (
@@ -727,18 +895,21 @@ function TodayView() {
 
               {/* Desktop Actions */}
               <div className="flex gap-2">
-                {task.status === 'pending' && (
-                  <button
-                    onClick={() => {
-                      setSelectedTask(task);
+                <button
+                  onClick={() => {
+                    setSelectedTask(task);
+                    // Check if task is recurring
+                    if (task.recurringEventId) {
+                      setIsRecurringEditOpen(true);
+                    } else {
                       setIsEditOpen(true);
-                    }}
-                    className="rounded-md px-3 py-1.5 text-xs font-medium text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-950/20 transition-colors"
-                    title="Edit task"
-                  >
-                    Edit
-                  </button>
-                )}
+                    }
+                  }}
+                  className="rounded-md px-3 py-1.5 text-xs font-medium text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-950/20 transition-colors"
+                  title="Edit task"
+                >
+                  Edit
+                </button>
                 {task.status !== 'completed' && task.status !== 'skipped' && (
                   <>
                     <button
@@ -772,9 +943,11 @@ function TodayView() {
                 </button>
               </div>
             </div>
-          </div>
-        ))}
-      </div>
+          </motion.div>
+            ))}
+          </AnimatePresence>
+        </div>
+      )}
 
       {/* Empty State / Add Task */}
       {filteredTasks.length === 0 && (
@@ -793,21 +966,23 @@ function TodayView() {
             >
               + Add Task
             </button>
-            <button
-              onClick={handleSync}
-              disabled={isSyncing}
-              className="rounded-lg border border-zinc-300 px-6 py-2 text-sm font-semibold text-zinc-700 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isSyncing ? (
-                <span className="flex items-center gap-2">
-                  <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  Syncing...
-                </span>
-              ) : '🔄 Sync Calendar'}
-            </button>
+            {isCalendarConnected && (
+              <button
+                onClick={handleSync}
+                disabled={isSyncing}
+                className="rounded-lg border border-zinc-300 px-6 py-2 text-sm font-semibold text-zinc-700 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSyncing ? (
+                  <span className="flex items-center gap-2">
+                    <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Syncing...
+                  </span>
+                ) : '🔄 Sync Calendar'}
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -819,6 +994,7 @@ function TodayView() {
         onSubmit={handleCreateTask}
         isPending={createMutation.isPending}
         goals={goals?.map(g => ({ id: g.id, title: g.title }))}
+        isCalendarConnected={isCalendarConnected}
       />
 
       {selectedTask && (
@@ -829,6 +1005,7 @@ function TodayView() {
             onSubmit={handleUpdateTask}
             isPending={updateMutation.isPending}
             goals={goals?.map(g => ({ id: g.id, title: g.title }))}
+            isCalendarConnected={isCalendarConnected}
             task={selectedTask}
           />
 
@@ -846,6 +1023,20 @@ function TodayView() {
             onSkip={handleSkipTask}
             onReschedule={handleRescheduleTask}
             isPending={skipMutation.isPending || rescheduleMutation.isPending}
+            taskTitle={selectedTask.title}
+          />
+          <RecurringTaskEditDialog
+            open={isRecurringEditOpen}
+            onOpenChange={setIsRecurringEditOpen}
+            onEditSingle={() => {
+              // Edit only this instance
+              setIsEditOpen(true);
+            }}
+            onEditAll={() => {
+              // Edit all instances - will be handled in the edit dialog
+              setPendingRecurringAction('edit-all');
+              setIsEditOpen(true);
+            }}
             taskTitle={selectedTask.title}
           />
         </>
@@ -874,14 +1065,16 @@ function GoalsView() {
     githubRepos: [] as string[],
   });
 
-  const { data: goals, refetch } = trpc.goal.getAll.useQuery();
-  const { data: allTasks, refetch: refetchTasks } = trpc.task.getAll.useQuery();
+  // Use AppContext
+  const { goals, tasks: allTasks, refreshGoals, refreshTasks, isGoogleCalendarConnected } = useApp();
+  
+  // Keep these tRPC queries as they're not core data
   const { data: githubIntegration } = trpc.integration.getByServiceType.useQuery({ serviceType: 'github' });
   const { data: githubActivity } = trpc.integration.getGitHubActivity.useQuery({ hours: 24 * 30 }); // Last 30 days for more repos
   
   const createTaskMutation = trpc.task.create.useMutation({
     onSuccess: async () => {
-      await refetchTasks();
+      await refreshTasks();
       setIsCreateTaskOpen(false);
       setSelectedGoal(null);
     },
@@ -889,7 +1082,7 @@ function GoalsView() {
   
   const createMutation = trpc.goal.create.useMutation({
     onSuccess: () => {
-      refetch();
+      refreshGoals();
       setIsCreateOpen(false);
       resetForm();
     },
@@ -897,7 +1090,7 @@ function GoalsView() {
   
   const updateMutation = trpc.goal.update.useMutation({
     onSuccess: () => {
-      refetch();
+      refreshGoals();
       setIsEditOpen(false);
       resetForm();
     },
@@ -905,7 +1098,7 @@ function GoalsView() {
   
   const deleteMutation = trpc.goal.delete.useMutation({
     onSuccess: () => {
-      refetch();
+      refreshGoals();
       setIsDeleteOpen(false);
       setSelectedGoal(null);
     },
@@ -1807,6 +2000,7 @@ function GoalsView() {
           isPending={createTaskMutation.isPending}
           goals={goals?.map(g => ({ id: g.id, title: g.title }))}
           initialGoalId={selectedGoal.id}
+          isCalendarConnected={isGoogleCalendarConnected()}
         />
       )}
     </div>
@@ -2284,11 +2478,12 @@ function EveningCheck() {
 
 // Weekly Roast Report Component
 function WeeklyRoast() {
-  const { data: goals } = trpc.goal.getAll.useQuery();
+  // Use AppContext
+  const { goals } = useApp();
   
   // Calculate goal alignment score
-  const totalGoals = goals?.length || 0;
-  const completedGoals = goals?.filter((g: any) => g.status === 'completed').length || 0;
+  const totalGoals = goals.length || 0;
+  const completedGoals = goals.filter((g: any) => g.status === 'completed').length || 0;
   const goalAlignmentScore = totalGoals > 0 ? Math.round((completedGoals / totalGoals) * 100) : 0;
   
   const weekData = {
@@ -2416,6 +2611,9 @@ function WeeklyRoast() {
 
 // Integrations Component
 function Integrations() {
+  // Get AppContext refresh function to sync integrations state
+  const { refreshIntegrations: refreshAppIntegrations } = useApp();
+  
   // Preset avatar URLs
   const presetAvatars = [
     'https://api.dicebear.com/7.x/avataaars/svg?seed=default',
@@ -2450,16 +2648,34 @@ function Integrations() {
     }
   }, [profile]);
 
+  // Check if we just came back from OAuth and refresh integrations
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('integration') === 'success') {
+      // Small delay to ensure database is updated
+      setTimeout(async () => {
+        await refreshAppIntegrations();
+      }, 500);
+      
+      // Clean up URL
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, [refreshAppIntegrations]);
+
   // Integrations
   const { data: userIntegrations, isLoading: integrationsLoading, refetch: refetchIntegrations } = trpc.integration.getAll.useQuery();
   const createIntegration = trpc.integration.create.useMutation({
-    onSuccess: () => {
-      refetchIntegrations();
+    onSuccess: async () => {
+      await refetchIntegrations();
+      // Also refresh AppContext integrations to update isGoogleCalendarConnected
+      await refreshAppIntegrations();
     },
   });
   const deleteIntegration = trpc.integration.delete.useMutation({
-    onSuccess: () => {
-      refetchIntegrations();
+    onSuccess: async () => {
+      await refetchIntegrations();
+      // Also refresh AppContext integrations to update isGoogleCalendarConnected
+      await refreshAppIntegrations();
     },
   });
 
