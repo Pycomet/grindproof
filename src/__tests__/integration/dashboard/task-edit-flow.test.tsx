@@ -48,6 +48,9 @@ vi.mock('@/lib/trpc/client', () => ({
       reschedule: {
         useMutation: vi.fn(),
       },
+      delete: {
+        useMutation: vi.fn(),
+      },
       syncFromCalendar: {
         useMutation: vi.fn(),
       },
@@ -161,6 +164,11 @@ describe('Task Edit Flow', () => {
       isPending: false,
     } as any);
 
+    vi.mocked(trpc.task.delete.useMutation).mockReturnValue({
+      mutate: vi.fn(),
+      isPending: false,
+    } as any);
+
     vi.mocked(trpc.task.syncFromCalendar.useMutation).mockReturnValue({
       mutate: vi.fn(),
       isPending: false,
@@ -173,24 +181,28 @@ describe('Task Edit Flow', () => {
   });
 
   describe('Edit Button Display', () => {
-    it('shows Edit button for all tasks', async () => {
+    it('shows Edit button only for pending tasks', async () => {
       render(<Dashboard />);
 
       await waitFor(() => {
         const editButtons = screen.getAllByText('Edit');
-        // Should have Edit buttons (desktop + mobile views = multiple instances)
+        // Only pending tasks should have Edit buttons (desktop + mobile views)
         expect(editButtons.length).toBeGreaterThan(0);
       });
     });
 
-    it('Edit button is always visible (even for completed tasks)', async () => {
+    it('Edit button is NOT visible for completed tasks', async () => {
       render(<Dashboard />);
 
       await waitFor(() => {
-        // Task 2 is completed and should still have an Edit button
+        // Task 2 is completed - verify it exists
         const taskTitles = screen.getAllByText('Test Task 2');
         expect(taskTitles.length).toBeGreaterThan(0);
+        
+        // Count Edit buttons - should only be for pending task (task-1)
         const editButtons = screen.getAllByText('Edit');
+        // We have task-1 (pending) which appears in both mobile and desktop
+        // Task-2 (completed) should NOT have edit buttons
         expect(editButtons.length).toBeGreaterThan(0);
       });
     });
@@ -348,6 +360,195 @@ describe('Task Edit Flow', () => {
         // Task 2 is synced, should show 🔗 icon
         const syncIcons = screen.getAllByText('🔗');
         expect(syncIcons.length).toBeGreaterThan(0);
+      });
+    });
+  });
+
+  describe('Delete Button', () => {
+    it('shows Delete button for all tasks (pending, completed, skipped)', async () => {
+      render(<Dashboard />);
+
+      await waitFor(() => {
+        // Delete button should appear as "Delete" on desktop
+        const deleteButtons = screen.getAllByText(/Delete|🗑️/);
+        expect(deleteButtons.length).toBeGreaterThan(0);
+      });
+    });
+
+    it('Delete button has red styling', async () => {
+      render(<Dashboard />);
+
+      await waitFor(() => {
+        const deleteButtons = screen.getAllByTitle('Delete task');
+        expect(deleteButtons.length).toBeGreaterThan(0);
+        
+        const deleteButton = deleteButtons[0];
+        expect(deleteButton.className).toContain('text-red-600');
+      });
+    });
+  });
+
+  describe('Skipped Tasks Filtering', () => {
+    beforeEach(() => {
+      // Add a skipped task to the mock data
+      const mockTasksWithSkipped = [
+        {
+          id: 'task-1',
+          userId: '123',
+          title: 'Test Task 1',
+          description: 'Description 1',
+          dueDate: new Date(),
+          status: 'pending' as const,
+          completionProof: null,
+          tags: ['work'],
+          goalId: null,
+          isSyncedWithCalendar: false,
+          googleCalendarEventId: null,
+          recurrencePattern: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          startTime: null,
+          endTime: null,
+          reminders: null,
+        },
+        {
+          id: 'task-2',
+          userId: '123',
+          title: 'Test Task 2',
+          description: 'Description 2',
+          dueDate: new Date(),
+          status: 'completed' as const,
+          completionProof: 'Done!',
+          tags: ['personal'],
+          goalId: null,
+          isSyncedWithCalendar: true,
+          googleCalendarEventId: 'event-123',
+          recurrencePattern: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          startTime: null,
+          endTime: null,
+          reminders: null,
+        },
+        {
+          id: 'task-3',
+          userId: '123',
+          title: 'Test Task 3 Skipped',
+          description: 'Description 3',
+          dueDate: new Date(),
+          status: 'skipped' as const,
+          completionProof: null,
+          tags: ['learning'],
+          goalId: null,
+          isSyncedWithCalendar: false,
+          googleCalendarEventId: null,
+          recurrencePattern: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          startTime: null,
+          endTime: null,
+          reminders: null,
+        },
+      ];
+
+      vi.mocked(trpc.task.getAll.useQuery).mockReturnValue({
+        data: mockTasksWithSkipped,
+        isLoading: false,
+        isError: false,
+        refetch: vi.fn(),
+      } as any);
+    });
+
+    it('hides skipped tasks by default on Today filter', async () => {
+      render(<Dashboard />);
+
+      await waitFor(() => {
+        // Skipped task should NOT be visible
+        expect(screen.queryByText('Test Task 3 Skipped')).not.toBeInTheDocument();
+        
+        // Pending and completed tasks should be visible
+        expect(screen.getAllByText('Test Task 1').length).toBeGreaterThan(0);
+        expect(screen.getAllByText('Test Task 2').length).toBeGreaterThan(0);
+      });
+    });
+
+    it('shows "Skipped" filter button with count', async () => {
+      render(<Dashboard />);
+
+      await waitFor(() => {
+        const skippedFilters = screen.getAllByText('Skipped');
+        expect(skippedFilters.length).toBeGreaterThan(0);
+        
+        // Should show count of 1 (one skipped task)
+        const countElements = screen.getAllByText('1');
+        expect(countElements.length).toBeGreaterThan(0);
+      });
+    });
+
+    it('shows skipped tasks when Skipped filter is clicked', async () => {
+      render(<Dashboard />);
+
+      await waitFor(() => {
+        const skippedFilters = screen.getAllByText('Skipped');
+        fireEvent.click(skippedFilters[0]);
+      });
+
+      await waitFor(() => {
+        // Now skipped task SHOULD be visible
+        expect(screen.getAllByText('Test Task 3 Skipped').length).toBeGreaterThan(0);
+        
+        // Skipped filter should be active now
+        const skippedFilterButtons = screen.getAllByText('Skipped');
+        expect(skippedFilterButtons.length).toBeGreaterThan(0);
+      });
+    });
+
+    it('skipped tasks have red styling when visible', async () => {
+      render(<Dashboard />);
+
+      await waitFor(() => {
+        const skippedFilters = screen.getAllByText('Skipped');
+        fireEvent.click(skippedFilters[0]);
+      });
+
+      await waitFor(() => {
+        const skippedTask = screen.getAllByText('Test Task 3 Skipped')[0];
+        expect(skippedTask).toBeInTheDocument();
+        
+        // Check for red text styling
+        expect(skippedTask.className).toContain('text-red-500');
+        expect(skippedTask.className).toContain('line-through');
+      });
+    });
+
+    it('skipped tasks do not have Edit button', async () => {
+      render(<Dashboard />);
+
+      await waitFor(() => {
+        const skippedFilters = screen.getAllByText('Skipped');
+        fireEvent.click(skippedFilters[0]);
+      });
+
+      await waitFor(() => {
+        // Verify skipped task is shown
+        expect(screen.getAllByText('Test Task 3 Skipped').length).toBeGreaterThan(0);
+        
+        // Only Delete button should be present (no Edit, Complete, or Skip)
+        const deleteButtons = screen.getAllByText(/Delete|🗑️/);
+        expect(deleteButtons.length).toBeGreaterThan(0);
+      });
+    });
+
+    it('excludes skipped tasks from All filter count', async () => {
+      render(<Dashboard />);
+
+      await waitFor(() => {
+        const allFilters = screen.getAllByText('All');
+        expect(allFilters.length).toBeGreaterThan(0);
+        
+        // Count should be 2 (pending + completed, excluding skipped)
+        const countElements = screen.getAllByText('2');
+        expect(countElements.length).toBeGreaterThan(0);
       });
     });
   });

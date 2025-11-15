@@ -57,6 +57,9 @@ vi.mock('@/lib/trpc/client', () => ({
       reschedule: {
         useMutation: vi.fn(),
       },
+      delete: {
+        useMutation: vi.fn(),
+      },
       syncFromCalendar: {
         useMutation: vi.fn(),
       },
@@ -243,6 +246,11 @@ describe('Goal-Task Display', () => {
     } as any);
 
     vi.mocked(trpc.task.reschedule.useMutation).mockReturnValue({
+      mutate: vi.fn(),
+      isPending: false,
+    } as any);
+
+    vi.mocked(trpc.task.delete.useMutation).mockReturnValue({
       mutate: vi.fn(),
       isPending: false,
     } as any);

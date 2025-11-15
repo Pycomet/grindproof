@@ -49,6 +49,9 @@ vi.mock('@/lib/trpc/client', () => ({
       reschedule: {
         useMutation: vi.fn(),
       },
+      delete: {
+        useMutation: vi.fn(),
+      },
       syncFromCalendar: {
         useMutation: vi.fn(),
       },
@@ -108,6 +111,11 @@ describe('Protected Routes - Dashboard', () => {
     } as any);
 
     vi.mocked(trpc.task.reschedule.useMutation).mockReturnValue({
+      mutate: vi.fn(),
+      isPending: false,
+    } as any);
+
+    vi.mocked(trpc.task.delete.useMutation).mockReturnValue({
       mutate: vi.fn(),
       isPending: false,
     } as any);
@@ -178,6 +186,11 @@ describe('Protected Routes - Dashboard', () => {
       isPending: false,
     } as any);
 
+    vi.mocked(trpc.task.delete.useMutation).mockReturnValue({
+      mutate: vi.fn(),
+      isPending: false,
+    } as any);
+
     vi.mocked(trpc.task.syncFromCalendar.useMutation).mockReturnValue({
       mutate: vi.fn(),
       isPending: false,
@@ -241,6 +254,11 @@ describe('Protected Routes - Dashboard', () => {
     } as any);
 
     vi.mocked(trpc.task.reschedule.useMutation).mockReturnValue({
+      mutate: vi.fn(),
+      isPending: false,
+    } as any);
+
+    vi.mocked(trpc.task.delete.useMutation).mockReturnValue({
       mutate: vi.fn(),
       isPending: false,
     } as any);
@@ -328,6 +346,11 @@ describe('Protected Routes - Dashboard', () => {
     } as any);
 
     vi.mocked(trpc.task.reschedule.useMutation).mockReturnValue({
+      mutate: vi.fn(),
+      isPending: false,
+    } as any);
+
+    vi.mocked(trpc.task.delete.useMutation).mockReturnValue({
       mutate: vi.fn(),
       isPending: false,
     } as any);

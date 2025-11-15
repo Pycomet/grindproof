@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,10 +8,23 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Calendar } from '@/components/ui/calendar';
 
+// Helper function to format date for datetime-local input (in local timezone)
+function formatDateTimeLocal(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+}
+
 interface TaskFormData {
   title: string;
   description: string;
   dueDate: Date | undefined;
+  startTime: Date | undefined;
+  endTime: Date | undefined;
+  reminders: string[];
   goalId: string;
   tags: string[];
   syncWithCalendar: boolean;
@@ -38,11 +51,15 @@ export function CreateTaskDialog({
     title: '',
     description: '',
     dueDate: undefined,
+    startTime: undefined,
+    endTime: undefined,
+    reminders: [],
     goalId: initialGoalId || '',
     tags: [],
     syncWithCalendar: true,
   });
   const [showCalendar, setShowCalendar] = useState(false);
+  const [hasSchedule, setHasSchedule] = useState(false);
   const [tagInput, setTagInput] = useState('');
 
   const handleSubmit = () => {
@@ -52,11 +69,15 @@ export function CreateTaskDialog({
       title: '',
       description: '',
       dueDate: undefined,
+      startTime: undefined,
+      endTime: undefined,
+      reminders: [],
       goalId: initialGoalId || '',
       tags: [],
       syncWithCalendar: true,
     });
     setTagInput('');
+    setHasSchedule(false);
   };
 
   const handleAddTag = () => {
@@ -129,6 +150,78 @@ export function CreateTaskDialog({
                 className="rounded-md border"
               />
             )}
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="hasSchedule"
+                checked={hasSchedule}
+                onChange={(e) => {
+                  setHasSchedule(e.target.checked);
+                  if (!e.target.checked) {
+                    setFormData({ ...formData, startTime: undefined, endTime: undefined });
+                  }
+                }}
+                className="h-4 w-4 rounded border-zinc-300 dark:border-zinc-700"
+              />
+              <Label htmlFor="hasSchedule" className="font-normal">
+                Schedule specific time block
+              </Label>
+            </div>
+            {hasSchedule && (
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs">Start Time</Label>
+                  <Input
+                    type="datetime-local"
+                    value={formData.startTime ? formatDateTimeLocal(formData.startTime) : ''}
+                    onChange={(e) => setFormData({ ...formData, startTime: e.target.value ? new Date(e.target.value) : undefined })}
+                    className="text-sm"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">End Time</Label>
+                  <Input
+                    type="datetime-local"
+                    value={formData.endTime ? formatDateTimeLocal(formData.endTime) : ''}
+                    onChange={(e) => setFormData({ ...formData, endTime: e.target.value ? new Date(e.target.value) : undefined })}
+                    className="text-sm"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label>Reminders</Label>
+            <div className="flex flex-wrap gap-2">
+              {['15min', '1hour', '1day'].map((reminder) => {
+                const label = reminder === '15min' ? '15 minutes' : reminder === '1hour' ? '1 hour' : '1 day';
+                const isSelected = formData.reminders.includes(reminder);
+                return (
+                  <button
+                    key={reminder}
+                    type="button"
+                    onClick={() => {
+                      if (isSelected) {
+                        setFormData({ ...formData, reminders: formData.reminders.filter(r => r !== reminder) });
+                      } else {
+                        setFormData({ ...formData, reminders: [...formData.reminders, reminder] });
+                      }
+                    }}
+                    className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                      isSelected
+                        ? 'bg-blue-600 text-white dark:bg-blue-500'
+                        : 'border border-zinc-300 text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800'
+                    }`}
+                  >
+                    🔔 {label} before
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           {goals.length > 0 && (
@@ -235,11 +328,15 @@ export function CreateTaskDialog({
                 title: '',
                 description: '',
                 dueDate: undefined,
+                startTime: undefined,
+                endTime: undefined,
+                reminders: [],
                 goalId: initialGoalId || '',
                 tags: [],
                 syncWithCalendar: true,
               });
               setTagInput('');
+              setHasSchedule(false);
             }}
           >
             Cancel
@@ -320,6 +417,9 @@ interface EditTaskDialogProps {
     title: string;
     description?: string | null;
     dueDate?: Date | null;
+    startTime?: Date | null;
+    endTime?: Date | null;
+    reminders?: string[] | null;
     goalId?: string | null;
     tags?: string[] | null;
     isSyncedWithCalendar: boolean;
@@ -338,24 +438,33 @@ export function EditTaskDialog({
     title: task.title,
     description: task.description || '',
     dueDate: task.dueDate ? new Date(task.dueDate) : undefined,
+    startTime: task.startTime ? new Date(task.startTime) : undefined,
+    endTime: task.endTime ? new Date(task.endTime) : undefined,
+    reminders: task.reminders || [],
     goalId: task.goalId || '',
     tags: task.tags || [],
     syncWithCalendar: task.isSyncedWithCalendar,
   });
   const [showCalendar, setShowCalendar] = useState(false);
+  const [hasSchedule, setHasSchedule] = useState(!!(task.startTime && task.endTime));
   const [tagInput, setTagInput] = useState('');
 
   // Update form when task changes
-  useState(() => {
+  useEffect(() => {
+    console.log('EditTaskDialog: task prop changed:', task);
     setFormData({
       title: task.title,
       description: task.description || '',
       dueDate: task.dueDate ? new Date(task.dueDate) : undefined,
+      startTime: task.startTime ? new Date(task.startTime) : undefined,
+      endTime: task.endTime ? new Date(task.endTime) : undefined,
+      reminders: task.reminders || [],
       goalId: task.goalId || '',
       tags: task.tags || [],
       syncWithCalendar: task.isSyncedWithCalendar,
     });
-  });
+    setHasSchedule(!!(task.startTime && task.endTime));
+  }, [task]);
 
   const handleSubmit = () => {
     onSubmit(formData);
@@ -443,6 +552,78 @@ export function EditTaskDialog({
                   Clear date
                 </Button>
               )}
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="edit-hasSchedule"
+                checked={hasSchedule}
+                onChange={(e) => {
+                  setHasSchedule(e.target.checked);
+                  if (!e.target.checked) {
+                    setFormData({ ...formData, startTime: undefined, endTime: undefined });
+                  }
+                }}
+                className="h-4 w-4 rounded border-zinc-300 dark:border-zinc-700"
+              />
+              <Label htmlFor="edit-hasSchedule" className="font-normal">
+                Schedule specific time block
+              </Label>
+            </div>
+            {hasSchedule && (
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs">Start Time</Label>
+                  <Input
+                    type="datetime-local"
+                    value={formData.startTime ? formatDateTimeLocal(formData.startTime) : ''}
+                    onChange={(e) => setFormData({ ...formData, startTime: e.target.value ? new Date(e.target.value) : undefined })}
+                    className="text-sm"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">End Time</Label>
+                  <Input
+                    type="datetime-local"
+                    value={formData.endTime ? formatDateTimeLocal(formData.endTime) : ''}
+                    onChange={(e) => setFormData({ ...formData, endTime: e.target.value ? new Date(e.target.value) : undefined })}
+                    className="text-sm"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label>Reminders</Label>
+            <div className="flex flex-wrap gap-2">
+              {['15min', '1hour', '1day'].map((reminder) => {
+                const label = reminder === '15min' ? '15 minutes' : reminder === '1hour' ? '1 hour' : '1 day';
+                const isSelected = formData.reminders.includes(reminder);
+                return (
+                  <button
+                    key={reminder}
+                    type="button"
+                    onClick={() => {
+                      if (isSelected) {
+                        setFormData({ ...formData, reminders: formData.reminders.filter(r => r !== reminder) });
+                      } else {
+                        setFormData({ ...formData, reminders: [...formData.reminders, reminder] });
+                      }
+                    }}
+                    className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                      isSelected
+                        ? 'bg-blue-600 text-white dark:bg-blue-500'
+                        : 'border border-zinc-300 text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800'
+                    }`}
+                  >
+                    🔔 {label} before
+                  </button>
+                );
+              })}
             </div>
           </div>
 

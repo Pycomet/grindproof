@@ -33,8 +33,11 @@ export default function Dashboard() {
   });
 
   const { data: goals } = trpc.goal.getAll.useQuery();
+  const { refetch: refetchAllTasks } = trpc.task.getAll.useQuery();
+  
   const createTaskMutation = trpc.task.create.useMutation({
-    onSuccess: () => {
+    onSuccess: async () => {
+      await refetchAllTasks();
       setIsFabTaskDialogOpen(false);
     },
   });
@@ -55,6 +58,9 @@ export default function Dashboard() {
       title: data.title,
       description: data.description || undefined,
       dueDate: data.dueDate || undefined,
+      startTime: data.startTime || undefined,
+      endTime: data.endTime || undefined,
+      reminders: data.reminders && data.reminders.length > 0 ? data.reminders : undefined,
       goalId: data.goalId || undefined,
       tags: data.tags.length > 0 ? data.tags : undefined,
       syncWithCalendar: data.syncWithCalendar,
@@ -246,55 +252,80 @@ function TodayView() {
   yesterday.setDate(yesterday.getDate() - 1);
 
   // Fetch tasks and goals
-  const { data: allTasks, refetch } = trpc.task.getAll.useQuery();
+  const { data: allTasks, refetch } = trpc.task.getAll.useQuery(undefined, {
+    refetchOnWindowFocus: false,
+    refetchOnMount: true,
+  });
   const { data: goals } = trpc.goal.getAll.useQuery();
   
   // Mutations
   const syncMutation = trpc.task.syncFromCalendar.useMutation({
-    onSuccess: () => {
-      refetch();
+    onSuccess: async (data) => {
+      // Show sync results
+      const messages = [];
+      if (data.created > 0) messages.push(`${data.created} created`);
+      if (data.updated > 0) messages.push(`${data.updated} updated`);
+      if (data.deleted > 0) messages.push(`${data.deleted} deleted`);
+      
+      if (messages.length > 0) {
+        console.log(`✅ Calendar synced: ${messages.join(', ')}`);
+      } else {
+        console.log('✅ Calendar synced: Already up to date');
+      }
+      
+      // Force refetch after a small delay to ensure DB operations complete
+      await new Promise(resolve => setTimeout(resolve, 100));
+      await refetch();
       setIsSyncing(false);
     },
-    onError: () => {
+    onError: (error) => {
       setIsSyncing(false);
+      console.error('❌ Calendar sync failed:', error.message);
     },
   });
 
   const createMutation = trpc.task.create.useMutation({
-    onSuccess: () => {
-      refetch();
+    onSuccess: async () => {
+      await refetch();
       setIsCreateOpen(false);
     },
   });
 
   const updateMutation = trpc.task.update.useMutation({
-    onSuccess: () => {
-      refetch();
+    onSuccess: async () => {
+      await refetch();
       setIsEditOpen(false);
       setSelectedTask(null);
     },
   });
 
   const completeMutation = trpc.task.complete.useMutation({
-    onSuccess: () => {
-      refetch();
+    onSuccess: async () => {
+      await refetch();
       setIsCompleteOpen(false);
       setSelectedTask(null);
     },
   });
 
   const skipMutation = trpc.task.skip.useMutation({
-    onSuccess: () => {
-      refetch();
+    onSuccess: async () => {
+      await refetch();
       setIsRescheduleOpen(false);
       setSelectedTask(null);
     },
   });
 
   const rescheduleMutation = trpc.task.reschedule.useMutation({
-    onSuccess: () => {
-      refetch();
+    onSuccess: async () => {
+      await refetch();
       setIsRescheduleOpen(false);
+      setSelectedTask(null);
+    },
+  });
+
+  const deleteTaskMutation = trpc.task.delete.useMutation({
+    onSuccess: async () => {
+      await refetch();
       setSelectedTask(null);
     },
   });
@@ -309,6 +340,9 @@ function TodayView() {
       title: data.title,
       description: data.description || undefined,
       dueDate: data.dueDate || undefined,
+      startTime: data.startTime || undefined,
+      endTime: data.endTime || undefined,
+      reminders: data.reminders && data.reminders.length > 0 ? data.reminders : undefined,
       goalId: data.goalId || undefined,
       tags: data.tags.length > 0 ? data.tags : undefined,
       syncWithCalendar: data.syncWithCalendar,
@@ -322,6 +356,9 @@ function TodayView() {
         title: data.title,
         description: data.description || undefined,
         dueDate: data.dueDate || undefined,
+        startTime: data.startTime !== undefined ? (data.startTime || undefined) : undefined,
+        endTime: data.endTime !== undefined ? (data.endTime || undefined) : undefined,
+        reminders: data.reminders !== undefined ? (data.reminders && data.reminders.length > 0 ? data.reminders : undefined) : undefined,
         goalId: data.goalId || undefined,
         tags: data.tags.length > 0 ? data.tags : undefined,
       });
@@ -352,9 +389,25 @@ function TodayView() {
     }
   };
 
-  // Filter and sort tasks (completed tasks go to bottom)
+  const handleDeleteTask = (taskId: string) => {
+    if (confirm('Are you sure you want to delete this task? This action cannot be undone.')) {
+      deleteTaskMutation.mutate({ id: taskId });
+    }
+  };
+
+  // Filter and sort tasks (skipped tasks hidden by default, completed tasks go to bottom)
   const filteredTasks = (allTasks || [])
     .filter(task => {
+      // If viewing skipped filter, only show skipped tasks
+      if (activeFilter === 'skipped') {
+        return task.status === 'skipped';
+      }
+      
+      // For all other filters, hide skipped tasks by default
+      if (task.status === 'skipped') {
+        return false;
+      }
+      
       const dueDate = task.dueDate ? new Date(task.dueDate) : null;
       
       if (activeFilter === 'today') {
@@ -366,7 +419,7 @@ function TodayView() {
       if (activeFilter === 'overdue') {
         return dueDate && dueDate < today && task.status === 'pending';
       }
-      return true; // 'all'
+      return true; // 'all' (excluding skipped)
     })
     .sort((a, b) => {
       // Completed tasks go to bottom
@@ -384,27 +437,35 @@ function TodayView() {
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
 
-  // Calculate counts
+  // Calculate counts (excluding skipped tasks except for skipped count)
   const todayCount = (allTasks || []).filter(t => {
+    if (t.status === 'skipped') return false;
     const dueDate = t.dueDate ? new Date(t.dueDate) : null;
     return dueDate && dueDate >= today && dueDate < tomorrow;
   }).length;
 
   const weekCount = (allTasks || []).filter(t => {
+    if (t.status === 'skipped') return false;
     const dueDate = t.dueDate ? new Date(t.dueDate) : null;
     return dueDate && dueDate >= today && dueDate < weekEnd;
   }).length;
 
   const overdueCount = (allTasks || []).filter(t => {
+    if (t.status === 'skipped') return false;
     const dueDate = t.dueDate ? new Date(t.dueDate) : null;
     return dueDate && dueDate < today && t.status === 'pending';
   }).length;
+
+  const allCount = (allTasks || []).filter(t => t.status !== 'skipped').length;
+  
+  const skippedCount = (allTasks || []).filter(t => t.status === 'skipped').length;
 
   const filters = [
     { id: 'today', label: 'Today', count: todayCount },
     { id: 'week', label: 'This Week', count: weekCount },
     { id: 'overdue', label: 'Overdue', count: overdueCount },
-    { id: 'all', label: 'All', count: allTasks?.length || 0 },
+    { id: 'all', label: 'All', count: allCount },
+    { id: 'skipped', label: 'Skipped', count: skippedCount },
   ];
 
   return (
@@ -422,9 +483,18 @@ function TodayView() {
         <button
           onClick={handleSync}
           disabled={isSyncing}
-          className="rounded-lg border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800 disabled:opacity-50"
+          className="rounded-lg border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed"
+          title="Sync tasks with Google Calendar"
         >
-          {isSyncing ? '🔄 Syncing...' : '🔄 Sync Calendar'}
+          {isSyncing ? (
+            <span className="flex items-center gap-2">
+              <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              Syncing...
+            </span>
+          ) : '🔄 Sync Calendar'}
         </button>
       </div>
 
@@ -458,6 +528,8 @@ function TodayView() {
             className={`rounded-lg border p-3 sm:p-4 transition-all ${
               task.status === 'completed'
                 ? 'border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950/20'
+                : task.status === 'skipped'
+                ? 'border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950/20'
                 : 'border-zinc-200 bg-white hover:shadow-sm dark:border-zinc-800 dark:bg-zinc-900'
             }`}
           >
@@ -469,12 +541,19 @@ function TodayView() {
                   className={`mt-0.5 flex h-4 w-4 flex-shrink-0 items-center justify-center rounded border-2 transition-colors ${
                     task.status === 'completed'
                       ? 'border-green-600 bg-green-600'
+                      : task.status === 'skipped'
+                      ? 'border-red-600 bg-red-600'
                       : 'border-zinc-300 hover:border-zinc-400 dark:border-zinc-700'
                   }`}
                 >
                   {task.status === 'completed' && (
                     <svg className="h-2.5 w-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                    </svg>
+                  )}
+                  {task.status === 'skipped' && (
+                    <svg className="h-2.5 w-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
                     </svg>
                   )}
                 </button>
@@ -485,6 +564,8 @@ function TodayView() {
                     <h3 className={`text-sm font-medium truncate ${
                       task.status === 'completed'
                         ? 'text-zinc-500 line-through dark:text-zinc-500'
+                        : task.status === 'skipped'
+                        ? 'text-red-500 line-through dark:text-red-400'
                         : 'text-zinc-900 dark:text-zinc-50'
                     }`}>
                       {task.title}
@@ -499,9 +580,19 @@ function TodayView() {
                   )}
                   
                   <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                    {task.dueDate && (
+                    {task.startTime && task.endTime && (
+                      <span className="text-xs text-blue-600 dark:text-blue-400">
+                        ⏰ {new Date(task.startTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })} - {new Date(task.endTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+                      </span>
+                    )}
+                    {task.dueDate && !(task.startTime && task.endTime) && (
                       <span className="text-xs text-zinc-500">
                         📅 {new Date(task.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      </span>
+                    )}
+                    {task.reminders && task.reminders.length > 0 && (
+                      <span className="text-xs text-amber-600 dark:text-amber-400">
+                        🔔 {task.reminders.length}
                       </span>
                     )}
                     {task.tags && task.tags.length > 0 && (
@@ -519,16 +610,19 @@ function TodayView() {
               
               {/* Mobile Actions */}
               <div className="mt-2 flex gap-1.5 pt-2 border-t border-zinc-100 dark:border-zinc-800">
-                <button
-                  onClick={() => {
-                    setSelectedTask(task);
-                    setIsEditOpen(true);
-                  }}
-                  className="flex-1 rounded-md px-2 py-1.5 text-xs font-medium text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-950/20 transition-colors"
-                >
-                  Edit
-                </button>
-                {task.status !== 'completed' && (
+                {task.status === 'pending' && (
+                  <button
+                    onClick={() => {
+                      console.log('Opening edit dialog with task:', task);
+                      setSelectedTask(task);
+                      setIsEditOpen(true);
+                    }}
+                    className="flex-1 rounded-md px-2 py-1.5 text-xs font-medium text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-950/20 transition-colors"
+                  >
+                    Edit
+                  </button>
+                )}
+                {task.status !== 'completed' && task.status !== 'skipped' && (
                   <>
                     <button
                       onClick={() => {
@@ -550,6 +644,13 @@ function TodayView() {
                     </button>
                   </>
                 )}
+                <button
+                  onClick={() => handleDeleteTask(task.id)}
+                  className="flex-1 rounded-md px-2 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/20 transition-colors"
+                  title="Delete task"
+                >
+                  🗑️
+                </button>
               </div>
             </div>
 
@@ -560,12 +661,19 @@ function TodayView() {
                 className={`mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded border-2 transition-colors ${
                   task.status === 'completed'
                     ? 'border-green-600 bg-green-600'
+                    : task.status === 'skipped'
+                    ? 'border-red-600 bg-red-600'
                     : 'border-zinc-300 hover:border-zinc-400 dark:border-zinc-700'
                 }`}
               >
                 {task.status === 'completed' && (
                   <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                  </svg>
+                )}
+                {task.status === 'skipped' && (
+                  <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 )}
               </button>
@@ -576,6 +684,8 @@ function TodayView() {
                   <h3 className={`font-medium ${
                     task.status === 'completed'
                       ? 'text-zinc-500 line-through dark:text-zinc-500'
+                      : task.status === 'skipped'
+                      ? 'text-red-500 line-through dark:text-red-400'
                       : 'text-zinc-900 dark:text-zinc-50'
                   }`}>
                     {task.title}
@@ -596,26 +706,40 @@ function TodayView() {
                 {task.description && (
                   <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">{task.description}</p>
                 )}
-                {task.dueDate && (
-                  <p className="mt-1 text-xs text-zinc-500">
-                    Due: {new Date(task.dueDate).toLocaleDateString()}
-                  </p>
-                )}
+                <div className="mt-1 flex flex-wrap items-center gap-2">
+                  {task.startTime && task.endTime && (
+                    <span className="text-xs text-blue-600 dark:text-blue-400">
+                      ⏰ {new Date(task.startTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })} - {new Date(task.endTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+                    </span>
+                  )}
+                  {task.dueDate && !(task.startTime && task.endTime) && (
+                    <span className="text-xs text-zinc-500">
+                      Due: {new Date(task.dueDate).toLocaleDateString()}
+                    </span>
+                  )}
+                  {task.reminders && task.reminders.length > 0 && (
+                    <span className="text-xs text-amber-600 dark:text-amber-400">
+                      🔔 {task.reminders.length} reminder{task.reminders.length > 1 ? 's' : ''}
+                    </span>
+                  )}
+                </div>
               </div>
 
               {/* Desktop Actions */}
               <div className="flex gap-2">
-                <button
-                  onClick={() => {
-                    setSelectedTask(task);
-                    setIsEditOpen(true);
-                  }}
-                  className="rounded-md px-3 py-1.5 text-xs font-medium text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-950/20 transition-colors"
-                  title="Edit task"
-                >
-                  Edit
-                </button>
-                {task.status !== 'completed' && (
+                {task.status === 'pending' && (
+                  <button
+                    onClick={() => {
+                      setSelectedTask(task);
+                      setIsEditOpen(true);
+                    }}
+                    className="rounded-md px-3 py-1.5 text-xs font-medium text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-950/20 transition-colors"
+                    title="Edit task"
+                  >
+                    Edit
+                  </button>
+                )}
+                {task.status !== 'completed' && task.status !== 'skipped' && (
                   <>
                     <button
                       onClick={() => {
@@ -639,6 +763,13 @@ function TodayView() {
                     </button>
                   </>
                 )}
+                <button
+                  onClick={() => handleDeleteTask(task.id)}
+                  className="rounded-md px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/20 transition-colors"
+                  title="Delete task"
+                >
+                  Delete
+                </button>
               </div>
             </div>
           </div>
@@ -665,9 +796,17 @@ function TodayView() {
             <button
               onClick={handleSync}
               disabled={isSyncing}
-              className="rounded-lg border border-zinc-300 px-6 py-2 text-sm font-semibold text-zinc-700 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800 disabled:opacity-50"
+              className="rounded-lg border border-zinc-300 px-6 py-2 text-sm font-semibold text-zinc-700 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isSyncing ? 'Syncing...' : '🔄 Sync Calendar'}
+              {isSyncing ? (
+                <span className="flex items-center gap-2">
+                  <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Syncing...
+                </span>
+              ) : '🔄 Sync Calendar'}
             </button>
           </div>
         </div>
@@ -736,12 +875,13 @@ function GoalsView() {
   });
 
   const { data: goals, refetch } = trpc.goal.getAll.useQuery();
-  const { data: allTasks } = trpc.task.getAll.useQuery();
+  const { data: allTasks, refetch: refetchTasks } = trpc.task.getAll.useQuery();
   const { data: githubIntegration } = trpc.integration.getByServiceType.useQuery({ serviceType: 'github' });
   const { data: githubActivity } = trpc.integration.getGitHubActivity.useQuery({ hours: 24 * 30 }); // Last 30 days for more repos
   
   const createTaskMutation = trpc.task.create.useMutation({
-    onSuccess: () => {
+    onSuccess: async () => {
+      await refetchTasks();
       setIsCreateTaskOpen(false);
       setSelectedGoal(null);
     },
@@ -858,6 +998,9 @@ function GoalsView() {
       title: data.title,
       description: data.description || undefined,
       dueDate: data.dueDate || undefined,
+      startTime: data.startTime || undefined,
+      endTime: data.endTime || undefined,
+      reminders: data.reminders && data.reminders.length > 0 ? data.reminders : undefined,
       goalId: selectedGoal?.id || undefined,
       tags: data.tags.length > 0 ? data.tags : undefined,
       syncWithCalendar: data.syncWithCalendar,

@@ -147,6 +147,91 @@ export type Database = {
         };
         Relationships: [];
       };
+      tasks: {
+        Row: {
+          id: string;
+          user_id: string;
+          goal_id: string | null;
+          title: string;
+          description: string | null;
+          due_date: string | null;
+          start_time: string | null;
+          end_time: string | null;
+          reminders: unknown;
+          status: "pending" | "completed" | "skipped";
+          completion_proof: string | null;
+          tags: string[] | null;
+          google_calendar_event_id: string | null;
+          is_synced_with_calendar: boolean;
+          recurrence_pattern: unknown;
+          parent_task_id: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          goal_id?: string | null;
+          title: string;
+          description?: string | null;
+          due_date?: string | null;
+          start_time?: string | null;
+          end_time?: string | null;
+          reminders?: unknown;
+          status?: "pending" | "completed" | "skipped";
+          completion_proof?: string | null;
+          tags?: string[] | null;
+          google_calendar_event_id?: string | null;
+          is_synced_with_calendar?: boolean;
+          recurrence_pattern?: unknown;
+          parent_task_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          goal_id?: string | null;
+          title?: string;
+          description?: string | null;
+          due_date?: string | null;
+          start_time?: string | null;
+          end_time?: string | null;
+          reminders?: unknown;
+          status?: "pending" | "completed" | "skipped";
+          completion_proof?: string | null;
+          tags?: string[] | null;
+          google_calendar_event_id?: string | null;
+          is_synced_with_calendar?: boolean;
+          recurrence_pattern?: unknown;
+          parent_task_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "tasks_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "tasks_goal_id_fkey";
+            columns: ["goal_id"];
+            isOneToOne: false;
+            referencedRelation: "goals";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "tasks_parent_task_id_fkey";
+            columns: ["parent_task_id"];
+            isOneToOne: false;
+            referencedRelation: "tasks";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
     };
     Views: {
       [_ in never]: never;

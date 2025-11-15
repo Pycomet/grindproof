@@ -20,6 +20,9 @@ export const taskSchema = z.object({
   title: z.string(),
   description: z.string().nullable(),
   dueDate: z.date().nullable(),
+  startTime: z.date().nullable(),
+  endTime: z.date().nullable(),
+  reminders: z.array(z.enum(['15min', '1hour', '1day'])).nullable(),
   status: z.enum(["pending", "completed", "skipped"]),
   completionProof: z.string().nullable(),
   tags: z.array(z.string()).nullable(),
@@ -35,6 +38,9 @@ export const createTaskSchema = z.object({
   title: z.string().min(1, "Title is required"),
   description: z.string().optional(),
   dueDate: z.date().optional(),
+  startTime: z.date().optional(),
+  endTime: z.date().optional(),
+  reminders: z.array(z.enum(['15min', '1hour', '1day'])).optional(),
   goalId: z.string().optional(),
   tags: z.array(z.string()).optional(),
   recurrencePattern: recurrencePatternSchema.optional(),
@@ -46,6 +52,9 @@ export const updateTaskSchema = z.object({
   title: z.string().min(1).optional(),
   description: z.string().optional(),
   dueDate: z.date().optional(),
+  startTime: z.date().optional().nullable(),
+  endTime: z.date().optional().nullable(),
+  reminders: z.array(z.enum(['15min', '1hour', '1day'])).optional().nullable(),
   goalId: z.string().optional(),
   tags: z.array(z.string()).optional(),
   status: z.enum(["pending", "completed", "skipped"]).optional(),
@@ -63,6 +72,9 @@ function mapTaskFromDb(task: any): z.infer<typeof taskSchema> {
     title: task.title,
     description: task.description || null,
     dueDate: task.due_date ? new Date(task.due_date) : null,
+    startTime: task.start_time ? new Date(task.start_time) : null,
+    endTime: task.end_time ? new Date(task.end_time) : null,
+    reminders: task.reminders || null,
     status: task.status as "pending" | "completed" | "skipped",
     completionProof: task.completion_proof || null,
     tags: task.tags || null,
@@ -84,6 +96,9 @@ async function createGoogleCalendarEvent(
     title: string;
     description?: string;
     dueDate?: Date;
+    startTime?: Date;
+    endTime?: Date;
+    reminders?: string[];
     recurrencePattern?: z.infer<typeof recurrencePatternSchema> | null;
   }
 ) {
@@ -92,13 +107,34 @@ async function createGoogleCalendarEvent(
     description: task.description || "",
   };
 
-  if (task.dueDate) {
+  // Handle scheduled time blocks (startTime/endTime take priority)
+  if (task.startTime && task.endTime) {
+    console.log('Creating time block event:', {
+      startTime: task.startTime,
+      endTime: task.endTime,
+      startISO: task.startTime.toISOString(),
+      endISO: task.endTime.toISOString()
+    });
+    event.start = { 
+      dateTime: task.startTime.toISOString()
+    };
+    event.end = { 
+      dateTime: task.endTime.toISOString()
+    };
+  } 
+  // Handle due date with optional time
+  else if (task.dueDate) {
     // Set as all-day event if no specific time, otherwise use dateTime
     const dueDate = new Date(task.dueDate);
     const isAllDay = dueDate.getHours() === 0 && dueDate.getMinutes() === 0;
     
     if (isAllDay) {
-      const dateStr = dueDate.toISOString().split('T')[0];
+      // Format date in local timezone to avoid UTC conversion issues
+      // YYYY-MM-DD format required by Google Calendar
+      const year = dueDate.getFullYear();
+      const month = String(dueDate.getMonth() + 1).padStart(2, '0');
+      const day = String(dueDate.getDate()).padStart(2, '0');
+      const dateStr = `${year}-${month}-${day}`;
       event.start = { date: dateStr };
       event.end = { date: dateStr };
     } else {
@@ -109,10 +145,27 @@ async function createGoogleCalendarEvent(
     }
   }
 
+  // Add reminders
+  if (task.reminders && task.reminders.length > 0) {
+    console.log('Adding reminders:', task.reminders);
+    event.reminders = {
+      useDefault: false,
+      overrides: task.reminders.map(r => {
+        const minutes = r === '15min' ? 15 : r === '1hour' ? 60 : 1440;
+        return { method: 'popup', minutes };
+      })
+    };
+    console.log('Reminders configured:', event.reminders);
+  } else {
+    console.log('No reminders provided:', task.reminders);
+  }
+
   // Add recurrence rule if provided
   if (task.recurrencePattern?.rrule) {
     event.recurrence = [task.recurrencePattern.rrule];
   }
+
+  console.log('Final event object being sent to Google Calendar:', JSON.stringify(event, null, 2));
 
   const response = await fetch(
     "https://www.googleapis.com/calendar/v3/calendars/primary/events",
@@ -146,6 +199,9 @@ async function updateGoogleCalendarEvent(
     title?: string;
     description?: string;
     dueDate?: Date;
+    startTime?: Date;
+    endTime?: Date;
+    reminders?: string[];
   }
 ) {
   const event: any = {};
@@ -153,19 +209,48 @@ async function updateGoogleCalendarEvent(
   if (updates.title) event.summary = updates.title;
   if (updates.description !== undefined) event.description = updates.description || "";
   
-  if (updates.dueDate) {
-    const dueDate = new Date(updates.dueDate);
-    const isAllDay = dueDate.getHours() === 0 && dueDate.getMinutes() === 0;
-    
-    if (isAllDay) {
-      const dateStr = dueDate.toISOString().split('T')[0];
-      event.start = { date: dateStr };
-      event.end = { date: dateStr };
-    } else {
-      event.start = { dateTime: dueDate.toISOString() };
-      event.end = { 
-        dateTime: new Date(dueDate.getTime() + 60 * 60 * 1000).toISOString()
+  // Handle scheduled time blocks (startTime/endTime take priority)
+  if (updates.startTime !== undefined && updates.endTime !== undefined) {
+    if (updates.startTime && updates.endTime) {
+      event.start = { dateTime: updates.startTime.toISOString() };
+      event.end = { dateTime: updates.endTime.toISOString() };
+    }
+  }
+  // Handle due date
+  else if (updates.dueDate !== undefined) {
+    if (updates.dueDate) {
+      const dueDate = new Date(updates.dueDate);
+      const isAllDay = dueDate.getHours() === 0 && dueDate.getMinutes() === 0;
+      
+      if (isAllDay) {
+        // Format date in local timezone to avoid UTC conversion
+        const year = dueDate.getFullYear();
+        const month = String(dueDate.getMonth() + 1).padStart(2, '0');
+        const day = String(dueDate.getDate()).padStart(2, '0');
+        const dateStr = `${year}-${month}-${day}`;
+        event.start = { date: dateStr };
+        event.end = { date: dateStr };
+      } else {
+        event.start = { dateTime: dueDate.toISOString() };
+        event.end = { 
+          dateTime: new Date(dueDate.getTime() + 60 * 60 * 1000).toISOString()
+        };
+      }
+    }
+  }
+
+  // Update reminders if provided
+  if (updates.reminders !== undefined) {
+    if (updates.reminders && updates.reminders.length > 0) {
+      event.reminders = {
+        useDefault: false,
+        overrides: updates.reminders.map(r => {
+          const minutes = r === '15min' ? 15 : r === '1hour' ? 60 : 1440;
+          return { method: 'popup', minutes };
+        })
       };
+    } else {
+      event.reminders = { useDefault: true };
     }
   }
 
@@ -301,6 +386,15 @@ export const taskRouter = router({
   create: protectedProcedure
     .input(createTaskSchema)
     .mutation(async ({ ctx, input }) => {
+      console.log('Create task input:', {
+        title: input.title,
+        dueDate: input.dueDate,
+        startTime: input.startTime,
+        endTime: input.endTime,
+        reminders: input.reminders,
+        syncWithCalendar: input.syncWithCalendar
+      });
+
       let googleCalendarEventId: string | null = null;
 
       // If sync with calendar is enabled, create the event first
@@ -328,6 +422,9 @@ export const taskRouter = router({
                   title: input.title,
                   description: input.description,
                   dueDate: input.dueDate,
+                  startTime: input.startTime,
+                  endTime: input.endTime,
+                  reminders: input.reminders,
                   recurrencePattern: input.recurrencePattern || null,
                 }
               );
@@ -348,6 +445,9 @@ export const taskRouter = router({
           title: input.title,
           description: input.description || null,
           due_date: input.dueDate ? input.dueDate.toISOString() : null,
+          start_time: input.startTime ? input.startTime.toISOString() : null,
+          end_time: input.endTime ? input.endTime.toISOString() : null,
+          reminders: input.reminders || null,
           goal_id: input.goalId || null,
           tags: input.tags || null,
           google_calendar_event_id: googleCalendarEventId,
@@ -405,14 +505,27 @@ export const taskRouter = router({
             const accessToken = credentials?.accessToken;
 
             if (accessToken) {
+              // Only include fields that were actually provided in the update
+              const calendarUpdates: {
+                title?: string;
+                description?: string;
+                dueDate?: Date;
+                startTime?: Date;
+                endTime?: Date;
+                reminders?: string[];
+              } = {};
+              
+              if (input.title !== undefined) calendarUpdates.title = input.title;
+              if (input.description !== undefined) calendarUpdates.description = input.description;
+              if (input.dueDate !== undefined) calendarUpdates.dueDate = input.dueDate;
+              if (input.startTime !== undefined) calendarUpdates.startTime = input.startTime || undefined;
+              if (input.endTime !== undefined) calendarUpdates.endTime = input.endTime || undefined;
+              if (input.reminders !== undefined) calendarUpdates.reminders = input.reminders || undefined;
+              
               await updateGoogleCalendarEvent(
                 accessToken,
                 existingTask.google_calendar_event_id,
-                {
-                  title: input.title,
-                  description: input.description,
-                  dueDate: input.dueDate,
-                }
+                calendarUpdates
               );
             }
           }
@@ -429,6 +542,12 @@ export const taskRouter = router({
         updateData.description = input.description || null;
       if (input.dueDate !== undefined)
         updateData.due_date = input.dueDate ? input.dueDate.toISOString() : null;
+      if (input.startTime !== undefined)
+        updateData.start_time = input.startTime ? input.startTime.toISOString() : null;
+      if (input.endTime !== undefined)
+        updateData.end_time = input.endTime ? input.endTime.toISOString() : null;
+      if (input.reminders !== undefined)
+        updateData.reminders = input.reminders || null;
       if (input.goalId !== undefined) updateData.goal_id = input.goalId || null;
       if (input.tags !== undefined) updateData.tags = input.tags || null;
       if (input.status !== undefined) updateData.status = input.status;
@@ -756,6 +875,7 @@ export const taskRouter = router({
     eventsUrl.searchParams.set("singleEvents", "true");
     eventsUrl.searchParams.set("orderBy", "startTime");
     eventsUrl.searchParams.set("maxResults", "250");
+    eventsUrl.searchParams.set("showDeleted", "true");
 
     const eventsResponse = await fetch(eventsUrl.toString(), {
       headers: {
@@ -785,6 +905,13 @@ export const taskRouter = router({
       };
       status: string;
       recurrence?: string[];
+      reminders?: {
+        useDefault?: boolean;
+        overrides?: Array<{
+          method: string;
+          minutes: number;
+        }>;
+      };
     }
 
     interface CalendarResponse {
@@ -794,74 +921,159 @@ export const taskRouter = router({
     const calendarData: CalendarResponse = await eventsResponse.json();
     const events = calendarData.items || [];
 
-    let created = 0;
-    let updated = 0;
+    // Get all existing tasks with calendar event IDs for this user (single query)
+    const { data: existingTasks } = await ctx.db
+      .from("tasks")
+      .select("id, google_calendar_event_id")
+      .eq("user_id", ctx.user.id)
+      .not("google_calendar_event_id", "is", null);
 
-    // Process each event
+    const existingTasksMap = new Map(
+      (existingTasks || []).map(t => [t.google_calendar_event_id, t.id])
+    );
+
+    const tasksToCreate: any[] = [];
+    const tasksToUpdate: any[] = [];
+    const tasksToDelete: string[] = [];
+
+    // Process each event (no DB calls in loop)
     for (const event of events) {
-      // Skip cancelled events
-      if (event.status === "cancelled") {
-        // Check if task exists and mark as deleted or completed
-        const { data: existingTask } = await ctx.db
-          .from("tasks")
-          .select("id")
-          .eq("user_id", ctx.user.id)
-          .eq("google_calendar_event_id", event.id)
-          .maybeSingle();
+      const existingTaskId = existingTasksMap.get(event.id);
 
-        if (existingTask) {
-          await ctx.db
-            .from("tasks")
-            .update({ status: "skipped" })
-            .eq("id", existingTask.id);
+      // Delete tasks for cancelled events
+      if (event.status === "cancelled") {
+        console.log(`Found cancelled event: ${event.id}`);
+        if (existingTaskId) {
+          tasksToDelete.push(existingTaskId);
+          console.log(`Queued task ${existingTaskId} for deletion`);
         }
         continue;
       }
 
       const eventTitle = event.summary || "Untitled Event";
       const eventDescription = event.description || null;
-      const eventStart = event.start.dateTime || event.start.date;
-      const dueDate = eventStart ? new Date(eventStart) : null;
-
-      // Check if task already exists
-      const { data: existingTask } = await ctx.db
-        .from("tasks")
-        .select("*")
-        .eq("user_id", ctx.user.id)
-        .eq("google_calendar_event_id", event.id)
-        .maybeSingle();
-
-      if (existingTask) {
-        // Update existing task
-        await ctx.db
-          .from("tasks")
-          .update({
-            title: eventTitle,
-            description: eventDescription,
-            due_date: dueDate ? dueDate.toISOString() : null,
+      
+      // Extract time information from event
+      let dueDate = null;
+      let startTime = null;
+      let endTime = null;
+      
+      if (event.start.dateTime && event.end.dateTime) {
+        // Event has specific start/end times (scheduled block)
+        startTime = new Date(event.start.dateTime);
+        endTime = new Date(event.end.dateTime);
+        dueDate = startTime; // Use start time as due date for backwards compatibility
+      } else if (event.start.date) {
+        // All-day event
+        dueDate = new Date(event.start.date);
+      }
+      
+      // Extract reminders from event
+      let reminders = null;
+      if (event.reminders && !event.reminders.useDefault && event.reminders.overrides) {
+        reminders = event.reminders.overrides
+          .filter((r: any) => r.method === 'popup')
+          .map((r: any) => {
+            const minutes = r.minutes;
+            if (minutes === 15) return '15min';
+            if (minutes === 60) return '1hour';
+            if (minutes === 1440) return '1day';
+            return null;
           })
-          .eq("id", existingTask.id);
-        updated++;
+          .filter((r: any) => r !== null);
+        
+        if (reminders.length === 0) reminders = null;
+      }
+
+      if (existingTaskId) {
+        // Queue for update
+        tasksToUpdate.push({
+          id: existingTaskId,
+          title: eventTitle,
+          description: eventDescription,
+          due_date: dueDate ? dueDate.toISOString() : null,
+          start_time: startTime ? startTime.toISOString() : null,
+          end_time: endTime ? endTime.toISOString() : null,
+          reminders: reminders,
+        });
       } else {
-        // Create new task from calendar event
-        await ctx.db.from("tasks").insert({
+        // Queue for creation
+        tasksToCreate.push({
           user_id: ctx.user.id,
           title: eventTitle,
           description: eventDescription,
           due_date: dueDate ? dueDate.toISOString() : null,
+          start_time: startTime ? startTime.toISOString() : null,
+          end_time: endTime ? endTime.toISOString() : null,
+          reminders: reminders,
           google_calendar_event_id: event.id,
           is_synced_with_calendar: true,
           status: "pending",
           tags: ["calendar"],
         });
-        created++;
       }
     }
+
+    // Batch operations (parallel execution)
+    const operations = [];
+
+    // Delete cancelled tasks
+    if (tasksToDelete.length > 0) {
+      operations.push(
+        ctx.db
+          .from("tasks")
+          .delete()
+          .eq("user_id", ctx.user.id)
+          .in("id", tasksToDelete)
+      );
+    }
+
+    // Create new tasks (single batch insert)
+    if (tasksToCreate.length > 0) {
+      operations.push(
+        ctx.db.from("tasks").insert(tasksToCreate)
+      );
+    }
+
+    // Update existing tasks (batch updates)
+    if (tasksToUpdate.length > 0) {
+      // Note: Supabase doesn't support batch updates easily, so we do them in parallel
+      operations.push(
+        ...tasksToUpdate.map(task =>
+          ctx.db
+            .from("tasks")
+            .update({
+              title: task.title,
+              description: task.description,
+              due_date: task.due_date,
+              start_time: task.start_time,
+              end_time: task.end_time,
+              reminders: task.reminders,
+            })
+            .eq("id", task.id)
+        )
+      );
+    }
+
+    // Execute all operations in parallel
+    try {
+      await Promise.all(operations);
+    } catch (error) {
+      console.error("Error during batch operations:", error);
+      throw new Error(`Failed to sync tasks: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+
+    const created = tasksToCreate.length;
+    const updated = tasksToUpdate.length;
+    const deleted = tasksToDelete.length;
+
+    console.log(`Sync completed: ${created} created, ${updated} updated, ${deleted} deleted from ${events.length} total events`);
 
     return {
       success: true,
       created,
       updated,
+      deleted,
       total: events.length,
     };
   }),
