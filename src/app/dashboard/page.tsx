@@ -20,12 +20,13 @@ import { Calendar } from '@/components/ui/calendar';
 import { CreateTaskDialog, EditTaskDialog, CompleteTaskDialog, RescheduleTaskDialog, RecurringTaskEditDialog } from '@/components/TaskDialogs';
 import { useOfflineSync } from '@/hooks/useOfflineSync';
 import { TaskListSkeleton, GoalListSkeleton } from '@/components/LoadingSkeletons';
+import { ChatInterface } from '@/components/ChatInterface';
 
-type ViewMode = 'today' | 'goals' | 'evening' | 'weekly' | 'integrations';
+type ViewMode = 'chat' | 'today' | 'goals' | 'evening' | 'weekly' | 'integrations';
 
 export default function Dashboard() {
   const router = useRouter();
-  const [view, setView] = useState<ViewMode>('today');
+  const [view, setView] = useState<ViewMode>('chat');
   const [isFabTaskDialogOpen, setIsFabTaskDialogOpen] = useState(false);
   
   // Use AppContext instead of individual queries
@@ -87,6 +88,12 @@ export default function Dashboard() {
   };
 
   const views = [
+    {
+      id: 'chat',
+      emoji: '💬',
+      title: 'AI Chat',
+      content: <ChatInterface />,
+    },
     {
       id: 'today',
       emoji: '✓',
