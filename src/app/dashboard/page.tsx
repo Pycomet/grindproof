@@ -2518,7 +2518,7 @@ function WeeklyRoast() {
     start.setHours(0, 0, 0, 0);
     return start;
   };
-
+  
   const weekStart = getCurrentWeekStart();
 
   // Fetch existing accountability score for current week
@@ -2652,34 +2652,34 @@ function WeeklyRoast() {
       {/* Display Roast Data */}
       {displayData && !isGenerating && (
         <>
-          {/* Score Cards */}
+      {/* Score Cards */}
           <div className="grid gap-4 sm:grid-cols-3">
-            <div className="rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
+        <div className="rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
               <div className="text-sm font-medium text-zinc-500">Alignment Score</div>
-              <div className="mt-2 flex items-end gap-2">
+          <div className="mt-2 flex items-end gap-2">
                 <div className={`text-4xl font-bold ${
                   displayData.alignmentScore >= 0.7 ? 'text-green-600' :
                   displayData.alignmentScore >= 0.4 ? 'text-orange-600' :
-                  'text-red-600'
-                }`}>
+              'text-red-600'
+            }`}>
                   {Math.round(displayData.alignmentScore * 100)}%
-                </div>
-              </div>
-              <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
-                <div
-                  className={`h-full transition-all ${
+            </div>
+          </div>
+          <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
+            <div
+              className={`h-full transition-all ${
                     displayData.alignmentScore >= 0.7 ? 'bg-green-600' :
                     displayData.alignmentScore >= 0.4 ? 'bg-orange-600' :
-                    'bg-red-600'
-                  }`}
+                'bg-red-600'
+              }`}
                   style={{ width: `${Math.round(displayData.alignmentScore * 100)}%` }}
-                ></div>
-              </div>
-            </div>
+            ></div>
+          </div>
+        </div>
 
-            <div className="rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
-              <div className="text-sm font-medium text-zinc-500">Honesty Score</div>
-              <div className="mt-2 flex items-end gap-2">
+        <div className="rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
+          <div className="text-sm font-medium text-zinc-500">Honesty Score</div>
+          <div className="mt-2 flex items-end gap-2">
                 <div className={`text-4xl font-bold ${
                   displayData.honestyScore >= 0.7 ? 'text-green-600' :
                   displayData.honestyScore >= 0.4 ? 'text-orange-600' :
@@ -2687,9 +2687,9 @@ function WeeklyRoast() {
                 }`}>
                   {Math.round(displayData.honestyScore * 100)}%
                 </div>
-              </div>
-              <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
-                <div
+          </div>
+          <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
+            <div
                   className={`h-full transition-all ${
                     displayData.honestyScore >= 0.7 ? 'bg-green-600' :
                     displayData.honestyScore >= 0.4 ? 'bg-orange-600' :
@@ -2719,10 +2719,10 @@ function WeeklyRoast() {
                     'bg-red-600'
                   }`}
                   style={{ width: `${Math.round(displayData.completionRate * 100)}%` }}
-                ></div>
-              </div>
-            </div>
+            ></div>
           </div>
+        </div>
+      </div>
 
           {/* Week Summary */}
           {displayData.weekSummary && (
@@ -2733,30 +2733,30 @@ function WeeklyRoast() {
             </div>
           )}
 
-          {/* Insights */}
+      {/* Insights */}
           {displayData.insights && displayData.insights.length > 0 && (
-            <div className="rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
-              <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
-                The Uncomfortable Truth
-              </h3>
-              <div className="mt-4 space-y-3">
+      <div className="rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
+        <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+          The Uncomfortable Truth
+        </h3>
+        <div className="mt-4 space-y-3">
                 {displayData.insights.map((insight: any, idx: number) => (
-                  <div
-                    key={idx}
-                    className={`flex items-start gap-3 rounded-lg p-4 ${
-                      insight.severity === 'high'
-                        ? 'bg-red-50 dark:bg-red-950/20'
-                        : insight.severity === 'medium'
-                        ? 'bg-orange-50 dark:bg-orange-950/20'
-                        : 'bg-green-50 dark:bg-green-950/20'
-                    }`}
-                  >
-                    <span className="text-2xl">{insight.emoji}</span>
-                    <span className="flex-1 text-zinc-900 dark:text-zinc-50">{insight.text}</span>
-                  </div>
-                ))}
-              </div>
+            <div
+              key={idx}
+              className={`flex items-start gap-3 rounded-lg p-4 ${
+                insight.severity === 'high'
+                  ? 'bg-red-50 dark:bg-red-950/20'
+                  : insight.severity === 'medium'
+                  ? 'bg-orange-50 dark:bg-orange-950/20'
+                  : 'bg-green-50 dark:bg-green-950/20'
+              }`}
+            >
+              <span className="text-2xl">{insight.emoji}</span>
+              <span className="flex-1 text-zinc-900 dark:text-zinc-50">{insight.text}</span>
             </div>
+          ))}
+        </div>
+      </div>
           )}
 
           {/* Recommendations */}
@@ -2777,15 +2777,15 @@ function WeeklyRoast() {
           )}
 
           {/* Regenerate Button */}
-          <div className="flex justify-center pt-4">
+      <div className="flex justify-center pt-4">
             <button
               onClick={() => handleGenerateRoast(true)}
               disabled={isGenerating}
               className="rounded-full bg-zinc-900 px-8 py-4 text-base font-semibold text-white transition-all hover:bg-zinc-800 disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
             >
               {isGenerating ? 'Generating...' : existingScore ? 'Regenerate Roast 🔄' : 'I\'ll Do Better Next Week 💪'}
-            </button>
-          </div>
+        </button>
+      </div>
         </>
       )}
     </div>

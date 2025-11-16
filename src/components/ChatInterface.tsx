@@ -118,14 +118,51 @@ export function ChatInterface() {
       <div className="flex-1 overflow-y-auto p-4">
         {messages.length === 0 ? (
           <div className="flex h-full items-center justify-center">
-            <div className="text-center">
-              <div className="mb-4 text-6xl">💬</div>
-              <h3 className="mb-2 text-lg font-semibold text-zinc-900 dark:text-zinc-100">
-                Start a conversation
-              </h3>
-              <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                Ask me anything about your tasks, goals, or productivity patterns.
-              </p>
+            <div className="w-full max-w-2xl px-4">
+              <div className="text-center mb-6">
+                <div className="mb-4 text-6xl">💬</div>
+                <h3 className="mb-2 text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+                  Your Accountability Coach
+                </h3>
+                <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-6">
+                  I'm here to help you stay on track, analyze your patterns, and hold you accountable.
+                </p>
+              </div>
+              
+              <div className="space-y-3 text-left">
+                <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-4 cursor-default dark:border-zinc-700 dark:bg-zinc-800/50">
+                  <h4 className="mb-2 text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                    📋 Task Management
+                  </h4>
+                  <ul className="space-y-1 text-xs text-zinc-600 dark:text-zinc-400">
+                    <li>• Create tasks: &quot;Add task: workout tomorrow at 6am&quot;</li>
+                    <li>• Delete tasks: &quot;Remove the meeting task&quot;</li>
+                    <li>• Ask about your tasks: &quot;What do I have due today?&quot;</li>
+                  </ul>
+                </div>
+
+                <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-4 cursor-default dark:border-zinc-700 dark:bg-zinc-800/50">
+                  <h4 className="mb-2 text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                    🔍 Analysis & Insights
+                  </h4>
+                  <ul className="space-y-1 text-xs text-zinc-600 dark:text-zinc-400">
+                    <li>• Pattern detection: &quot;analyze patterns&quot; or &quot;what patterns do you see?&quot;</li>
+                    <li>• Weekly performance: &quot;roast me&quot; or &quot;generate roast&quot;</li>
+                    <li>• Goal progress: &quot;How am I doing on my goals?&quot;</li>
+                  </ul>
+                </div>
+
+                <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-4 cursor-default dark:border-zinc-700 dark:bg-zinc-800/50">
+                  <h4 className="mb-2 text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                    💬 General Chat
+                  </h4>
+                  <ul className="space-y-1 text-xs text-zinc-600 dark:text-zinc-400">
+                    <li>• Get advice on productivity and accountability</li>
+                    <li>• Discuss your goals and progress</li>
+                    <li>• Ask questions about your data and patterns</li>
+                  </ul>
+                </div>
+              </div>
             </div>
           </div>
         ) : (
@@ -142,7 +179,7 @@ export function ChatInterface() {
                   }`}
                 >
                   <div
-                    className={`max-w-[80%] rounded-2xl px-4 py-3 ${
+                    className={`max-w-[80%] rounded-2xl px-4 py-3 cursor-text ${
                       message.role === 'user'
                         ? 'bg-blue-600 text-white'
                         : 'bg-zinc-200 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100'
@@ -177,7 +214,7 @@ export function ChatInterface() {
                 animate={{ opacity: 1 }}
                 className="flex justify-start"
               >
-                <div className="max-w-[80%] rounded-2xl bg-zinc-200 px-4 py-3 dark:bg-zinc-800">
+                <div className="max-w-[80%] rounded-2xl bg-zinc-200 px-4 py-3 cursor-default dark:bg-zinc-800">
                   <div className="flex space-x-2">
                     <div className="h-2 w-2 animate-bounce rounded-full bg-zinc-500" />
                     <div
@@ -200,7 +237,7 @@ export function ChatInterface() {
 
       {/* Error Message */}
       {error && (
-        <div className="mx-4 mb-2 rounded-lg bg-red-50 p-3 text-sm text-red-800 dark:bg-red-900/20 dark:text-red-400">
+        <div className="mx-4 mb-2 rounded-lg bg-red-50 p-3 text-sm text-red-800 cursor-default dark:bg-red-900/20 dark:text-red-400">
           {error}
         </div>
       )}
@@ -216,12 +253,12 @@ export function ChatInterface() {
               onKeyPress={handleKeyPress}
               placeholder="Type your message..."
               disabled={isLoading}
-              className="flex-1 rounded-lg border border-zinc-300 bg-white px-4 py-3 text-sm text-zinc-900 placeholder-zinc-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder-zinc-400"
+              className="flex-1 rounded-lg border border-zinc-300 bg-white px-4 py-3 text-sm text-zinc-900 placeholder-zinc-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:opacity-50 disabled:cursor-not-allowed cursor-text dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder-zinc-400"
             />
             <button
               onClick={sendMessage}
               disabled={!input.trim() || isLoading}
-              className="rounded-lg bg-blue-600 px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:opacity-50 disabled:hover:bg-blue-600"
+              className="rounded-lg bg-blue-600 px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:opacity-50 disabled:hover:bg-blue-600 disabled:cursor-not-allowed cursor-pointer"
             >
               {isLoading ? (
                 <svg

@@ -11,7 +11,7 @@ export function markdownToReact(text: string): React.ReactNode {
   // Split by code blocks first (backticks) - allow empty code blocks
   const codeBlockRegex = /`([^`]*)`/g;
   const codeMatches: Array<{ start: number; end: number; content: string }> = [];
-  let match;
+  let match: RegExpExecArray | null;
   
   while ((match = codeBlockRegex.exec(text)) !== null) {
     codeMatches.push({
@@ -73,11 +73,13 @@ export function markdownToReact(text: string): React.ReactNode {
       // Regex for bold (**text**)
       const boldRegex = /\*\*([^*]+)\*\*/g;
       const boldMatches: Array<{ start: number; end: number; content: string }> = [];
-      while ((match = boldRegex.exec(textContent)) !== null) {
+      let boldMatch: RegExpExecArray | null;
+      while ((boldMatch = boldRegex.exec(textContent)) !== null) {
+        match = boldMatch;
         boldMatches.push({
-          start: match.index,
-          end: match.index + match[0].length,
-          content: match[1],
+          start: boldMatch.index,
+          end: boldMatch.index + boldMatch[0].length,
+          content: boldMatch[1],
         });
       }
 
@@ -91,22 +93,26 @@ export function markdownToReact(text: string): React.ReactNode {
       // Find italic matches, excluding those in bold regions
       const italicRegex = /\*([^*]+)\*/g;
       const italicMatches: Array<{ start: number; end: number; content: string }> = [];
-      while ((match = italicRegex.exec(textContent)) !== null) {
+      let italicMatch: RegExpExecArray | null;
+      while ((italicMatch = italicRegex.exec(textContent)) !== null) {
+        match = italicMatch;
+        // TypeScript knows italicMatch is not null here due to the while condition
+        const currentMatch = italicMatch;
         // Check if it's not part of a bold match
         const isInBold = boldRegions.some(
-          (b) => match.index >= b.start && match.index < b.end
+          (b) => currentMatch.index >= b.start && currentMatch.index < b.end
         );
         // Also check if it's actually bold (double asterisk before or after)
-        const charBefore = match.index > 0 ? textContent[match.index - 1] : '';
-        const charAfter = match.index + match[0].length < textContent.length 
-          ? textContent[match.index + match[0].length] 
+        const charBefore = currentMatch.index > 0 ? textContent[currentMatch.index - 1] : '';
+        const charAfter = currentMatch.index + currentMatch[0].length < textContent.length 
+          ? textContent[currentMatch.index + currentMatch[0].length] 
           : '';
         const isBold = charBefore === '*' || charAfter === '*';
         if (!isInBold && !isBold) {
           italicMatches.push({
-            start: match.index,
-            end: match.index + match[0].length,
-            content: match[1],
+            start: currentMatch.index,
+            end: currentMatch.index + currentMatch[0].length,
+            content: currentMatch[1],
           });
         }
       }

@@ -112,7 +112,7 @@ async function calculateWeeklyMetrics(
     .eq('user_id', userId)
     .eq('status', 'active');
 
-  const activeGoalIds = (activeGoals || []).map(g => g.id);
+  const activeGoalIds = (activeGoals || []).map((g: any) => g.id);
 
   // Fetch all tasks for active goals to calculate completion rates
   let allGoalTasks = [];
@@ -129,10 +129,10 @@ async function calculateWeeklyMetrics(
   // Count new goals created while existing goals are under 50% complete
   let newProjectsStarted = 0;
   for (const goal of weekGoals) {
-    const goalsUnder50 = activeGoalIds.filter(gid => {
-      const tasks = allGoalTasks.filter(t => t.goal_id === gid);
+    const goalsUnder50 = activeGoalIds.filter((gid: string) => {
+      const tasks = allGoalTasks.filter((t: any) => t.goal_id === gid);
       if (tasks.length === 0) return true;
-      const completed = tasks.filter(t => t.status === 'completed').length;
+      const completed = tasks.filter((t: any) => t.status === 'completed').length;
       return completed / tasks.length < 0.5;
     });
     
@@ -147,7 +147,7 @@ async function calculateWeeklyMetrics(
     .select('id')
     .eq('user_id', userId);
 
-  const userTaskIds = (allUserTasks || []).map(t => t.id);
+  const userTaskIds = (allUserTasks || []).map((t: any) => t.id);
 
   let evidenceSubmissions = 0;
   if (userTaskIds.length > 0) {
@@ -162,10 +162,10 @@ async function calculateWeeklyMetrics(
   }
 
   // Calculate metrics
-  const completed = weekTasks.filter(t => t.status === 'completed');
-  const skipped = weekTasks.filter(t => t.status === 'skipped');
-  const pending = weekTasks.filter(t => t.status === 'pending');
-  const overdue = pending.filter(t => {
+  const completed = weekTasks.filter((t: any) => t.status === 'completed');
+  const skipped = weekTasks.filter((t: any) => t.status === 'skipped');
+  const pending = weekTasks.filter((t: any) => t.status === 'pending');
+  const overdue = pending.filter((t: any) => {
     if (!t.due_date) return false;
     return new Date(t.due_date) < new Date();
   });
@@ -179,7 +179,7 @@ async function calculateWeeklyMetrics(
     .lt('due_date', weekEnd.toISOString());
 
   const planned = plannedTasks || [];
-  const plannedCompleted = planned.filter(t => t.status === 'completed');
+  const plannedCompleted = planned.filter((t: any) => t.status === 'completed');
 
   // Alignment score: planned vs actually completed
   const alignmentScore = planned.length > 0 
@@ -271,7 +271,7 @@ export async function POST(request: NextRequest) {
         newProjectsStarted: metrics.newProjectsStarted,
         evidenceSubmissions: metrics.evidenceSubmissions,
       },
-      patterns: (patterns || []).map(p => ({
+      patterns: (patterns || []).map((p: any) => ({
         type: p.pattern_type,
         description: p.description,
         confidence: Math.round(p.confidence * 100),

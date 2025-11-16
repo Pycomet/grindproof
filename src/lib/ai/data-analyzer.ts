@@ -85,29 +85,29 @@ export async function fetchUserTasksAnalysis(
   endOfNextWeek.setDate(startOfNextWeek.getDate() + 7);
 
   // Calculate stats
-  const completed = allTasks.filter(t => t.status === 'completed');
-  const pending = allTasks.filter(t => t.status === 'pending');
-  const skipped = allTasks.filter(t => t.status === 'skipped');
+  const completed = allTasks.filter((t: any) => t.status === 'completed');
+  const pending = allTasks.filter((t: any) => t.status === 'pending');
+  const skipped = allTasks.filter((t: any) => t.status === 'skipped');
   
-  const overdue = pending.filter(t => {
+  const overdue = pending.filter((t: any) => {
     if (!t.due_date) return false;
     return new Date(t.due_date) < now;
   });
 
-  const pendingThisWeek = pending.filter(t => {
+  const pendingThisWeek = pending.filter((t: any) => {
     if (!t.due_date) return false;
     const dueDate = new Date(t.due_date);
     return dueDate >= startOfWeek && dueDate < endOfWeek;
   });
 
-  const pendingNextWeek = pending.filter(t => {
+  const pendingNextWeek = pending.filter((t: any) => {
     if (!t.due_date) return false;
     const dueDate = new Date(t.due_date);
     return dueDate >= startOfNextWeek && dueDate < endOfNextWeek;
   });
 
   // Count tasks completed late (due_date < updated_at)
-  const completedLate = completed.filter(t => {
+  const completedLate = completed.filter((t: any) => {
     if (!t.due_date) return false;
     return new Date(t.due_date) < new Date(t.updated_at);
   });
@@ -160,22 +160,22 @@ export async function fetchUserGoalsAnalysis(
   const allTasks = tasks || [];
 
   // Calculate stats
-  const active = allGoals.filter(g => g.status === 'active');
-  const completed = allGoals.filter(g => g.status === 'completed');
-  const paused = allGoals.filter(g => g.status === 'paused');
-  const highPriorityActive = active.filter(g => g.priority === 'high');
+  const active = allGoals.filter((g: any) => g.status === 'active');
+  const completed = allGoals.filter((g: any) => g.status === 'completed');
+  const paused = allGoals.filter((g: any) => g.status === 'paused');
+  const highPriorityActive = active.filter((g: any) => g.priority === 'high');
 
   // Calculate goals under 50% complete
-  const activeUnder50Percent = active.filter(g => {
-    const goalTasks = allTasks.filter(t => t.goal_id === g.id);
+  const activeUnder50Percent = active.filter((g: any) => {
+    const goalTasks = allTasks.filter((t: any) => t.goal_id === g.id);
     if (goalTasks.length === 0) return true; // No tasks = 0% complete
-    const completedTasks = goalTasks.filter(t => t.status === 'completed').length;
+    const completedTasks = goalTasks.filter((t: any) => t.status === 'completed').length;
     const completionRate = completedTasks / goalTasks.length;
     return completionRate < 0.5;
   });
 
   // Count new goals created this week
-  const newGoalsThisWeek = allGoals.filter(g => {
+  const newGoalsThisWeek = allGoals.filter((g: any) => {
     const createdAt = new Date(g.created_at);
     return createdAt >= startOfWeek;
   });
@@ -206,13 +206,13 @@ export function analyzeTaskPatterns(tasks: any[]): TaskPattern[] {
   }
 
   // Pattern 1: Procrastination (tasks completed late)
-  const completedLate = tasks.filter(t => {
-    if (t.status !== 'completed' || !t.due_date) return false;
+    const completedLate = tasks.filter((t: any) => {
+      if (t.status !== 'completed' || !t.due_date) return false;
     return new Date(t.due_date) < new Date(t.updated_at);
   });
 
   if (completedLate.length > 0) {
-    const completedWithDueDate = tasks.filter(t => t.status === 'completed' && t.due_date).length;
+    const completedWithDueDate = tasks.filter((t: any) => t.status === 'completed' && t.due_date).length;
     const rate = completedWithDueDate > 0 ? completedLate.length / completedWithDueDate : 0;
     // Only flag as procrastination if rate > 0.5 (more than half of tasks completed late)
     if (rate > 0.5) {
@@ -221,13 +221,13 @@ export function analyzeTaskPatterns(tasks: any[]): TaskPattern[] {
         description: `${completedLate.length} tasks completed after due date`,
         confidence: Math.min(rate, 1.0),
         occurrences: completedLate.length,
-        evidence: completedLate.slice(0, 3).map(t => t.title),
+        evidence: completedLate.slice(0, 3).map((t: any) => t.title),
       });
     }
   }
 
   // Pattern 2: Task skipping behavior
-  const skipped = tasks.filter(t => t.status === 'skipped');
+  const skipped = tasks.filter((t: any) => t.status === 'skipped');
   if (skipped.length > 0) {
     const rate = skipped.length / tasks.length;
     if (rate > 0.2) {
@@ -236,13 +236,13 @@ export function analyzeTaskPatterns(tasks: any[]): TaskPattern[] {
         description: `${skipped.length} tasks skipped (${Math.round(rate * 100)}% of all tasks)`,
         confidence: Math.min(rate * 2, 1.0),
         occurrences: skipped.length,
-        evidence: skipped.slice(0, 3).map(t => t.title),
+        evidence: skipped.slice(0, 3).map((t: any) => t.title),
       });
     }
   }
 
   // Pattern 3: Overdue tasks accumulation
-  const overdue = tasks.filter(t => {
+  const overdue = tasks.filter((t: any) => {
     if (t.status !== 'pending' || !t.due_date) return false;
     return new Date(t.due_date) < now;
   });
@@ -253,21 +253,21 @@ export function analyzeTaskPatterns(tasks: any[]): TaskPattern[] {
       description: `${overdue.length} overdue tasks piling up`,
       confidence: Math.min(overdue.length / 10, 1.0),
       occurrences: overdue.length,
-      evidence: overdue.slice(0, 3).map(t => t.title),
+        evidence: overdue.slice(0, 3).map((t: any) => t.title),
     });
   }
 
   // Pattern 4: Tasks without due dates (vague planning)
-  const noDueDate = tasks.filter(t => t.status === 'pending' && !t.due_date);
+  const noDueDate = tasks.filter((t: any) => t.status === 'pending' && !t.due_date);
   if (noDueDate.length > 0) {
-    const rate = noDueDate.length / tasks.filter(t => t.status === 'pending').length;
+    const rate = noDueDate.length / tasks.filter((t: any) => t.status === 'pending').length;
     if (rate > 0.5) {
       patterns.push({
         type: 'vague_planning',
         description: `${noDueDate.length} pending tasks without due dates`,
         confidence: Math.min(rate, 1.0),
         occurrences: noDueDate.length,
-        evidence: noDueDate.slice(0, 3).map(t => t.title),
+        evidence: noDueDate.slice(0, 3).map((t: any) => t.title),
       });
     }
   }
@@ -288,13 +288,13 @@ export function analyzeGoalPatterns(goals: any[], tasks: any[]): GoalPattern[] {
     return patterns;
   }
 
-  const active = goals.filter(g => g.status === 'active');
+  const active = goals.filter((g: any) => g.status === 'active');
 
   // Pattern 1: New project addiction (3+ active goals under 50% complete)
-  const activeUnder50 = active.filter(g => {
-    const goalTasks = tasks.filter(t => t.goal_id === g.id);
+  const activeUnder50 = active.filter((g: any) => {
+    const goalTasks = tasks.filter((t: any) => t.goal_id === g.id);
     if (goalTasks.length === 0) return true;
-    const completedTasks = goalTasks.filter(t => t.status === 'completed').length;
+    const completedTasks = goalTasks.filter((t: any) => t.status === 'completed').length;
     return completedTasks / goalTasks.length < 0.5;
   });
 
@@ -303,16 +303,16 @@ export function analyzeGoalPatterns(goals: any[], tasks: any[]): GoalPattern[] {
       type: 'new_project_addiction',
       description: `${activeUnder50.length} active goals under 50% complete`,
       confidence: Math.min(activeUnder50.length / 5, 1.0),
-      evidence: activeUnder50.slice(0, 3).map(g => g.title),
+      evidence: activeUnder50.slice(0, 3).map((g: any) => g.title),
     });
   }
 
   // Pattern 2: Goal abandonment (goals with no recent tasks)
-  const abandoned = active.filter(g => {
-    const goalTasks = tasks.filter(t => t.goal_id === g.id);
+  const abandoned = active.filter((g: any) => {
+    const goalTasks = tasks.filter((t: any) => t.goal_id === g.id);
     if (goalTasks.length === 0) return true;
     
-    const recentActivity = goalTasks.some(t => {
+    const recentActivity = goalTasks.some((t: any) => {
       return new Date(t.updated_at) > thirtyDaysAgo;
     });
     
@@ -324,13 +324,13 @@ export function analyzeGoalPatterns(goals: any[], tasks: any[]): GoalPattern[] {
       type: 'goal_abandonment',
       description: `${abandoned.length} active goals with no activity in 30+ days`,
       confidence: Math.min(abandoned.length / 3, 1.0),
-      evidence: abandoned.slice(0, 3).map(g => g.title),
+      evidence: abandoned.slice(0, 3).map((g: any) => g.title),
     });
   }
 
   // Pattern 3: Goals without tasks (planning without execution)
-  const noTasks = active.filter(g => {
-    const goalTasks = tasks.filter(t => t.goal_id === g.id);
+  const noTasks = active.filter((g: any) => {
+    const goalTasks = tasks.filter((t: any) => t.goal_id === g.id);
     return goalTasks.length === 0;
   });
 
@@ -341,7 +341,7 @@ export function analyzeGoalPatterns(goals: any[], tasks: any[]): GoalPattern[] {
         type: 'planning_without_execution',
         description: `${noTasks.length} active goals with no tasks created`,
         confidence: Math.min(rate * 1.5, 1.0),
-        evidence: noTasks.slice(0, 3).map(g => g.title),
+        evidence: noTasks.slice(0, 3).map((g: any) => g.title),
       });
     }
   }
@@ -362,7 +362,7 @@ export async function fetchEvidenceStats(
     .select('id')
     .eq('user_id', userId);
 
-  const taskIds = (userTasks || []).map(t => t.id);
+  const taskIds = (userTasks || []).map((t: any) => t.id);
 
   if (taskIds.length === 0) {
     return { total: 0, thisWeek: 0, byType: {} };
@@ -381,10 +381,10 @@ export async function fetchEvidenceStats(
   startOfWeek.setDate(now.getDate() - now.getDay());
   startOfWeek.setHours(0, 0, 0, 0);
 
-  const thisWeek = allEvidence.filter(e => new Date(e.submitted_at) >= startOfWeek);
+  const thisWeek = allEvidence.filter((e: any) => new Date(e.submitted_at) >= startOfWeek);
 
   const byType: Record<string, number> = {};
-  allEvidence.forEach(e => {
+  allEvidence.forEach((e: any) => {
     byType[e.type] = (byType[e.type] || 0) + 1;
   });
 
