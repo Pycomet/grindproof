@@ -2,12 +2,6 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { POST } from '@/app/api/ai/analyze-patterns/route';
 import { NextRequest } from 'next/server';
 
-// Mock Google Generative AI functions first (for hoisting)
-const mockGenerateContent = vi.fn();
-const mockGetGenerativeModel = vi.fn(() => ({
-  generateContent: mockGenerateContent,
-}));
-
 // Mock dependencies
 vi.mock('@/lib/env', () => ({
   env: {
@@ -23,13 +17,23 @@ vi.mock('@/lib/ai/data-analyzer', () => ({
   analyzeUserData: vi.fn(),
 }));
 
-vi.mock('@google/generative-ai', () => ({
-  GoogleGenerativeAI: vi.fn(function() {
-    return {
-      getGenerativeModel: mockGetGenerativeModel,
-    };
-  }),
-}));
+// Mock Google Generative AI
+vi.mock('@google/generative-ai', () => {
+  const mockGenerateContent = vi.fn();
+  const mockGetGenerativeModel = vi.fn(() => ({
+    generateContent: mockGenerateContent,
+  }));
+
+  return {
+    GoogleGenerativeAI: vi.fn(function() {
+      return {
+        getGenerativeModel: mockGetGenerativeModel,
+      };
+    }),
+    __mockGenerateContent: mockGenerateContent,
+    __mockGetGenerativeModel: mockGetGenerativeModel,
+  };
+});
 
 import { createServerClient } from '@/lib/supabase/server';
 import { analyzeUserData } from '@/lib/ai/data-analyzer';
@@ -38,10 +42,15 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 describe('Pattern Analysis API Route', () => {
   let mockSupabase: any;
   let mockRequest: NextRequest;
+  let mockGenerateContent: any;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     // Reset mocks
     vi.clearAllMocks();
+    
+    // Get the mock from the module
+    const aiModule = await import('@google/generative-ai');
+    mockGenerateContent = (aiModule as any).__mockGenerateContent;
     
     // Set default Gemini response
     mockGenerateContent.mockResolvedValue({
@@ -148,6 +157,17 @@ describe('Pattern Analysis API Route', () => {
             }),
           }),
         }),
+        update: vi.fn().mockReturnValue({
+          eq: vi.fn().mockResolvedValue({
+            data: {
+              id: 'pattern-1',
+              pattern_type: 'procrastination',
+              description: 'Tasks completed late',
+              confidence: 0.8,
+            },
+            error: null,
+          }),
+        }),
       });
       mockSupabase.from = mockFrom;
 
@@ -232,6 +252,18 @@ describe('Pattern Analysis API Route', () => {
             }),
           }),
         }),
+        update: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              select: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({
+                  data: null,
+                  error: null,
+                }),
+              }),
+            }),
+          }),
+        }),
       });
       mockSupabase.from = mockFrom;
 
@@ -245,6 +277,54 @@ describe('Pattern Analysis API Route', () => {
     });
 
     it('should update existing patterns', async () => {
+      mockSupabase.auth.getUser.mockResolvedValue({
+        data: { user: { id: 'user-123' } },
+        error: null,
+      });
+
+      // Mock analyzeUserData to return data that will trigger pattern detection
+      (analyzeUserData as any).mockResolvedValue({
+        taskStats: {
+          total: 10,
+          completed: 5,
+          pending: 3,
+          skipped: 2,
+          overdue: 1,
+          completionRate: 0.5,
+          completedLate: 3, // This should trigger procrastination pattern
+        },
+        goalStats: {
+          total: 5,
+          active: 3,
+          completed: 2,
+          activeUnder50Percent: 1,
+          newGoalsThisWeek: 0,
+          completionRate: 0.4,
+        },
+        evidenceStats: {
+          total: 10,
+          thisWeek: 2,
+        },
+        taskPatterns: [],
+        goalPatterns: [],
+      });
+
+      // Mock AI to return procrastination pattern
+      mockGenerateContent.mockResolvedValue({
+        response: {
+          text: () => JSON.stringify({
+            patterns: [
+              {
+                type: 'procrastination',
+                description: '3 tasks completed late',
+                confidence: 0.6,
+                shouldSave: true,
+              },
+            ],
+          }),
+        },
+      });
+
       const existingPattern = {
         pattern_type: 'procrastination',
         last_occurred: new Date('2024-01-01').toISOString(),
@@ -259,12 +339,16 @@ describe('Pattern Analysis API Route', () => {
 
       const mockFrom = vi.fn().mockReturnValue({
         select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            order: vi.fn().mockReturnValue({
-              limit: vi.fn().mockResolvedValue({
-                data: [existingPattern],
-                error: null,
-              }),
+          eq: vi.fn().mockResolvedValue({
+            data: [existingPattern],
+            error: null,
+          }),
+        }),
+        insert: vi.fn().mockReturnValue({
+          select: vi.fn().mockReturnValue({
+            maybeSingle: vi.fn().mockResolvedValue({
+              data: null,
+              error: null,
             }),
           }),
         }),
@@ -330,6 +414,26 @@ describe('Pattern Analysis API Route', () => {
               limit: vi.fn().mockResolvedValue({
                 data: [],
                 error: null,
+              }),
+            }),
+          }),
+        }),
+        insert: vi.fn().mockReturnValue({
+          select: vi.fn().mockReturnValue({
+            maybeSingle: vi.fn().mockResolvedValue({
+              data: null,
+              error: null,
+            }),
+          }),
+        }),
+        update: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              select: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({
+                  data: null,
+                  error: null,
+                }),
               }),
             }),
           }),

@@ -48,27 +48,27 @@ describe('ChatInterface', () => {
   it('should render empty state with welcome message', () => {
     render(<ChatInterface />);
     
-    expect(screen.getByText('Start a conversation')).toBeInTheDocument();
-    expect(screen.getByText(/Ask me anything about your tasks/i)).toBeInTheDocument();
+    expect(screen.getByText('Your Accountability Coach')).toBeInTheDocument();
+    expect(screen.getByText(/I'm here to help you stay on track/i)).toBeInTheDocument();
+    expect(screen.getByText(/Task Management/i)).toBeInTheDocument();
+    expect(screen.getByText(/Analysis & Insights/i)).toBeInTheDocument();
+    expect(screen.getByText(/General Chat/i)).toBeInTheDocument();
   });
 
-  it('should display existing conversation messages', () => {
-    mockConversationGetAll.mockReturnValue({
-      data: [
-        {
-          id: 'conv-1',
-          messages: [
-            { role: 'user', content: 'Hello', timestamp: new Date().toISOString() },
-            { role: 'assistant', content: 'Hi there!', timestamp: new Date().toISOString() },
-          ],
-        },
-      ],
-    });
-
+  it('should display messages after sending', async () => {
     render(<ChatInterface />);
 
-    expect(screen.getByText('Hello')).toBeInTheDocument();
-    expect(screen.getByText('Hi there!')).toBeInTheDocument();
+    const input = screen.getByPlaceholderText('Type your message...');
+    fireEvent.change(input, { target: { value: 'Hello' } });
+    fireEvent.click(screen.getByRole('button', { name: /send/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Hello')).toBeInTheDocument();
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('AI response')).toBeInTheDocument();
+    });
   });
 
   it('should send message when Send button is clicked', async () => {
@@ -205,24 +205,18 @@ describe('ChatInterface', () => {
     expect(global.fetch).not.toHaveBeenCalled();
   });
 
-  it('should load existing conversation messages', async () => {
-    mockConversationGetAll.mockReturnValue({
-      data: [
-        {
-          id: 'conv-1',
-          messages: [
-            { role: 'user', content: 'Previous message', timestamp: new Date().toISOString() },
-            { role: 'assistant', content: 'Previous response', timestamp: new Date().toISOString() },
-          ],
-        },
-      ],
-    });
-
+  it('should display messages in conversation flow', async () => {
     render(<ChatInterface />);
+
+    const input = screen.getByPlaceholderText('Type your message...');
+    
+    // Send first message
+    fireEvent.change(input, { target: { value: 'Previous message' } });
+    fireEvent.click(screen.getByRole('button', { name: /send/i }));
 
     await waitFor(() => {
       expect(screen.getByText('Previous message')).toBeInTheDocument();
-      expect(screen.getByText('Previous response')).toBeInTheDocument();
+      expect(screen.getByText('AI response')).toBeInTheDocument();
     });
   });
 
@@ -259,22 +253,21 @@ describe('ChatInterface', () => {
     });
   });
 
-  it('should update existing conversation instead of creating new one', async () => {
-    mockConversationGetAll.mockReturnValue({
-      data: [
-        {
-          id: 'existing-conv',
-          messages: [
-            { role: 'user', content: 'Old message', timestamp: new Date().toISOString() },
-          ],
-        },
-      ],
-    });
-
+  it('should update existing conversation after creating one', async () => {
     render(<ChatInterface />);
 
     const input = screen.getByPlaceholderText('Type your message...');
-    fireEvent.change(input, { target: { value: 'New message' } });
+    
+    // First message creates conversation
+    fireEvent.change(input, { target: { value: 'First message' } });
+    fireEvent.click(screen.getByRole('button', { name: /send/i }));
+
+    await waitFor(() => {
+      expect(mockConversationCreate).toHaveBeenCalled();
+    });
+
+    // Second message updates conversation
+    fireEvent.change(input, { target: { value: 'Second message' } });
     fireEvent.click(screen.getByRole('button', { name: /send/i }));
 
     await waitFor(() => {

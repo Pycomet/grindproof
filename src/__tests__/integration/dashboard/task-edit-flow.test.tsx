@@ -62,6 +62,11 @@ vi.mock('@/lib/trpc/client', () => ({
         useQuery: vi.fn(),
       },
     },
+    conversation: {
+      getAll: { useQuery: vi.fn(() => ({ data: [] })) },
+      create: { useMutation: vi.fn(() => ({ mutateAsync: vi.fn() })) },
+      update: { useMutation: vi.fn(() => ({ mutateAsync: vi.fn() })) },
+    },
   },
 }));
 
@@ -137,6 +142,16 @@ describe('Task Edit Flow', () => {
       updatedAt: new Date(),
     },
   ];
+
+  // Helper to switch to tasks view
+  const switchToTasksView = async () => {
+    await waitFor(() => {
+      const tasksTab = screen.queryByText('✓ Tasks');
+      if (tasksTab) {
+        fireEvent.click(tasksTab);
+      }
+    });
+  };
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -221,6 +236,8 @@ describe('Task Edit Flow', () => {
   describe('Edit Button Display', () => {
     it('shows Edit button only for pending tasks', async () => {
       render(<Dashboard />);
+      await switchToTasksView();
+      await switchToTasksView();
 
       await waitFor(() => {
         const editButtons = screen.getAllByText('Edit');
@@ -231,6 +248,8 @@ describe('Task Edit Flow', () => {
 
     it('Edit button is NOT visible for completed tasks', async () => {
       render(<Dashboard />);
+      await switchToTasksView();
+      await switchToTasksView();
 
       await waitFor(() => {
         // Task 2 is completed - verify it exists
@@ -247,6 +266,7 @@ describe('Task Edit Flow', () => {
 
     it('Complete button only shows for pending tasks', async () => {
       render(<Dashboard />);
+      await switchToTasksView();
 
       await waitFor(() => {
         const completeButtons = screen.getAllByText('Complete');
@@ -257,6 +277,7 @@ describe('Task Edit Flow', () => {
 
     it('Skip button only shows for pending tasks', async () => {
       render(<Dashboard />);
+      await switchToTasksView();
 
       await waitFor(() => {
         const skipButtons = screen.getAllByText('Skip');
@@ -269,6 +290,7 @@ describe('Task Edit Flow', () => {
   describe('Edit Task Interaction', () => {
     it('opens edit dialog when Edit button is clicked', async () => {
       render(<Dashboard />);
+      await switchToTasksView();
 
       await waitFor(() => {
         const taskTitles = screen.getAllByText('Test Task 1');
@@ -285,6 +307,7 @@ describe('Task Edit Flow', () => {
 
     it('pre-fills edit dialog with task data', async () => {
       render(<Dashboard />);
+      await switchToTasksView();
 
       await waitFor(() => {
         const taskTitles = screen.getAllByText('Test Task 1');
@@ -308,6 +331,7 @@ describe('Task Edit Flow', () => {
       } as any);
 
       render(<Dashboard />);
+      await switchToTasksView();
 
       await waitFor(() => {
         const taskTitles = screen.getAllByText('Test Task 1');
@@ -341,6 +365,7 @@ describe('Task Edit Flow', () => {
   describe('Button Styling', () => {
     it('Edit button has blue styling', async () => {
       render(<Dashboard />);
+      await switchToTasksView();
 
       await waitFor(() => {
         const editButtons = screen.getAllByText('Edit');
@@ -352,6 +377,7 @@ describe('Task Edit Flow', () => {
 
     it('Complete button has green styling', async () => {
       render(<Dashboard />);
+      await switchToTasksView();
 
       await waitFor(() => {
         const completeButtons = screen.getAllByText('Complete');
@@ -362,6 +388,7 @@ describe('Task Edit Flow', () => {
 
     it('Skip button has amber styling', async () => {
       render(<Dashboard />);
+      await switchToTasksView();
 
       await waitFor(() => {
         const skipButtons = screen.getAllByText('Skip');
@@ -374,6 +401,7 @@ describe('Task Edit Flow', () => {
   describe('Task Sorting', () => {
     it('displays pending tasks before completed tasks', async () => {
       render(<Dashboard />);
+      await switchToTasksView();
 
       await waitFor(() => {
         const tasks = screen.getAllByRole('heading', { level: 3 });
@@ -391,6 +419,7 @@ describe('Task Edit Flow', () => {
   describe('Synced Task Indicator', () => {
     it('shows sync indicator for synced tasks', async () => {
       render(<Dashboard />);
+      await switchToTasksView();
 
       await waitFor(() => {
         const taskTitles = screen.getAllByText('Test Task 2');
@@ -405,6 +434,7 @@ describe('Task Edit Flow', () => {
   describe('Delete Button', () => {
     it('shows Delete button for all tasks (pending, completed, skipped)', async () => {
       render(<Dashboard />);
+      await switchToTasksView();
 
       await waitFor(() => {
         // Delete button should appear as "Delete" on desktop
@@ -415,6 +445,7 @@ describe('Task Edit Flow', () => {
 
     it('Delete button has red styling', async () => {
       render(<Dashboard />);
+      await switchToTasksView();
 
       await waitFor(() => {
         const deleteButtons = screen.getAllByTitle('Delete task');
@@ -511,6 +542,7 @@ describe('Task Edit Flow', () => {
 
     it('hides skipped tasks by default on Today filter', async () => {
       render(<Dashboard />);
+      await switchToTasksView();
 
       await waitFor(() => {
         // Skipped task should NOT be visible
@@ -524,6 +556,7 @@ describe('Task Edit Flow', () => {
 
     it('shows "Skipped" filter button with count', async () => {
       render(<Dashboard />);
+      await switchToTasksView();
 
       await waitFor(() => {
         const skippedFilters = screen.getAllByText('Skipped');
@@ -537,6 +570,7 @@ describe('Task Edit Flow', () => {
 
     it('shows skipped tasks when Skipped filter is clicked', async () => {
       render(<Dashboard />);
+      await switchToTasksView();
 
       await waitFor(() => {
         const skippedFilters = screen.getAllByText('Skipped');
@@ -555,6 +589,7 @@ describe('Task Edit Flow', () => {
 
     it('skipped tasks have red styling when visible', async () => {
       render(<Dashboard />);
+      await switchToTasksView();
 
       await waitFor(() => {
         const skippedFilters = screen.getAllByText('Skipped');
@@ -573,6 +608,7 @@ describe('Task Edit Flow', () => {
 
     it('skipped tasks do not have Edit button', async () => {
       render(<Dashboard />);
+      await switchToTasksView();
 
       await waitFor(() => {
         const skippedFilters = screen.getAllByText('Skipped');
@@ -591,6 +627,7 @@ describe('Task Edit Flow', () => {
 
     it('excludes skipped tasks from All filter count', async () => {
       render(<Dashboard />);
+      await switchToTasksView();
 
       await waitFor(() => {
         const allFilters = screen.getAllByText('All');

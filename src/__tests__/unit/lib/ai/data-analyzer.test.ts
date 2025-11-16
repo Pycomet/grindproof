@@ -382,8 +382,14 @@ describe('Data Analyzer Utilities', () => {
   describe('fetchEvidenceStats', () => {
     it('should fetch and calculate evidence statistics', async () => {
       const now = new Date();
-      const thisWeek = new Date(now);
-      thisWeek.setDate(now.getDate() - 2); // 2 days ago
+      // Calculate start of current week (Sunday)
+      const startOfWeek = new Date(now);
+      startOfWeek.setDate(now.getDate() - now.getDay());
+      startOfWeek.setHours(0, 0, 0, 0);
+      
+      // Create dates within current week and outside
+      const withinWeek = new Date(startOfWeek.getTime() + 1 * 24 * 60 * 60 * 1000); // Monday of this week
+      const outsideWeek = new Date(startOfWeek.getTime() - 2 * 24 * 60 * 60 * 1000); // Before this week
 
       const mockTasks = [
         { id: 'task-1' },
@@ -395,19 +401,19 @@ describe('Data Analyzer Utilities', () => {
           id: 'evidence-1',
           task_id: 'task-1',
           type: 'photo',
-          submitted_at: thisWeek.toISOString(),
+          submitted_at: withinWeek.toISOString(),
         },
         {
           id: 'evidence-2',
           task_id: 'task-2',
           type: 'screenshot',
-          submitted_at: thisWeek.toISOString(),
+          submitted_at: withinWeek.toISOString(),
         },
         {
           id: 'evidence-3',
           task_id: 'task-1',
           type: 'text',
-          submitted_at: new Date(now.getTime() - 10 * 24 * 60 * 60 * 1000).toISOString(), // 10 days ago
+          submitted_at: outsideWeek.toISOString(), // Before this week
         },
       ];
 

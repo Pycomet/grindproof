@@ -53,10 +53,24 @@ vi.mock('@/lib/trpc/client', () => ({
     integration: {
       getAll: { useQuery: vi.fn(() => ({ data: [], isLoading: false })) },
     },
+    conversation: {
+      getAll: { useQuery: vi.fn(() => ({ data: [] })) },
+      create: { useMutation: vi.fn(() => ({ mutateAsync: vi.fn() })) },
+      update: { useMutation: vi.fn(() => ({ mutateAsync: vi.fn() })) },
+    },
   },
 }));
 
 describe('Task Priority Sorting', () => {
+  // Helper to switch to tasks view
+  const switchToTasksView = async () => {
+    await waitFor(() => {
+      const tasksTab = screen.queryByText('✓ Tasks');
+      if (tasksTab) {
+        fireEvent.click(tasksTab);
+      }
+    });
+  };
 
   const createTask = (
     title: string,
@@ -99,7 +113,7 @@ describe('Task Priority Sorting', () => {
   });
 
   describe('Priority-based sorting', () => {
-    it('sorts pending tasks by priority (high > medium > low)', () => {
+    it('sorts pending tasks by priority (high > medium > low)', async () => {
       const today = new Date();
       const mockTasks = [
         createTask('Low Priority Task', 'low', today),
@@ -113,6 +127,14 @@ describe('Task Priority Sorting', () => {
       });
 
       render(<Dashboard />);
+      await switchToTasksView();
+
+      // Wait for tasks to render
+      await waitFor(() => {
+        expect(screen.getAllByText('High Priority Task').length).toBeGreaterThan(0);
+        expect(screen.getAllByText('Medium Priority Task').length).toBeGreaterThan(0);
+        expect(screen.getAllByText('Low Priority Task').length).toBeGreaterThan(0);
+      });
 
       // Check tasks are rendered and in correct order
       const highTask = screen.getAllByText('High Priority Task');
@@ -142,8 +164,13 @@ describe('Task Priority Sorting', () => {
       });
 
       render(<Dashboard />);
+      await switchToTasksView();
 
       // Switch to 'All' filter to see all pending tasks
+      await waitFor(() => {
+        const allFilters = screen.getAllByRole('button', { name: /^All/i });
+        expect(allFilters.length).toBeGreaterThan(0);
+      });
       const allFilters = screen.getAllByRole('button', { name: /^All/i });
       fireEvent.click(allFilters[0]);
 
@@ -173,8 +200,13 @@ describe('Task Priority Sorting', () => {
       });
 
       render(<Dashboard />);
+      await switchToTasksView();
 
       // Switch to 'All' filter to see all pending tasks
+      await waitFor(() => {
+        const allFilters = screen.getAllByRole('button', { name: /^All/i });
+        expect(allFilters.length).toBeGreaterThan(0);
+      });
       const allFilters = screen.getAllByRole('button', { name: /^All/i });
       fireEvent.click(allFilters[0]);
 
@@ -188,7 +220,7 @@ describe('Task Priority Sorting', () => {
   });
 
   describe('Availability-based sorting', () => {
-    it('places completed tasks at the bottom regardless of priority', () => {
+    it('places completed tasks at the bottom regardless of priority', async () => {
       const today = new Date();
       const mockTasks = [
         createTask('High Priority Completed', 'high', today, 'completed'),
@@ -201,6 +233,13 @@ describe('Task Priority Sorting', () => {
       });
 
       render(<Dashboard />);
+      await switchToTasksView();
+
+      // Wait for tasks to render
+      await waitFor(() => {
+        expect(screen.getAllByText('Low Priority Pending').length).toBeGreaterThan(0);
+        expect(screen.getAllByText('High Priority Completed').length).toBeGreaterThan(0);
+      });
 
       // Verify both tasks are rendered
       expect(screen.getAllByText('Low Priority Pending')[0]).toBeInTheDocument();
@@ -221,8 +260,13 @@ describe('Task Priority Sorting', () => {
       });
 
       render(<Dashboard />);
+      await switchToTasksView();
 
       // Switch to 'All' filter to see all tasks including completed
+      await waitFor(() => {
+        const allFilters = screen.getAllByRole('button', { name: /^All/i });
+        expect(allFilters.length).toBeGreaterThan(0);
+      });
       const allFilters = screen.getAllByRole('button', { name: /^All/i });
       fireEvent.click(allFilters[0]);
 
@@ -250,8 +294,13 @@ describe('Task Priority Sorting', () => {
       });
 
       render(<Dashboard />);
+      await switchToTasksView();
 
       // Switch to 'All' filter to see pending and completed tasks
+      await waitFor(() => {
+        const allFilters = screen.getAllByRole('button', { name: /^All/i });
+        expect(allFilters.length).toBeGreaterThan(0);
+      });
       const allFilters = screen.getAllByRole('button', { name: /^All/i });
       fireEvent.click(allFilters[0]);
 
@@ -288,8 +337,13 @@ describe('Task Priority Sorting', () => {
       });
 
       render(<Dashboard />);
+      await switchToTasksView();
 
       // Switch to 'All' filter to see all tasks
+      await waitFor(() => {
+        const allFilters = screen.getAllByRole('button', { name: /^All/i });
+        expect(allFilters.length).toBeGreaterThan(0);
+      });
       const allFilters = screen.getAllByRole('button', { name: /^All/i });
       fireEvent.click(allFilters[0]);
 
@@ -318,8 +372,13 @@ describe('Task Priority Sorting', () => {
       });
 
       render(<Dashboard />);
+      await switchToTasksView();
 
       // Switch to 'All' filter to see all tasks
+      await waitFor(() => {
+        const allFilters = screen.getAllByRole('button', { name: /^All/i });
+        expect(allFilters.length).toBeGreaterThan(0);
+      });
       const allFilters = screen.getAllByRole('button', { name: /^All/i });
       fireEvent.click(allFilters[0]);
 

@@ -129,7 +129,7 @@ export function ChatInterface() {
                 </p>
               </div>
               
-              <div className="space-y-3 text-left">
+              <div className="md:block hidden space-y-3 text-left">
                 <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-4 cursor-default dark:border-zinc-700 dark:bg-zinc-800/50">
                   <h4 className="mb-2 text-sm font-semibold text-zinc-900 dark:text-zinc-100">
                     📋 Task Management

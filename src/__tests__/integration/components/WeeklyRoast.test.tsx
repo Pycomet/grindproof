@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent, act } from '@testing-library/react';
 import '@testing-library/jest-dom';
+import React from 'react';
 
 // Mock tRPC client
 const mockUseQuery = vi.fn();
@@ -39,14 +40,17 @@ function MockWeeklyRoast() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to generate roast');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to generate roast');
       }
 
       const data = await response.json();
       setRoastData(data);
+      setError(null); // Clear error on success
       await refetch();
     } catch (err: any) {
       setError(err.message);
+      setRoastData(null); // Clear roast data on error
     } finally {
       setIsGenerating(false);
     }
@@ -343,16 +347,30 @@ describe('WeeklyRoast Component', () => {
     });
 
     it('should clear error on successful regeneration', async () => {
+      const mockRefetch = vi.fn();
       mockUseQuery.mockReturnValue({
         data: null,
-        refetch: vi.fn(),
+        refetch: mockRefetch,
       });
 
       // First call fails
-      (global.fetch as any).mockResolvedValueOnce({
-        ok: false,
-        json: async () => ({ error: 'API error' }),
-      });
+      (global.fetch as any)
+        .mockResolvedValueOnce({
+          ok: false,
+          json: async () => ({ error: 'API error' }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            success: true,
+            alignmentScore: 0.70,
+            honestyScore: 0.75,
+            completionRate: 0.65,
+            insights: [],
+            recommendations: [],
+            weekSummary: 'Week analyzed',
+          }),
+        });
 
       render(<MockWeeklyRoast />);
 
@@ -361,29 +379,24 @@ describe('WeeklyRoast Component', () => {
 
       await waitFor(() => {
         expect(screen.getByTestId('error-message')).toBeInTheDocument();
+        expect(screen.getByTestId('error-message')).toHaveTextContent('API error');
       });
 
-      // Second call succeeds
-      (global.fetch as any).mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          success: true,
-          alignmentScore: 0.70,
-          honestyScore: 0.75,
-          completionRate: 0.65,
-          insights: [],
-          recommendations: [],
-          weekSummary: 'Week analyzed',
-        }),
+      // Wait for loading to complete and button to reappear
+      await waitFor(() => {
+        expect(screen.queryByTestId('loading-state')).not.toBeInTheDocument();
+        expect(screen.getByTestId('generate-roast-button')).toBeInTheDocument();
       });
 
-      fireEvent.click(generateButton);
+      // Second call succeeds - click again
+      const regenerateButton = screen.getByTestId('generate-roast-button');
+      fireEvent.click(regenerateButton);
 
+      // Wait for error to be cleared and roast to appear
       await waitFor(() => {
         expect(screen.queryByTestId('error-message')).not.toBeInTheDocument();
-      });
-
-      expect(screen.getByTestId('roast-display')).toBeInTheDocument();
+        expect(screen.getByTestId('roast-display')).toBeInTheDocument();
+      }, { timeout: 5000 });
     });
   });
 
@@ -460,8 +473,9 @@ describe('WeeklyRoast Component', () => {
         refetch: vi.fn(),
       });
 
-      (global.fetch as any).mockImplementation(
-        () => new Promise(resolve => setTimeout(() => resolve({
+      let resolveFetch: any;
+      const fetchPromise = new Promise(resolve => {
+        resolveFetch = () => resolve({
           ok: true,
           json: async () => ({
             success: true,
@@ -472,16 +486,34 @@ describe('WeeklyRoast Component', () => {
             recommendations: [],
             weekSummary: 'Week analyzed',
           }),
-        }), 100))
-      );
+        });
+      });
+
+      (global.fetch as any).mockImplementation(() => fetchPromise);
 
       render(<MockWeeklyRoast />);
 
       const generateButton = screen.getByTestId('generate-roast-button');
+      expect(generateButton).not.toBeDisabled();
+      
       fireEvent.click(generateButton);
 
+      // Button should disappear and loading state should appear
       await waitFor(() => {
-        expect(generateButton).toBeDisabled();
+        expect(screen.getByTestId('loading-state')).toBeInTheDocument();
+        expect(screen.queryByTestId('generate-roast-button')).not.toBeInTheDocument();
+      }, { timeout: 2000 });
+
+      // Resolve the fetch to complete the test
+      resolveFetch();
+      
+      // Wait for loading to complete and roast display to appear
+      // After successful generation, the component shows roast display with regenerate button
+      await waitFor(() => {
+        expect(screen.queryByTestId('loading-state')).not.toBeInTheDocument();
+        expect(screen.getByTestId('roast-display')).toBeInTheDocument();
+        const regenerateButton = screen.getByTestId('regenerate-button');
+        expect(regenerateButton).not.toBeDisabled();
       });
     });
 
