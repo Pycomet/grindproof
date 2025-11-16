@@ -28,7 +28,7 @@ export default function Dashboard() {
   const router = useRouter();
   const [view, setView] = useState<ViewMode>('chat');
   const [isFabTaskDialogOpen, setIsFabTaskDialogOpen] = useState(false);
-  
+
   // Use AppContext instead of individual queries
   const { user, goals, setUser, refreshTasks, refreshIntegrations, isGoogleCalendarConnected } = useApp();
   const { isOnline, pendingCount } = useOfflineSync();
@@ -298,7 +298,7 @@ export default function Dashboard() {
       </main>
 
       {/* Persistent FAB (Floating Action Button) */}
-      {view !== 'chat' && <button
+      <button
         onClick={() => setIsFabTaskDialogOpen(true)}
         className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-zinc-900 text-white shadow-lg transition-all hover:scale-110 hover:shadow-xl dark:bg-zinc-50 dark:text-zinc-900"
         aria-label="Add Task"
@@ -316,7 +316,7 @@ export default function Dashboard() {
             d="M12 4v16m8-8H4"
           />
         </svg>
-      </button>}
+      </button>
 
       {/* Global Task Creation Dialog */}
       <CreateTaskDialog
