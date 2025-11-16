@@ -157,6 +157,16 @@ export default function Dashboard() {
         <div className="mx-auto max-w-5xl px-4">
           <div className="flex gap-1">
             <button
+              onClick={() => setView('chat')}
+              className={`px-6 py-3 text-sm font-medium transition-colors ${
+                view === 'chat'
+                  ? 'border-b-2 border-zinc-900 text-zinc-900 dark:border-zinc-50 dark:text-zinc-50'
+                  : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-50'
+              }`}
+            >
+              💬
+            </button>
+            <button
               onClick={() => setView('today')}
               className={`px-6 py-3 text-sm font-medium transition-colors ${
                 view === 'today'
@@ -218,6 +228,17 @@ export default function Dashboard() {
       {/* Desktop Content - Hidden on Mobile */}
       <main className="hidden md:block mx-auto max-w-5xl px-4 py-8">
         <AnimatePresence mode="wait">
+          {view === 'chat' && (
+            <motion.div
+              key="chat"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              transition={{ duration: 0.3, ease: 'easeInOut' }}
+            >
+              <ChatInterface />
+            </motion.div>
+          )}
           {view === 'today' && (
             <motion.div
               key="today"
@@ -277,7 +298,7 @@ export default function Dashboard() {
       </main>
 
       {/* Persistent FAB (Floating Action Button) */}
-      <button
+      {view !== 'chat' && <button
         onClick={() => setIsFabTaskDialogOpen(true)}
         className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-zinc-900 text-white shadow-lg transition-all hover:scale-110 hover:shadow-xl dark:bg-zinc-50 dark:text-zinc-900"
         aria-label="Add Task"
@@ -295,7 +316,7 @@ export default function Dashboard() {
             d="M12 4v16m8-8H4"
           />
         </svg>
-      </button>
+      </button>}
 
       {/* Global Task Creation Dialog */}
       <CreateTaskDialog
@@ -2545,9 +2566,9 @@ function WeeklyRoast() {
     completionRate: existingScore.completionRate || 0,
     newProjectsStarted: existingScore.newProjectsStarted || 0,
     evidenceSubmissions: existingScore.evidenceSubmissions || 0,
-    insights: [],
-    recommendations: [],
-    weekSummary: 'Roast generated. Review your metrics above.',
+    insights: existingScore.insights || [],
+    recommendations: existingScore.recommendations || [],
+    weekSummary: existingScore.weekSummary || 'Roast generated. Review your metrics above.',
   } : null);
 
   return (
@@ -2561,9 +2582,29 @@ function WeeklyRoast() {
           Time to face the music. Here&apos;s how you really did this week:
         </p>
         {existingScore && (
-          <p className="mt-1 text-xs text-zinc-500">
-            Generated: {new Date(existingScore.createdAt).toLocaleDateString()}
-          </p>
+          <div className="mt-2 flex items-center gap-4 text-xs text-zinc-500">
+            <span>
+              Generated: {new Date(existingScore.createdAt).toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric',
+              })} at {new Date(existingScore.createdAt).toLocaleTimeString('en-US', {
+                hour: 'numeric',
+                minute: '2-digit',
+              })}
+            </span>
+            {existingScore.updatedAt.getTime() !== existingScore.createdAt.getTime() && (
+              <span>
+                Updated: {new Date(existingScore.updatedAt).toLocaleDateString('en-US', {
+                  month: 'short',
+                  day: 'numeric',
+                })} at {new Date(existingScore.updatedAt).toLocaleTimeString('en-US', {
+                  hour: 'numeric',
+                  minute: '2-digit',
+                })}
+              </span>
+            )}
+          </div>
         )}
       </div>
 
@@ -2742,7 +2783,7 @@ function WeeklyRoast() {
               disabled={isGenerating}
               className="rounded-full bg-zinc-900 px-8 py-4 text-base font-semibold text-white transition-all hover:bg-zinc-800 disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
             >
-              {existingScore ? 'Regenerate Roast 🔄' : 'I\'ll Do Better Next Week 💪'}
+              {isGenerating ? 'Generating...' : existingScore ? 'Regenerate Roast 🔄' : 'I\'ll Do Better Next Week 💪'}
             </button>
           </div>
         </>

@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { trpc } from '@/lib/trpc/client';
 import { motion, AnimatePresence } from 'framer-motion';
+import { markdownToReact } from '@/lib/markdown';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -18,23 +19,9 @@ export function ChatInterface() {
   const [conversationId, setConversationId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Fetch existing conversations
-  const { data: conversations } = trpc.conversation.getAll.useQuery();
-  
   // Mutations
   const createConversation = trpc.conversation.create.useMutation();
   const updateConversation = trpc.conversation.update.useMutation();
-
-  // Load the most recent conversation on mount
-  useEffect(() => {
-    if (conversations && conversations.length > 0) {
-      const latest = conversations[0];
-      setConversationId(latest.id);
-      if (Array.isArray(latest.messages)) {
-        setMessages(latest.messages as Message[]);
-      }
-    }
-  }, [conversations]);
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
@@ -86,6 +73,7 @@ export function ChatInterface() {
         },
         body: JSON.stringify({
           messages: updatedMessages,
+          conversationId: conversationId,
         }),
       });
 
@@ -160,9 +148,12 @@ export function ChatInterface() {
                         : 'bg-zinc-200 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100'
                     }`}
                   >
-                    <p className="whitespace-pre-wrap text-sm leading-relaxed">
-                      {message.content}
-                    </p>
+                    <div className="text-sm leading-relaxed whitespace-pre-wrap">
+                      {message.role === 'assistant' 
+                        ? markdownToReact(message.content)
+                        : message.content
+                      }
+                    </div>
                     <p
                       className={`mt-1 text-xs ${
                         message.role === 'user'

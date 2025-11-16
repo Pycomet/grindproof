@@ -3,6 +3,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { env } from '@/lib/env';
 import { GRINDPROOF_SYSTEM_PROMPT } from '@/lib/ai/system-prompt';
 import { createServerClient } from '@/lib/supabase/server';
+import { SupabaseClient } from '@supabase/supabase-js';
 
 // Initialize Gemini AI
 const genAI = new GoogleGenerativeAI(env.NEXT_GOOGLE_GEMINI_API_KEY);
@@ -38,17 +39,34 @@ function detectCommand(message: string): 'roast' | 'patterns' | null {
 }
 
 /**
- * Fetch user context (patterns and recent accountability scores)
+ * Fetch user context (current tasks, goals, patterns and recent accountability scores)
  */
-async function fetchUserContext(userId: string, supabase: any): Promise<string> {
+async function fetchUserContext(userId: string, supabase: SupabaseClient): Promise<string> {
   try {
+
+    // Fetch current tasks
+    const { data: tasks } = await supabase
+      .from('tasks')
+      .select('id, title, description, due_date, start_time, end_time, status, priority, completion_proof, tags, is_synced_with_calendar, recurrence_rule, parent_task_id')
+      .eq('user_id', userId)
+      .order('due_date', { ascending: true })
+      .limit(10);
+
+    // Fetch current goals
+    const { data: goals } = await supabase
+      .from('goals')
+      .select('id, title, description, status, priority, target_date, time_horizon')
+      .eq('user_id', userId)
+      .order('target_date', { ascending: true })
+      .limit(10);
+
     // Fetch recent patterns
     const { data: patterns } = await supabase
       .from('patterns')
       .select('pattern_type, description, confidence')
       .eq('user_id', userId)
       .order('last_occurred', { ascending: false })
-      .limit(3);
+      .limit(10);
 
     // Fetch recent accountability score
     const { data: scores } = await supabase
@@ -56,9 +74,23 @@ async function fetchUserContext(userId: string, supabase: any): Promise<string> 
       .select('*')
       .eq('user_id', userId)
       .order('week_start', { ascending: false })
-      .limit(1);
+      .limit(10);
 
     let contextStr = '\n\nUSER CONTEXT:\n';
+
+    if (tasks && tasks.length > 0) {
+      contextStr += '\n MyTasks:\n';
+      tasks.forEach((t: any) => {
+        contextStr += `ID - ${t.id} \n - ${t.title}: ${t.description} (Due: ${t.due_date}, Status: ${t.status}) - ${t.priority} priority \n -${t.tags?.join(', ')} tags \n - ${t.completion_proof} completion proof \n - ${t.is_synced_with_calendar} synced with calendar \n - ${t.recurrence_rule} recurrence rule \n`;
+      });
+    }
+
+    if (goals && goals.length > 0) {
+      contextStr += '\n My Goals:\n';
+      goals.forEach((g: any) => {
+        contextStr += `ID - ${g.id} \n - ${g.title}: ${g.description} (Target Date: ${g.target_date}, Status: ${g.status}) - ${g.priority} priority \n - ${g.time_horizon} goal \n`;
+      });
+    }
 
     if (patterns && patterns.length > 0) {
       contextStr += '\nRecent Patterns Detected:\n';
@@ -69,7 +101,7 @@ async function fetchUserContext(userId: string, supabase: any): Promise<string> 
 
     if (scores && scores.length > 0) {
       const score = scores[0];
-      contextStr += '\nLast Week Performance:\n';
+      contextStr += '\nCurrent Performance:\n';
       contextStr += `- Alignment: ${Math.round(score.alignment_score * 100)}%\n`;
       contextStr += `- Honesty: ${Math.round(score.honesty_score * 100)}%\n`;
       contextStr += `- Completion: ${Math.round(score.completion_rate * 100)}%\n`;
@@ -246,7 +278,7 @@ export async function POST(request: NextRequest) {
     // Get the generative model with enhanced context
     const model = genAI.getGenerativeModel({
       model: 'gemini-2.5-flash',
-      systemInstruction: GRINDPROOF_SYSTEM_PROMPT + userContext + conversationContext,
+      systemInstruction: GRINDPROOF_SYSTEM_PROMPT + userContext + conversationContext + 'Today is ' + new Date().toLocaleDateString() + ' and it is ' + new Date().toLocaleTimeString(),
     });
 
     // Convert our message format to Gemini format
@@ -259,7 +291,7 @@ export async function POST(request: NextRequest) {
     const chat = model.startChat({
       history: geminiMessages.slice(0, -1),
       generationConfig: {
-        maxOutputTokens: 1000,
+        maxOutputTokens: 800,
         temperature: 0.7,
       },
     });

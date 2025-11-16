@@ -58,6 +58,9 @@ describe("Accountability Score Router", () => {
           completion_rate: 0.8,
           new_projects_started: 2,
           evidence_submissions: 5,
+          insights: [{ emoji: '💪', text: 'Great week', severity: 'positive' }],
+          recommendations: ['Keep it up'],
+          week_summary: 'Excellent progress',
           created_at: "2024-01-01T00:00:00Z",
           updated_at: "2024-01-01T00:00:00Z",
         },
@@ -79,6 +82,9 @@ describe("Accountability Score Router", () => {
       expect(result[0].completionRate).toBe(0.8);
       expect(result[0].newProjectsStarted).toBe(2);
       expect(result[0].evidenceSubmissions).toBe(5);
+      expect(result[0].insights).toEqual([{ emoji: '💪', text: 'Great week', severity: 'positive' }]);
+      expect(result[0].recommendations).toEqual(['Keep it up']);
+      expect(result[0].weekSummary).toBe('Excellent progress');
     });
 
     it("should return empty array when no scores exist", async () => {
@@ -124,6 +130,9 @@ describe("Accountability Score Router", () => {
         completion_rate: 0.8,
         new_projects_started: 2,
         evidence_submissions: 5,
+        insights: [{ emoji: '💪', text: 'Great week', severity: 'positive' }],
+        recommendations: ['Keep it up'],
+        week_summary: 'Excellent progress',
         created_at: "2024-01-01T00:00:00Z",
         updated_at: "2024-01-01T00:00:00Z",
       };
@@ -142,6 +151,9 @@ describe("Accountability Score Router", () => {
       expect(result).toBeDefined();
       expect(result?.alignmentScore).toBe(0.85);
       expect(result?.honestyScore).toBe(0.9);
+      expect(result?.insights).toEqual([{ emoji: '💪', text: 'Great week', severity: 'positive' }]);
+      expect(result?.recommendations).toEqual(['Keep it up']);
+      expect(result?.weekSummary).toBe('Excellent progress');
     });
 
     it("should return null if score not found", async () => {
@@ -171,6 +183,9 @@ describe("Accountability Score Router", () => {
         completion_rate: 0.8,
         new_projects_started: 2,
         evidence_submissions: 5,
+        insights: [{ emoji: '💪', text: 'Great week', severity: 'positive' }],
+        recommendations: ['Keep it up'],
+        week_summary: 'Excellent progress',
         created_at: "2024-01-01T00:00:00Z",
         updated_at: "2024-01-01T00:00:00Z",
       };
@@ -191,6 +206,45 @@ describe("Accountability Score Router", () => {
 
       expect(result).toBeDefined();
       expect(result?.alignmentScore).toBe(0.85);
+      expect(result?.insights).toEqual([{ emoji: '💪', text: 'Great week', severity: 'positive' }]);
+      expect(result?.recommendations).toEqual(['Keep it up']);
+      expect(result?.weekSummary).toBe('Excellent progress');
+    });
+
+    it("should return score with null/empty metadata when not present", async () => {
+      const mockScore = {
+        id: "score-1",
+        user_id: "user-123",
+        week_start: "2024-01-01",
+        alignment_score: 0.85,
+        honesty_score: 0.9,
+        completion_rate: 0.8,
+        new_projects_started: 2,
+        evidence_submissions: 5,
+        insights: null,
+        recommendations: null,
+        week_summary: null,
+        created_at: "2024-01-01T00:00:00Z",
+        updated_at: "2024-01-01T00:00:00Z",
+      };
+
+      const mockMaybeSingle = vi.fn().mockResolvedValue({ data: mockScore, error: null });
+      const mockEq2 = vi.fn().mockReturnValue({ maybeSingle: mockMaybeSingle });
+      const mockEq1 = vi.fn().mockReturnValue({ eq: mockEq2 });
+      const mockSelect = vi.fn().mockReturnValue({ eq: mockEq1 });
+
+      mockDb.from.mockReturnValue({
+        select: mockSelect,
+      });
+
+      const result = await caller.accountabilityScore.getByWeek({
+        weekStart: new Date("2024-01-01"),
+      });
+
+      expect(result).toBeDefined();
+      expect(result?.insights).toEqual([]);
+      expect(result?.recommendations).toEqual([]);
+      expect(result?.weekSummary).toBeNull();
     });
 
     it("should return null if score not found for week", async () => {

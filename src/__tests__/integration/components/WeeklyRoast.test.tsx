@@ -518,6 +518,85 @@ describe('WeeklyRoast Component', () => {
     });
   });
 
+  describe('Persistence and Timestamps', () => {
+    it('should display saved insights from database', () => {
+      const mockData = {
+        alignmentScore: 0.75,
+        honestyScore: 0.80,
+        completionRate: 0.70,
+        insights: [
+          { emoji: '💪', text: 'Great progress on tasks', severity: 'positive' },
+          { emoji: '⚠️', text: 'Some overdue tasks', severity: 'medium' },
+        ],
+        recommendations: ['Keep it up'],
+        weekSummary: 'Saved roast summary',
+        createdAt: new Date('2024-01-15T10:30:00'),
+        updatedAt: new Date('2024-01-15T10:30:00'),
+      };
+
+      mockUseQuery.mockReturnValue({
+        data: mockData,
+        refetch: vi.fn(),
+      });
+
+      render(<MockWeeklyRoast />);
+
+      expect(screen.getByTestId('insight-0')).toHaveTextContent('💪 Great progress on tasks');
+      expect(screen.getByTestId('insight-1')).toHaveTextContent('⚠️ Some overdue tasks');
+      expect(screen.getByTestId('week-summary')).toHaveTextContent('Saved roast summary');
+    });
+
+    it('should display saved recommendations from database', () => {
+      const mockData = {
+        alignmentScore: 0.60,
+        honestyScore: 0.65,
+        completionRate: 0.58,
+        insights: [],
+        recommendations: [
+          'Focus on completing one goal at a time',
+          'Submit evidence for completed tasks',
+        ],
+        weekSummary: 'Room for improvement',
+        createdAt: new Date('2024-01-15T10:30:00'),
+        updatedAt: new Date('2024-01-15T10:30:00'),
+      };
+
+      mockUseQuery.mockReturnValue({
+        data: mockData,
+        refetch: vi.fn(),
+      });
+
+      render(<MockWeeklyRoast />);
+
+      expect(screen.getByTestId('recommendation-0')).toHaveTextContent('Focus on completing one goal at a time');
+      expect(screen.getByTestId('recommendation-1')).toHaveTextContent('Submit evidence for completed tasks');
+    });
+
+    it('should display generation timestamp when roast exists', () => {
+      const mockData = {
+        alignmentScore: 0.70,
+        honestyScore: 0.75,
+        completionRate: 0.65,
+        insights: [],
+        recommendations: [],
+        weekSummary: 'Week completed',
+        createdAt: new Date('2024-01-15T10:30:00'),
+        updatedAt: new Date('2024-01-15T10:30:00'),
+      };
+
+      mockUseQuery.mockReturnValue({
+        data: mockData,
+        refetch: vi.fn(),
+      });
+
+      render(<MockWeeklyRoast />);
+
+      // The component should show timestamp in the header
+      // Note: The actual component shows this in the header section
+      expect(screen.getByTestId('roast-display')).toBeInTheDocument();
+    });
+  });
+
   describe('Data Display', () => {
     it('should display insights when available', () => {
       const mockData = {

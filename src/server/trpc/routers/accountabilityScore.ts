@@ -13,6 +13,9 @@ export const accountabilityScoreSchema = z.object({
   completionRate: z.number().min(0).max(1).nullable(),
   newProjectsStarted: z.number().int().min(0),
   evidenceSubmissions: z.number().int().min(0),
+  insights: z.array(z.any()).optional(),
+  recommendations: z.array(z.string()).optional(),
+  weekSummary: z.string().optional(),
   createdAt: z.date(),
   updatedAt: z.date(),
 });
@@ -48,6 +51,9 @@ function mapAccountabilityScoreFromDb(score: any): z.infer<typeof accountability
     completionRate: score.completion_rate !== null ? score.completion_rate : null,
     newProjectsStarted: score.new_projects_started,
     evidenceSubmissions: score.evidence_submissions,
+    insights: score.insights || [],
+    recommendations: score.recommendations || [],
+    weekSummary: score.week_summary || null,
     createdAt: new Date(score.created_at),
     updatedAt: new Date(score.updated_at),
   };

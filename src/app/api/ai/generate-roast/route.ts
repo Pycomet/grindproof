@@ -346,6 +346,9 @@ export async function POST(request: NextRequest) {
           completion_rate: metrics.completionRate,
           new_projects_started: metrics.newProjectsStarted,
           evidence_submissions: metrics.evidenceSubmissions,
+          insights: aiInsights.insights || [],
+          recommendations: aiInsights.recommendations || [],
+          week_summary: aiInsights.weekSummary || null,
         })
         .eq('id', existingScore.id);
     } else {
@@ -360,6 +363,9 @@ export async function POST(request: NextRequest) {
           completion_rate: metrics.completionRate,
           new_projects_started: metrics.newProjectsStarted,
           evidence_submissions: metrics.evidenceSubmissions,
+          insights: aiInsights.insights || [],
+          recommendations: aiInsights.recommendations || [],
+          week_summary: aiInsights.weekSummary || null,
         });
     }
 
