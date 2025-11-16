@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import Dashboard from '@/app/dashboard/page';
 import { supabase } from '@/lib/supabase/client';
 import { trpc } from '@/lib/trpc/client';
@@ -63,6 +63,11 @@ vi.mock('@/lib/trpc/client', () => ({
         useQuery: vi.fn(),
       },
     },
+    conversation: {
+      getAll: { useQuery: vi.fn(() => ({ data: [] })) },
+      create: { useMutation: vi.fn(() => ({ mutateAsync: vi.fn() })) },
+      update: { useMutation: vi.fn(() => ({ mutateAsync: vi.fn() })) },
+    },
   },
 }));
 
@@ -83,6 +88,16 @@ vi.mock('@/hooks/useOfflineSync', () => ({
 }));
 
 describe('Protected Routes - Dashboard', () => {
+  // Helper to switch to tasks view
+  const switchToTasksView = async () => {
+    await waitFor(() => {
+      const tasksTab = screen.queryByText('✓ Tasks');
+      if (tasksTab) {
+        fireEvent.click(tasksTab);
+      }
+    });
+  };
+
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -443,6 +458,7 @@ describe('Protected Routes - Dashboard', () => {
     } as any);
 
     render(<Dashboard />);
+    await switchToTasksView();
 
     await waitFor(() => {
       // Check for the Tasks tab

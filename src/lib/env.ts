@@ -12,6 +12,7 @@ const serverEnvSchema = clientEnvSchema.extend({
   NEXT_GITHUB_CLIENT_SECRET: z.string().min(1),
   NEXT_GOOGLE_CALENDAR_CLIENT_ID: z.string().min(1),
   NEXT_GOOGLE_CALENDAR_CLIENT_SECRET: z.string().min(1),
+  NEXT_GOOGLE_GEMINI_API_KEY: z.string().min(1),
 });
 
 function getEnv(): z.infer<typeof serverEnvSchema> {
@@ -28,6 +29,7 @@ function getEnv(): z.infer<typeof serverEnvSchema> {
       NEXT_GITHUB_CLIENT_SECRET: 'test-github-client-secret',
       NEXT_GOOGLE_CALENDAR_CLIENT_ID: 'test-google-client-id',
       NEXT_GOOGLE_CALENDAR_CLIENT_SECRET: 'test-google-client-secret',
+      NEXT_GOOGLE_GEMINI_API_KEY: 'test-google-gemini-api-key',
       NODE_ENV: 'test' as const,
     };
   }
@@ -43,6 +45,7 @@ function getEnv(): z.infer<typeof serverEnvSchema> {
     NEXT_GITHUB_CLIENT_SECRET: process.env.NEXT_GITHUB_CLIENT_SECRET,
     NEXT_GOOGLE_CALENDAR_CLIENT_ID: process.env.NEXT_GOOGLE_CALENDAR_CLIENT_ID,
     NEXT_GOOGLE_CALENDAR_CLIENT_SECRET: process.env.NEXT_GOOGLE_CALENDAR_CLIENT_SECRET,
+    NEXT_GOOGLE_GEMINI_API_KEY: process.env.NEXT_GOOGLE_GEMINI_API_KEY,
   });
 
   if (!parsed.success) {

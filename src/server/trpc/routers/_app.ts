@@ -4,6 +4,10 @@ import { routineRouter } from "./routine";
 import { profileRouter } from "./profile";
 import { integrationRouter } from "./integration";
 import { taskRouter } from "./task";
+import { evidenceRouter } from "./evidence";
+import { patternRouter } from "./pattern";
+import { conversationRouter } from "./conversation";
+import { accountabilityScoreRouter } from "./accountabilityScore";
 
 /**
  * Main application router
@@ -15,6 +19,10 @@ export const appRouter = router({
   profile: profileRouter,
   integration: integrationRouter,
   task: taskRouter,
+  evidence: evidenceRouter,
+  pattern: patternRouter,
+  conversation: conversationRouter,
+  accountabilityScore: accountabilityScoreRouter,
 });
 
 export type AppRouter = typeof appRouter;

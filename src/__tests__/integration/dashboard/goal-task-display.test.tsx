@@ -77,6 +77,21 @@ vi.mock('@/lib/trpc/client', () => ({
         useQuery: vi.fn(),
       },
     },
+    conversation: {
+      getAll: {
+        useQuery: vi.fn(() => ({ data: [] })),
+      },
+      create: {
+        useMutation: vi.fn(() => ({
+          mutateAsync: vi.fn(),
+        })),
+      },
+      update: {
+        useMutation: vi.fn(() => ({
+          mutateAsync: vi.fn(),
+        })),
+      },
+    },
   },
 }));
 
