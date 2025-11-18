@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { env } from '@/lib/env';
-import { GRINDPROOF_SYSTEM_PROMPT } from '@/lib/ai/system-prompt';
+import { GRINDPROOF_SYSTEM_PROMPT } from '@/lib/prompts/system-prompt';
 import { createServerClient } from '@/lib/supabase/server';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { appRouter } from '@/server/trpc/routers/_app';
@@ -768,7 +768,8 @@ export async function POST(request: NextRequest) {
       history: geminiMessages.slice(0, -1),
       generationConfig: {
         maxOutputTokens: 1200,
-        temperature: 0.7,
+        temperature: 0.2,
+        topP: 0.1
       },
     });
 

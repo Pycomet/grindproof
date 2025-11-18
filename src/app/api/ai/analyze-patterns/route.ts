@@ -3,35 +3,10 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { env } from '@/lib/env';
 import { createServerClient } from '@/lib/supabase/server';
 import { analyzeUserData } from '@/lib/ai/data-analyzer';
+import { PATTERN_DETECTION_PROMPT } from '@/lib/prompts/pattern-detection-prompt';
 
 // Initialize Gemini AI
 const genAI = new GoogleGenerativeAI(env.NEXT_GOOGLE_GEMINI_API_KEY);
-
-const PATTERN_DETECTION_PROMPT = `
-You are analyzing user behavior to detect patterns that might be hindering their productivity.
-
-Based on the data provided, identify behavioral patterns and provide them in JSON format.
-
-For each pattern detected, provide:
-- type: One of [procrastination, task_skipping, new_project_addiction, goal_abandonment, evidence_avoidance, overcommitment, vague_planning, planning_without_execution]
-- description: Brief description of what you observed (50-100 chars)
-- confidence: Number between 0 and 1 indicating how confident you are
-- shouldSave: Boolean - true if this is a significant pattern worth saving to database
-
-Only return patterns with confidence >= 0.5 and shouldSave: true.
-
-Return ONLY valid JSON in this format:
-{
-  "patterns": [
-    {
-      "type": "procrastination",
-      "description": "Consistently completing tasks after due date",
-      "confidence": 0.8,
-      "shouldSave": true
-    }
-  ]
-}
-`;
 
 export async function POST(request: NextRequest) {
   try {

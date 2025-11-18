@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { NextRequest } from 'next/server';
-import { GRINDPROOF_SYSTEM_PROMPT } from '@/lib/ai/system-prompt';
+import { GRINDPROOF_SYSTEM_PROMPT } from '@/lib/prompts/system-prompt';
 
 // Mock env
 vi.mock('@/lib/env', () => ({
