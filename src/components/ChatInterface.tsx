@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { markdownToReact } from '@/lib/markdown';
 
 interface Message {
+  id?: string;
   role: 'user' | 'assistant';
   content: string;
   timestamp: string;
@@ -52,6 +53,7 @@ export function ChatInterface() {
     if (!input.trim() || isLoading) return;
 
     const userMessage: Message = {
+      id: `user-${Date.now()}-${Math.random()}`,
       role: 'user',
       content: input.trim(),
       timestamp: new Date().toISOString(),
@@ -85,6 +87,7 @@ export function ChatInterface() {
       const data = await response.json();
       
       const aiMessage: Message = {
+        id: `assistant-${Date.now()}-${Math.random()}`,
         role: 'assistant',
         content: data.text,
         timestamp: new Date().toISOString(),
@@ -168,9 +171,9 @@ export function ChatInterface() {
         ) : (
           <div className="space-y-4">
             <AnimatePresence>
-              {messages.map((message, index) => (
+              {messages.map((message) => (
                 <motion.div
-                  key={index}
+                  key={message.id || `${message.role}-${message.timestamp}`}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0 }}

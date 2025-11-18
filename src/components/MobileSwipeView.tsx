@@ -72,9 +72,9 @@ export function MobileSwipeView({ views, initialView = 0 }: SwipeViewProps) {
       {/* Dot Indicators with Toggle */}
       <div className="absolute left-0 right-0 top-4 z-20 flex items-center justify-center gap-3">
         <div className="flex gap-2">
-          {views.map((_, index) => (
+          {views.map((view, index) => (
             <button
-              key={index}
+              key={view.id}
               onClick={() => {
                 setDirection(index > currentIndex ? 1 : -1);
                 setCurrentIndex(index);
