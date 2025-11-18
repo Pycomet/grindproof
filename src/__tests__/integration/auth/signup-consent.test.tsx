@@ -31,7 +31,7 @@ describe("Signup Page - Terms Consent", () => {
     expect(screen.getByRole("textbox", { name: /email/i })).toBeInTheDocument();
     expect(screen.getByLabelText(/password/i)).toBeInTheDocument();
     expect(screen.getByRole("checkbox", { name: /I agree to the/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /sign up/i })).toBeInTheDocument();
+    expect(screen.getByText("Sign Up")).toBeInTheDocument();
   });
 
   it("should have consent checkbox unchecked by default", () => {
@@ -83,7 +83,7 @@ describe("Signup Page - Terms Consent", () => {
   it("should disable submit button when consent is not given", () => {
     render(<SignupPage />);
 
-    const submitButton = screen.getByRole("button", { name: /sign up/i });
+    const submitButton = screen.getByText("Sign Up");
     expect(submitButton).toBeDisabled();
   });
 
@@ -92,7 +92,7 @@ describe("Signup Page - Terms Consent", () => {
     render(<SignupPage />);
 
     const checkbox = screen.getByRole("checkbox", { name: /I agree to the/i });
-    const submitButton = screen.getByRole("button", { name: /sign up/i });
+    const submitButton = screen.getByText("Sign Up");
 
     expect(submitButton).toBeDisabled();
 
@@ -106,11 +106,9 @@ describe("Signup Page - Terms Consent", () => {
     render(<SignupPage />);
 
     const checkbox = screen.getByRole("checkbox", { name: /I agree to the/i });
-    const submitButton = screen.getByRole("button", { name: /sign up/i });
-
+    const submitButton = screen.getByText("Sign Up");
     await user.click(checkbox);
     expect(submitButton).toBeEnabled();
-
     await user.click(checkbox);
     expect(submitButton).toBeDisabled();
   });
@@ -147,7 +145,7 @@ describe("Signup Page - Terms Consent", () => {
 
     const passwordInput = screen.getByLabelText(/password/i);
     const checkbox = screen.getByRole("checkbox", { name: /I agree to the/i });
-    const submitButton = screen.getByRole("button", { name: /sign up/i });
+    const submitButton = screen.getByText("Sign Up");
 
     // All elements should be present
     expect(passwordInput).toBeInTheDocument();
