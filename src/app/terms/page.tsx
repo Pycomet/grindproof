@@ -236,7 +236,7 @@ export default function TermsOfUsePage() {
               
               <h3 className="text-xl font-semibold text-white mb-3">9.1 Termination by You</h3>
               <p className="text-zinc-300 mb-4">
-                You may terminate your account at any time by contacting us at <a href="mailto:support@grindproof.com" className="text-blue-400 hover:text-blue-300">support@grindproof.com</a> or through your account settings. Upon termination, your right to access the Service will immediately cease.
+                You may terminate your account at any time by contacting us at <a href="mailto:support@grindproof.co" className="text-blue-400 hover:text-blue-300">support@grindproof.co</a> or through your account settings. Upon termination, your right to access the Service will immediately cease.
               </p>
 
               <h3 className="text-xl font-semibold text-white mb-3">9.2 Termination by Us</h3>
@@ -376,7 +376,7 @@ export default function TermsOfUsePage() {
               
               <h3 className="text-xl font-semibold text-white mb-3">15.1 Informal Resolution</h3>
               <p className="text-zinc-300 mb-4">
-                Before filing a formal dispute, you agree to first contact us at <a href="mailto:support@grindproof.com" className="text-blue-400 hover:text-blue-300">support@grindproof.com</a> to attempt to resolve the issue informally. We will make good faith efforts to resolve disputes amicably.
+                Before filing a formal dispute, you agree to first contact us at <a href="mailto:support@grindproof.co" className="text-blue-400 hover:text-blue-300">support@grindproof.co</a> to attempt to resolve the issue informally. We will make good faith efforts to resolve disputes amicably.
               </p>
 
               <h3 className="text-xl font-semibold text-white mb-3">15.2 Binding Arbitration</h3>
@@ -427,7 +427,7 @@ export default function TermsOfUsePage() {
                 If you have any questions about these Terms of Use, please contact us:
               </p>
               <div className="bg-zinc-900/50 p-4 rounded-lg">
-                <p className="text-zinc-300 mb-2"><strong>Email:</strong> <a href="mailto:support@grindproof.com" className="text-blue-400 hover:text-blue-300">support@grindproof.com</a></p>
+                <p className="text-zinc-300 mb-2"><strong>Email:</strong> <a href="mailto:support@grindproof.co" className="text-blue-400 hover:text-blue-300">support@grindproof.co</a></p>
                 <p className="text-zinc-300"><strong>Service:</strong> GrindProof</p>
               </div>
               <p className="text-zinc-300 mt-4">

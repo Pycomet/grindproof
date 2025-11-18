@@ -171,7 +171,7 @@ export default function PrivacyPolicyPage() {
               </p>
 
               <p className="text-zinc-300">
-                To exercise any of these rights, please contact us at <a href="mailto:support@grindproof.com" className="text-blue-400 hover:text-blue-300">support@grindproof.com</a>. We will respond to your request within 30 days.
+                To exercise any of these rights, please contact us at <a href="mailto:support@grindproof.co" className="text-blue-400 hover:text-blue-300">support@grindproof.co</a>. We will respond to your request within 30 days.
               </p>
             </section>
 
@@ -196,7 +196,7 @@ export default function PrivacyPolicyPage() {
             <section id="children" className="mb-8">
               <h2 className="text-2xl font-bold text-white mb-4">8. Children's Privacy</h2>
               <p className="text-zinc-300 mb-4">
-                GrindProof is intended for users who are at least 13 years old. We do not knowingly collect personal information from children under 13. If you are a parent or guardian and believe your child has provided us with personal information, please contact us at <a href="mailto:support@grindproof.com" className="text-blue-400 hover:text-blue-300">support@grindproof.com</a>.
+                GrindProof is intended for users who are at least 13 years old. We do not knowingly collect personal information from children under 13. If you are a parent or guardian and believe your child has provided us with personal information, please contact us at <a href="mailto:support@grindproof.co" className="text-blue-400 hover:text-blue-300">support@grindproof.co</a>.
               </p>
               <p className="text-zinc-300">
                 If we become aware that we have collected personal information from a child under 13 without parental consent, we will take steps to delete that information from our servers.
@@ -226,7 +226,7 @@ export default function PrivacyPolicyPage() {
                 If you have any questions, concerns, or requests regarding this Privacy Policy or our data practices, please contact us:
               </p>
               <div className="bg-zinc-900/50 p-4 rounded-lg">
-                <p className="text-zinc-300 mb-2"><strong>Email:</strong> <a href="mailto:support@grindproof.com" className="text-blue-400 hover:text-blue-300">support@grindproof.com</a></p>
+                <p className="text-zinc-300 mb-2"><strong>Email:</strong> <a href="mailto:support@grindproof.co" className="text-blue-400 hover:text-blue-300">support@grindproof.co</a></p>
                 <p className="text-zinc-300"><strong>Service:</strong> GrindProof</p>
               </div>
               <p className="text-zinc-300 mt-4">

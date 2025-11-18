@@ -85,7 +85,7 @@ export default function Home() {
               </Link>
               <span className="text-zinc-300 dark:text-zinc-700">•</span>
               <a 
-                href="mailto:support@grindproof.com" 
+                href="mailto:support@grindproof.co" 
                 className="text-zinc-600 transition-colors hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
               >
                 Contact

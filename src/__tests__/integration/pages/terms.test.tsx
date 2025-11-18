@@ -108,9 +108,9 @@ describe("Terms of Use Page", () => {
   it("should have contact email", () => {
     render(<TermsOfUsePage />);
 
-    const contactLinks = screen.getAllByRole("link", { name: /support@grindproof.com/ });
+    const contactLinks = screen.getAllByRole("link", { name: /support@grindproof.co/ });
     expect(contactLinks.length).toBeGreaterThan(0);
-    expect(contactLinks[0]).toHaveAttribute("href", "mailto:support@grindproof.com");
+    expect(contactLinks[0]).toHaveAttribute("href", "mailto:support@grindproof.co");
   });
 
   it("should have navigation links", () => {

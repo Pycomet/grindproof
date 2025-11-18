@@ -39,7 +39,7 @@ describe("Landing Page Footer", () => {
 
     const contactLink = screen.getByRole("link", { name: "Contact" });
     expect(contactLink).toBeInTheDocument();
-    expect(contactLink).toHaveAttribute("href", "mailto:support@grindproof.com");
+    expect(contactLink).toHaveAttribute("href", "mailto:support@grindproof.co");
   });
 
   it("should have proper link styling classes", () => {
