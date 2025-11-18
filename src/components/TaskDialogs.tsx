@@ -309,9 +309,9 @@ export function CreateTaskDialog({
               </Button>
             </div>
             <div className="flex flex-wrap gap-2">
-              {commonTags.map((tag) => (
+              {commonTags.map((tag, index) => (
                 <button
-                  key={tag}
+                  key={`common-tag-${index}-${tag}`}
                   type="button"
                   onClick={() => {
                     if (formData.tags.includes(tag)) {
@@ -332,9 +332,9 @@ export function CreateTaskDialog({
             </div>
             {formData.tags.length > 0 && (
               <div className="flex flex-wrap gap-2">
-                {formData.tags.map((tag) => (
+                {formData.tags.map((tag, index) => (
                   <span
-                    key={tag}
+                    key={`selected-tag-${index}-${tag}`}
                     className="flex items-center gap-1 rounded-full bg-zinc-100 px-3 py-1 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
                   >
                     {tag}
@@ -781,9 +781,9 @@ export function EditTaskDialog({
               </Button>
             </div>
             <div className="flex flex-wrap gap-2">
-              {commonTags.map((tag) => (
+              {commonTags.map((tag, index) => (
                 <button
-                  key={tag}
+                  key={`edit-common-tag-${index}-${tag}`}
                   type="button"
                   onClick={() => {
                     if (formData.tags.includes(tag)) {
@@ -804,9 +804,9 @@ export function EditTaskDialog({
             </div>
             {formData.tags.length > 0 && (
               <div className="flex flex-wrap gap-2">
-                {formData.tags.map((tag) => (
+                {formData.tags.map((tag, index) => (
                   <span
-                    key={tag}
+                    key={`edit-selected-tag-${index}-${tag}`}
                     className="flex items-center gap-1 rounded-full bg-zinc-100 px-3 py-1 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
                   >
                     {tag}
@@ -818,9 +818,9 @@ export function EditTaskDialog({
                       ×
                     </button>
                   </span>
-                  ))}
-                </div>
-              )}
+                ))}
+              </div>
+            )}
             </motion.div>
 
             {isCalendarConnected && (

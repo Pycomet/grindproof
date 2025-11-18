@@ -767,7 +767,7 @@ export async function POST(request: NextRequest) {
     const chat = model.startChat({
       history: geminiMessages.slice(0, -1),
       generationConfig: {
-        maxOutputTokens: 800,
+        maxOutputTokens: 1200,
         temperature: 0.7,
       },
     });

@@ -264,14 +264,14 @@ describe('Task Edit Flow', () => {
       });
     });
 
-    it('Complete button only shows for pending tasks', async () => {
+    it('Complete toggle only shows for pending tasks', async () => {
       render(<Dashboard />);
       await switchToTasksView();
 
       await waitFor(() => {
-        const completeButtons = screen.getAllByText('Complete');
-        // Only task-1 is pending (appears in desktop + mobile), so we should have Complete buttons
-        expect(completeButtons.length).toBeGreaterThan(0);
+        const completeToggles = screen.getAllByRole('switch');
+        // Only task-1 is pending (appears in desktop + mobile), so we should have toggle switches
+        expect(completeToggles.length).toBeGreaterThan(0);
       });
     });
 
@@ -375,14 +375,20 @@ describe('Task Edit Flow', () => {
       });
     });
 
-    it('Complete button has green styling', async () => {
+    it('Complete toggle has green styling when off', async () => {
       render(<Dashboard />);
       await switchToTasksView();
 
       await waitFor(() => {
-        const completeButtons = screen.getAllByText('Complete');
-        const completeButton = completeButtons[0];
-        expect(completeButton).toHaveClass('text-green-600');
+        // Toggle uses title attribute, so we need to find by title or role
+        const completeToggles = screen.getAllByRole('switch');
+        const completeToggle = completeToggles.find(toggle => 
+          toggle.getAttribute('title')?.includes('Mark as complete') || 
+          toggle.getAttribute('title')?.includes('Mark as incomplete')
+        );
+        expect(completeToggle).toBeDefined();
+        // Toggle should have gray background when unchecked (pending tasks)
+        expect(completeToggle).toHaveClass('bg-zinc-200');
       });
     });
 

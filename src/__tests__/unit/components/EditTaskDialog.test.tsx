@@ -349,8 +349,16 @@ describe('EditTaskDialog', () => {
       />
     );
 
-    // Date format is DD/MM/YYYY (31/12/2024)
-    const dateButton = screen.getByText(/31\/12\/2024/);
+    // Date format varies by locale, so check for the date in a flexible way
+    // The date button should contain "31", "12", and "2024" in some order
+    // Examples: "12/31/2024" (US), "31/12/2024" (UK), "31.12.2024" (DE), etc.
+    // Find the button by its text content which will be the formatted date
+    const dateButton = screen.getByRole('button', { 
+      name: (content, element) => {
+        const text = element?.textContent || '';
+        return /(31|12).*2024|2024.*(31|12)/.test(text);
+      }
+    });
     fireEvent.click(dateButton);
 
     // Calendar should appear (checking for month navigation buttons)

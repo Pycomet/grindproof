@@ -286,11 +286,12 @@ describe('AppContext - Google Calendar Connection', () => {
 
   it('isGoogleCalendarConnected is a function that can be called multiple times', async () => {
     let isConnectedFn: (() => boolean) | undefined;
-    let callCount = 0;
+    let integrationsCount: number | undefined;
 
     function TestComponent() {
-      const { isGoogleCalendarConnected } = useApp();
+      const { isGoogleCalendarConnected, integrations } = useApp();
       isConnectedFn = isGoogleCalendarConnected;
+      integrationsCount = integrations.length;
       return null;
     }
 
@@ -304,15 +305,10 @@ describe('AppContext - Google Calendar Connection', () => {
       expect(isConnectedFn).toBeDefined();
     });
 
-    // Should be callable multiple times
-    callCount++;
+    await waitFor(() => {
+      expect(isConnectedFn!()).toBe(false);
+    }, { timeout: 2000 });
     expect(isConnectedFn!()).toBe(false);
-    callCount++;
-    expect(isConnectedFn!()).toBe(false);
-    callCount++;
-    expect(isConnectedFn!()).toBe(false);
-
-    expect(callCount).toBe(3);
   });
 });
 

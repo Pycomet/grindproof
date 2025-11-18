@@ -499,10 +499,33 @@ function TodayView() {
     }
   };
 
+  const handleToggleComplete = (task: any) => {
+    if (task.status === 'completed') {
+      console.log('Task is already completed!');
+    } else if (task.status !== 'skipped') {
+      // Complete: open dialog for proof
+      setSelectedTask(task);
+      setIsCompleteOpen(true);
+    }
+  };
+
   const handleSkipTask = () => {
     if (selectedTask) {
       skipMutation.mutate({ id: selectedTask.id });
     }
+  };
+
+  const handleUnskipTask = (task: any) => {
+    // Set selected task first, then update status and open dialog
+    setSelectedTask(task);
+    updateMutation.mutate({
+      id: task.id,
+      status: 'pending' as const,
+    }, {
+      onSuccess: async () => {
+        await refreshTasks();
+      }
+    });
   };
 
   const handleRescheduleTask = (newDate: Date) => {
@@ -702,27 +725,37 @@ function TodayView() {
             {/* Mobile Layout */}
             <div className="md:hidden">
               <div className="flex items-start gap-2">
-                {/* Checkbox */}
-                <button 
-                  className={`mt-0.5 flex h-4 w-4 flex-shrink-0 items-center justify-center rounded border-2 transition-colors ${
-                    task.status === 'completed'
-                      ? 'border-green-600 bg-green-600'
-                      : task.status === 'skipped'
-                      ? 'border-red-600 bg-red-600'
-                      : 'border-zinc-300 hover:border-zinc-400 dark:border-zinc-700'
-                  }`}
-                >
-                  {task.status === 'completed' && (
-                    <svg className="h-2.5 w-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                    </svg>
-                  )}
-                  {task.status === 'skipped' && (
-                    <svg className="h-2.5 w-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                {/* Toggle Switch */}
+                {task.status !== 'skipped' && (
+                  <button
+                    onClick={() => handleToggleComplete(task)}
+                    className={`mt-0.5 relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 ${
+                      task.status === 'completed'
+                        ? 'bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600'
+                        : 'bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-700 dark:hover:bg-zinc-600'
+                    }`}
+                    role="switch"
+                    aria-checked={task.status === 'completed'}
+                    title={task.status === 'completed' ? 'Mark as incomplete' : 'Mark as complete'}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+                        task.status === 'completed' ? 'translate-x-4' : 'translate-x-0'
+                      }`}
+                    />
+                  </button>
+                )}
+                {task.status === 'skipped' && (
+                  <button
+                    onClick={() => handleUnskipTask(task)}
+                    className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border-2 border-red-600 bg-red-600 text-white transition-colors hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600"
+                    title="Unskip and edit task"
+                  >
+                    <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
                     </svg>
-                  )}
-                </button>
+                  </button>
+                )}
 
                 {/* Task Content */}
                 <div className="flex-1 min-w-0">
@@ -769,8 +802,8 @@ function TodayView() {
                     )}
                     {task.tags && task.tags.length > 0 && (
                       <>
-                        {task.tags.slice(0, 2).map((tag) => (
-                          <span key={tag} className="rounded-full bg-zinc-100 px-1.5 py-0.5 text-xs text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
+                        {task.tags.slice(0, 2).map((tag, tagIndex) => (
+                          <span key={`${task.id}-tag-${tagIndex}`} className="rounded-full bg-zinc-100 px-1.5 py-0.5 text-xs text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
                             {tag}
                           </span>
                         ))}
@@ -806,26 +839,15 @@ function TodayView() {
                   Edit
                 </button>
                 {task.status !== 'completed' && task.status !== 'skipped' && (
-                  <>
-                    <button
-                      onClick={() => {
-                        setSelectedTask(task);
-                        setIsCompleteOpen(true);
-                      }}
-                      className="flex-1 rounded-md px-2 py-1.5 text-xs font-medium text-green-600 hover:bg-green-50 dark:text-green-400 dark:hover:bg-green-950/20 transition-colors"
-                    >
-                      ✓
-                    </button>
-                    <button
-                      onClick={() => {
-                        setSelectedTask(task);
-                        setIsRescheduleOpen(true);
-                      }}
-                      className="flex-1 rounded-md px-2 py-1.5 text-xs font-medium text-amber-600 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-950/20 transition-colors"
-                    >
-                      Skip
-                    </button>
-                  </>
+                  <button
+                    onClick={() => {
+                      setSelectedTask(task);
+                      setIsRescheduleOpen(true);
+                    }}
+                    className="flex-1 rounded-md px-2 py-1.5 text-xs font-medium text-amber-600 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-950/20 transition-colors"
+                  >
+                    Skip
+                  </button>
                 )}
                 <button
                   onClick={() => handleDeleteTask(task.id)}
@@ -839,27 +861,37 @@ function TodayView() {
 
             {/* Desktop Layout */}
             <div className="hidden md:flex items-start gap-3">
-              {/* Checkbox */}
-              <button 
-                className={`mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded border-2 transition-colors ${
-                  task.status === 'completed'
-                    ? 'border-green-600 bg-green-600'
-                    : task.status === 'skipped'
-                    ? 'border-red-600 bg-red-600'
-                    : 'border-zinc-300 hover:border-zinc-400 dark:border-zinc-700'
-                }`}
-              >
-                {task.status === 'completed' && (
-                  <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                  </svg>
-                )}
-                {task.status === 'skipped' && (
-                  <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              {/* Toggle Switch */}
+              {task.status !== 'skipped' && (
+                <button
+                  onClick={() => handleToggleComplete(task)}
+                  className={`mt-0.5 relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 ${
+                    task.status === 'completed'
+                      ? 'bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600'
+                      : 'bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-700 dark:hover:bg-zinc-600'
+                  }`}
+                  role="switch"
+                  aria-checked={task.status === 'completed'}
+                  title={task.status === 'completed' ? 'Mark as incomplete' : 'Mark as complete'}
+                >
+                  <span
+                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+                      task.status === 'completed' ? 'translate-x-5' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
+              )}
+              {task.status === 'skipped' && (
+                <button
+                  onClick={() => handleUnskipTask(task)}
+                  className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md border-2 border-red-600 bg-red-600 text-white transition-colors hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600"
+                  title="Unskip and edit task"
+                >
+                  <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
                   </svg>
-                )}
-              </button>
+                </button>
+              )}
 
               {/* Task Content */}
               <div className="flex-1">
@@ -884,8 +916,8 @@ function TodayView() {
                   )}
                   {task.tags && task.tags.length > 0 && (
                     <div className="flex gap-1">
-                      {task.tags.slice(0, 2).map((tag) => (
-                        <span key={tag} className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
+                      {task.tags.slice(0, 2).map((tag, tagIndex) => (
+                        <span key={`${task.id}-tag-${tagIndex}`} className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
                           {tag}
                         </span>
                       ))}
@@ -939,28 +971,16 @@ function TodayView() {
                   Edit
                 </button>
                 {task.status !== 'completed' && task.status !== 'skipped' && (
-                  <>
-                    <button
-                      onClick={() => {
-                        setSelectedTask(task);
-                        setIsCompleteOpen(true);
-                      }}
-                      className="rounded-md px-3 py-1.5 text-xs font-medium text-green-600 hover:bg-green-50 dark:text-green-400 dark:hover:bg-green-950/20 transition-colors"
-                      title="Mark as complete"
-                    >
-                      Complete
-                    </button>
-                    <button
-                      onClick={() => {
-                        setSelectedTask(task);
-                        setIsRescheduleOpen(true);
-                      }}
-                      className="rounded-md px-3 py-1.5 text-xs font-medium text-amber-600 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-950/20 transition-colors"
-                      title="Skip or reschedule"
-                    >
-                      Skip
-                    </button>
-                  </>
+                  <button
+                    onClick={() => {
+                      setSelectedTask(task);
+                      setIsRescheduleOpen(true);
+                    }}
+                    className="rounded-md px-3 py-1.5 text-xs font-medium text-amber-600 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-950/20 transition-colors"
+                    title="Skip or reschedule"
+                  >
+                    Skip
+                  </button>
                 )}
                 <button
                   onClick={() => handleDeleteTask(task.id)}
