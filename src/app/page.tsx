@@ -2,8 +2,12 @@
 
 import Link from "next/link";
 import { Logo } from "@/components/Logo";
+import { useApp } from "@/contexts/AppContext";
 
 export default function Home() {
+  const { user } = useApp();
+  const isLoggedIn = !!user;
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-zinc-50 to-zinc-100 dark:from-zinc-950 dark:to-black">
       {/* Hero Section */}
@@ -26,10 +30,10 @@ export default function Home() {
           {/* CTA Buttons */}
           <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
             <Link
-              href="/auth/signup"
+              href={isLoggedIn ? "/dashboard" : "/auth/login"}
               className="group relative w-full overflow-hidden rounded-full bg-zinc-900 px-8 py-4 text-base font-semibold text-white transition-all hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200 sm:w-auto"
             >
-              <span className="relative z-10">Get Started</span>
+              <span className="relative z-10">{isLoggedIn ? "Open Dashboard" : "Get Started"}</span>
               <div className="absolute inset-0 -translate-x-full bg-zinc-800 transition-transform group-hover:translate-x-0 dark:bg-zinc-200"></div>
             </Link>
             
