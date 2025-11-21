@@ -1,0 +1,34 @@
+# Mobile App Sensitive Files
+# Add these to your main .gitignore file
+
+# Firebase configuration files (contain API keys)
+android/app/google-services.json
+ios/App/App/GoogleService-Info.plist
+firebase-admin-key.json
+
+# iOS
+ios/App/Pods/
+ios/App/Podfile.lock
+ios/App/*.xcworkspace
+*.xcuserdata
+*.xcuserdatad
+DerivedData/
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Android
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/.idea/
+*.iml
+*.apk
+*.aab
+android/app/release/
+
+# Capacitor
+.capacitor/
+

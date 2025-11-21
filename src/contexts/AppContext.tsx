@@ -6,6 +6,8 @@ import { supabase } from '@/lib/supabase/client';
 import { trpc } from '@/lib/trpc/client';
 import type { Database } from '@/lib/supabase/types';
 import { offlineStorage } from '@/lib/offline/storage';
+import { useNotifications } from '@/hooks/useNotifications';
+import type { ActionPerformed, PushNotificationSchema } from '@capacitor/push-notifications';
 
 // Types from database
 type Task = Database['public']['Tables']['tasks']['Row'];
@@ -47,6 +49,8 @@ interface AppState {
   isLoading: boolean;
   isHydrated: boolean;
   syncStatus: 'idle' | 'syncing' | 'synced' | 'error';
+  notificationsEnabled: boolean;
+  notificationsSupported: boolean;
 }
 
 interface AppContextType extends AppState {
@@ -75,6 +79,10 @@ interface AppContextType extends AppState {
   // General methods
   refreshAll: () => Promise<void>;
   setSyncStatus: (status: AppState['syncStatus']) => void;
+  
+  // Notification methods
+  enableNotifications: () => Promise<boolean>;
+  clearAllNotifications: () => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -136,6 +144,33 @@ export function AppProvider({ children }: { children: ReactNode }) {
     isLoading: true,
     isHydrated: false,
     syncStatus: 'idle',
+    notificationsEnabled: false,
+    notificationsSupported: false,
+  });
+
+  // Handle notification received while app is in foreground
+  const handleNotificationReceived = useCallback((notification: PushNotificationSchema) => {
+    console.log('📱 Notification received:', notification);
+    // You can show a toast or alert here
+    // For now, we'll just log it
+  }, []);
+
+  // Handle notification tapped
+  const handleNotificationTapped = useCallback((action: ActionPerformed) => {
+    console.log('📱 Notification tapped:', action);
+    
+    // Handle navigation based on notification data
+    const data = action.notification.data;
+    if (data?.route) {
+      // Route to the appropriate page
+      window.location.href = data.route as string;
+    }
+  }, []);
+
+  // Initialize notifications hook
+  const notifications = useNotifications({
+    onNotificationReceived: handleNotificationReceived,
+    onNotificationTapped: handleNotificationTapped,
   });
 
   // TRPC queries
@@ -153,6 +188,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
     enabled: !!state.user && state.isHydrated,
     refetchOnWindowFocus: false,
   });
+
+  // Update notification state when hook changes
+  useEffect(() => {
+    setState(prev => ({
+      ...prev,
+      notificationsEnabled: notifications.isEnabled,
+      notificationsSupported: notifications.isSupported,
+    }));
+  }, [notifications.isEnabled, notifications.isSupported]);
 
   // Hydrate from localStorage on mount
   useEffect(() => {
@@ -194,6 +238,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
             isLoading: false,
             isHydrated: true,
           }));
+
+          // Auto-request notification permissions on mobile after a short delay
+          // This gives the user time to see the app first
+          if (notifications.isSupported) {
+            setTimeout(() => {
+              notifications.requestPermission().catch(console.error);
+            }, 3000);
+          }
         } else {
           setState(prev => ({
             ...prev,
@@ -213,7 +265,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     };
 
     hydrate();
-  }, []);
+  }, [notifications]);
 
   // Sync with server data when it arrives
   useEffect(() => {
@@ -447,6 +499,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setState(prev => ({ ...prev, syncStatus: status }));
   }, []);
 
+  const enableNotifications = useCallback(async () => {
+    return await notifications.requestPermission();
+  }, [notifications]);
+
+  const clearAllNotifications = useCallback(async () => {
+    await notifications.removeAllNotifications();
+  }, [notifications]);
+
   const contextValue: AppContextType = {
     ...state,
     setUser,
@@ -469,6 +529,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     },
     refreshAll,
     setSyncStatus,
+    enableNotifications,
+    clearAllNotifications,
   };
 
   return <AppContext.Provider value={contextValue}>{children}</AppContext.Provider>;
