@@ -21,6 +21,7 @@ import { CreateTaskDialog, EditTaskDialog, CompleteTaskDialog, RescheduleTaskDia
 import { useOfflineSync } from '@/hooks/useOfflineSync';
 import { TaskListSkeleton, GoalListSkeleton } from '@/components/LoadingSkeletons';
 import { ChatInterface } from '@/components/ChatInterface';
+import { SearchInput } from '@/components/SearchInput';
 
 type ViewMode = 'chat' | 'today' | 'goals' | 'evening' | 'weekly' | 'integrations';
 
@@ -342,10 +343,17 @@ function TodayView() {
   const [isRecurringEditOpen, setIsRecurringEditOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<any>(null);
   const [pendingRecurringAction, setPendingRecurringAction] = useState<'edit-single' | 'edit-all' | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
   
   // Use AppContext instead of tRPC queries
   const { tasks: allTasks, goals, refreshTasks, isLoading, isHydrated, isGoogleCalendarConnected } = useApp();
   const isCalendarConnected = isGoogleCalendarConnected();
+  
+  // Search query
+  const { data: searchResults } = trpc.task.search.useQuery(
+    { query: searchQuery, limit: 20 },
+    { enabled: searchQuery.length >= 2 }
+  );
   
   // Get date filters
   const today = new Date();
@@ -544,55 +552,58 @@ function TodayView() {
   };
 
   // Filter and sort tasks (skipped tasks hidden by default, completed tasks go to bottom)
-  const filteredTasks = (allTasks || [])
-    .filter(task => {
-      // If viewing skipped filter, only show skipped tasks
-      if (activeFilter === 'skipped') {
-        return task.status === 'skipped';
-      }
-      
-      // For all other filters, hide skipped tasks by default
-      if (task.status === 'skipped') {
-        return false;
-      }
-      
-      const dueDate = task.dueDate ? new Date(task.dueDate) : null;
-      
-      if (activeFilter === 'today') {
-        return dueDate && dueDate >= today && dueDate < tomorrow;
-      }
-      if (activeFilter === 'week') {
-        return dueDate && dueDate >= today && dueDate < weekEnd;
-      }
-      if (activeFilter === 'nextweek') {
-        return dueDate && dueDate >= nextWeekStart && dueDate < nextWeekEnd;
-      }
-      if (activeFilter === 'month') {
-        return dueDate && dueDate >= today && dueDate <= monthEnd;
-      }
-      if (activeFilter === 'overdue') {
-        return dueDate && dueDate < today && task.status === 'pending';
-      }
-      return true; // 'all' (excluding skipped)
-    })
-    .sort((a, b) => {
-      // Completed/skipped go to bottom (by availability)
-      if ((a.status === 'completed' || a.status === 'skipped') && 
-          b.status === 'pending') return 1;
-      if (a.status === 'pending' && 
-          (b.status === 'completed' || b.status === 'skipped')) return -1;
-      
-      // Sort by priority (high > medium > low) for urgency
-      const priorityWeight = { high: 3, medium: 2, low: 1 };
-      const priorityDiff = (priorityWeight[b.priority] || 2) - (priorityWeight[a.priority] || 2);
-      if (priorityDiff !== 0) return priorityDiff;
-      
-      // Then by due date (earlier = more urgent)
-      if (a.dueDate && b.dueDate) {
-        return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
-      }
-      if (a.dueDate) return -1;
-      if (b.dueDate) return 1;
+  // Use search results if search is active, otherwise use normal filtering
+  const filteredTasks = searchQuery.length >= 2 && searchResults
+    ? searchResults
+    : (allTasks || [])
+        .filter(task => {
+          // If viewing skipped filter, only show skipped tasks
+          if (activeFilter === 'skipped') {
+            return task.status === 'skipped';
+          }
+          
+          // For all other filters, hide skipped tasks by default
+          if (task.status === 'skipped') {
+            return false;
+          }
+          
+          const dueDate = task.dueDate ? new Date(task.dueDate) : null;
+          
+          if (activeFilter === 'today') {
+            return dueDate && dueDate >= today && dueDate < tomorrow;
+          }
+          if (activeFilter === 'week') {
+            return dueDate && dueDate >= today && dueDate < weekEnd;
+          }
+          if (activeFilter === 'nextweek') {
+            return dueDate && dueDate >= nextWeekStart && dueDate < nextWeekEnd;
+          }
+          if (activeFilter === 'month') {
+            return dueDate && dueDate >= today && dueDate <= monthEnd;
+          }
+          if (activeFilter === 'overdue') {
+            return dueDate && dueDate < today && task.status === 'pending';
+          }
+          return true; // 'all' (excluding skipped)
+        })
+        .sort((a, b) => {
+          // Completed/skipped go to bottom (by availability)
+          if ((a.status === 'completed' || a.status === 'skipped') && 
+              b.status === 'pending') return 1;
+          if (a.status === 'pending' && 
+              (b.status === 'completed' || b.status === 'skipped')) return -1;
+          
+          // Sort by priority (high > medium > low) for urgency
+          const priorityWeight = { high: 3, medium: 2, low: 1 };
+          const priorityDiff = (priorityWeight[b.priority] || 2) - (priorityWeight[a.priority] || 2);
+          if (priorityDiff !== 0) return priorityDiff;
+          
+          // Then by due date (earlier = more urgent)
+          if (a.dueDate && b.dueDate) {
+            return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+          }
+          if (a.dueDate) return -1;
+          if (b.dueDate) return 1;
       
       // Finally, sort by creation date
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
@@ -652,7 +663,7 @@ function TodayView() {
             Tasks ✓
           </h2>
           <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-            {filteredTasks.filter(t => t.status === 'completed').length} of {filteredTasks.length} completed
+            {filteredTasks.filter((t: any) => t.status === 'completed').length} of {filteredTasks.length} completed
           </p>
         </div>
         {isCalendarConnected && (
@@ -675,27 +686,36 @@ function TodayView() {
         )}
       </div>
 
+      {/* Search Bar */}
+      <SearchInput
+        onSearch={setSearchQuery}
+        placeholder="Search tasks..."
+        className="w-full sm:w-96"
+      />
+
       {/* Filter Chips */}
-      <div className="flex flex-wrap gap-2">
-        {filters.map((filter) => (
-          <button
-            key={filter.id}
-            onClick={() => setActiveFilter(filter.id)}
-            className={`rounded-full px-4 py-2 text-sm font-medium transition-all ${
-              activeFilter === filter.id
-                ? 'bg-zinc-900 text-white shadow-sm dark:bg-zinc-50 dark:text-zinc-900'
-                : 'border border-zinc-300 text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800'
-            }`}
-          >
-            {filter.label}
-            <span className={`ml-1.5 ${
-              activeFilter === filter.id ? 'opacity-80' : 'opacity-60'
-            }`}>
-              {filter.count}
-            </span>
-          </button>
-        ))}
-      </div>
+      {!searchQuery && (
+        <div className="flex flex-wrap gap-2">
+          {filters.map((filter) => (
+            <button
+              key={filter.id}
+              onClick={() => setActiveFilter(filter.id)}
+              className={`rounded-full px-4 py-2 text-sm font-medium transition-all ${
+                activeFilter === filter.id
+                  ? 'bg-zinc-900 text-white shadow-sm dark:bg-zinc-50 dark:text-zinc-900'
+                  : 'border border-zinc-300 text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800'
+              }`}
+            >
+              {filter.label}
+              <span className={`ml-1.5 ${
+                activeFilter === filter.id ? 'opacity-80' : 'opacity-60'
+              }`}>
+                {filter.count}
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Task List */}
       {!isHydrated || isLoading ? (
@@ -703,7 +723,7 @@ function TodayView() {
       ) : (
         <div className="space-y-3">
           <AnimatePresence mode="popLayout">
-            {filteredTasks.map((task, index) => (
+            {filteredTasks.map((task: any, index: number) => (
             <motion.div
               key={task.id}
               initial={{ opacity: 0, y: 20 }}
@@ -802,7 +822,7 @@ function TodayView() {
                     )}
                     {task.tags && task.tags.length > 0 && (
                       <>
-                        {task.tags.slice(0, 2).map((tag, tagIndex) => (
+                        {task.tags.slice(0, 2).map((tag: string, tagIndex: number) => (
                           <span key={`${task.id}-tag-${tagIndex}`} className="rounded-full bg-zinc-100 px-1.5 py-0.5 text-xs text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
                             {tag}
                           </span>
@@ -916,7 +936,7 @@ function TodayView() {
                   )}
                   {task.tags && task.tags.length > 0 && (
                     <div className="flex gap-1">
-                      {task.tags.slice(0, 2).map((tag, tagIndex) => (
+                      {task.tags.slice(0, 2).map((tag: string, tagIndex: number) => (
                         <span key={`${task.id}-tag-${tagIndex}`} className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
                           {tag}
                         </span>
@@ -1103,6 +1123,7 @@ function GoalsView() {
   const [selectedGoal, setSelectedGoal] = useState<any>(null);
   const [showCalendar, setShowCalendar] = useState(false);
   const [showCompleted, setShowCompleted] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -1115,6 +1136,12 @@ function GoalsView() {
 
   // Use AppContext
   const { goals, tasks: allTasks, refreshGoals, refreshTasks, isGoogleCalendarConnected } = useApp();
+  
+  // Search query
+  const { data: searchResults } = trpc.goal.search.useQuery(
+    { query: searchQuery, limit: 20 },
+    { enabled: searchQuery.length >= 2 }
+  );
   
   // Keep these tRPC queries as they're not core data
   const { data: githubIntegration } = trpc.integration.getByServiceType.useQuery({ serviceType: 'github' });
@@ -1223,10 +1250,13 @@ function GoalsView() {
     setIsViewOpen(true);
   };
 
+  // Use search results if search is active, otherwise use normal filtering
+  const displayGoals = searchQuery.length >= 2 && searchResults ? searchResults : goals;
+  
   // Split goals into active and completed
-  const activeGoals = goals?.filter((g: any) => g.status !== 'completed') || [];
-  const completedGoals = goals?.filter((g: any) => g.status === 'completed') || [];
-  const totalGoals = goals?.length || 0;
+  const activeGoals = displayGoals?.filter((g: any) => g.status !== 'completed') || [];
+  const completedGoals = displayGoals?.filter((g: any) => g.status === 'completed') || [];
+  const totalGoals = displayGoals?.length || 0;
 
   const getTaskCountsForGoal = (goalId: string) => {
     const goalTasks = allTasks?.filter(t => t.goalId === goalId) || [];
@@ -1423,6 +1453,13 @@ function GoalsView() {
           </DialogContent>
         </Dialog>
       </div>
+
+      {/* Search Bar */}
+      <SearchInput
+        onSearch={setSearchQuery}
+        placeholder="Search goals..."
+        className="w-full sm:w-96"
+      />
 
       {/* Active Goals List */}
       {totalGoals === 0 ? (

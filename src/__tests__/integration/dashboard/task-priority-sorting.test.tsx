@@ -42,6 +42,7 @@ vi.mock('@/hooks/useOfflineSync', () => ({
 vi.mock('@/lib/trpc/client', () => ({
   trpc: {
     task: {
+      search: { useQuery: vi.fn(() => ({ data: [] })) },
       create: { useMutation: vi.fn(() => ({ mutate: vi.fn(), isPending: false })) },
       update: { useMutation: vi.fn(() => ({ mutate: vi.fn(), isPending: false })) },
       complete: { useMutation: vi.fn(() => ({ mutate: vi.fn(), isPending: false })) },
@@ -49,6 +50,9 @@ vi.mock('@/lib/trpc/client', () => ({
       reschedule: { useMutation: vi.fn(() => ({ mutate: vi.fn(), isPending: false })) },
       delete: { useMutation: vi.fn(() => ({ mutate: vi.fn(), isPending: false })) },
       syncFromCalendar: { useMutation: vi.fn(() => ({ mutate: vi.fn(), isPending: false })) },
+    },
+    goal: {
+      search: { useQuery: vi.fn(() => ({ data: [] })) },
     },
     integration: {
       getAll: { useQuery: vi.fn(() => ({ data: [], isLoading: false })) },

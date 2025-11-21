@@ -1,6 +1,49 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import Home from "@/app/page";
+import { mockAppContext } from '../../helpers/app-context-mock';
+
+// Mock Next.js router
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({
+    push: vi.fn(),
+    refresh: vi.fn(),
+  }),
+}));
+
+// Mock AppContext
+vi.mock('@/contexts/AppContext', () => ({
+  useApp: () => mockAppContext(),
+  AppProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}));
+
+// Mock trpc
+vi.mock('@/lib/trpc/client', () => ({
+  trpc: {
+    task: {
+      search: { useQuery: vi.fn(() => ({ data: [] })) },
+    },
+    goal: {
+      search: { useQuery: vi.fn(() => ({ data: [] })) },
+    },
+    conversation: {
+      getAll: { useQuery: vi.fn(() => ({ data: [] })) },
+      create: { useMutation: vi.fn(() => ({ mutateAsync: vi.fn() })) },
+      update: { useMutation: vi.fn(() => ({ mutateAsync: vi.fn() })) },
+    },
+  },
+}));
+
+// Mock offline sync hook
+vi.mock('@/hooks/useOfflineSync', () => ({
+  useOfflineSync: () => ({
+    isOnline: true,
+    isSyncing: false,
+    pendingCount: 0,
+    queueMutation: vi.fn(),
+    forceSync: vi.fn(),
+  }),
+}));
 
 describe("Landing Page Footer", () => {
   it("should render footer with legal links", () => {

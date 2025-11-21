@@ -13,7 +13,7 @@ const genAI = new GoogleGenerativeAI(env.NEXT_GOOGLE_GEMINI_API_KEY);
 /**
  * Detect if user message is a command
  */
-function detectCommand(message: string): 'roast' | 'patterns' | 'create_task' | 'delete_task' | null {
+function detectCommand(message: string): 'roast' | 'patterns' | 'create_task' | 'update_task' | 'delete_task' | null {
   const lowerMsg = message.toLowerCase().trim();
   
   // Roast commands
@@ -35,6 +35,22 @@ function detectCommand(message: string): 'roast' | 'patterns' | 'create_task' | 
     lowerMsg.includes('my patterns')
   ) {
     return 'patterns';
+  }
+  
+  // Task update commands (check before create to avoid false positives)
+  if (
+    lowerMsg.includes('update task') ||
+    lowerMsg.includes('edit task') ||
+    lowerMsg.includes('change task') ||
+    lowerMsg.includes('modify task') ||
+    lowerMsg.includes('reschedule task') ||
+    lowerMsg.includes('move task') ||
+    lowerMsg.includes('update the task') ||
+    lowerMsg.includes('change the task') ||
+    lowerMsg.match(/update.+?(to|for|at)/i) ||
+    lowerMsg.match(/(change|move|reschedule).+?(to|for|tomorrow|today|next)/i)
+  ) {
+    return 'update_task';
   }
   
   // Task creation commands
@@ -88,7 +104,7 @@ function isValidationResponse(messages: any[]): { type: 'create_task' | 'delete_
     );
     
     if (createCommandMsg) {
-      return { type: 'create_task', data: { originalMessage: createCommandMsg.content, response: lastUser.content } };
+      return { type: 'create_task', data: { originalMessage: createCommandMsg.content, response: lastUser.content, assistantMessage: assistantContent } };
     }
   }
 
@@ -165,6 +181,8 @@ If time is mentioned, extract it. If no date is mentioned, return null for dueDa
   );
   const parseResponse = await parseResult.response;
   const parseText = parseResponse.text();
+  
+  console.log('[DEBUG] AI parse response:', parseText);
 
   // Extract JSON from response
   let taskData: any;
@@ -172,23 +190,34 @@ If time is mentioned, extract it. If no date is mentioned, return null for dueDa
     const jsonMatch = parseText.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
       taskData = JSON.parse(jsonMatch[0]);
+      console.log('[DEBUG] Parsed task data:', taskData);
     } else {
       throw new Error('No JSON found in response');
     }
   } catch (parseError) {
-    // Fallback: try to extract title from message
-    const titleMatch = message.match(/(?:add|create|new task|task:)\s*:?\s*(.+?)(?:\s+tomorrow|\s+at|\s+on|$)/i);
+    console.log('[DEBUG] JSON parse failed, using fallback extraction');
+    // Fallback: try to extract title from message - be more permissive
+    const titleMatch = message.match(/(?:add|create|new task|task:)\s*:?\s*(.+?)(?:\s+tomorrow|\s+today|\s+next|\s+at|\s+on|\s+for|$)/i);
+    const fallbackTitle = titleMatch ? titleMatch[1].trim() : message.replace(/^(add|create|new task|task:)\s*:?\s*/i, '').trim();
+    
+    console.log('[DEBUG] Fallback title:', fallbackTitle);
+    
     taskData = {
-      title: titleMatch ? titleMatch[1].trim() : message.replace(/^(add|create|new task|task:)\s*:?\s*/i, '').trim(),
+      title: fallbackTitle,
       priority: 'medium',
     };
   }
 
-  if (!taskData.title || taskData.title.trim().length === 0) {
+  // Ensure we have a title - final safety check
+  if (!taskData || !taskData.title || taskData.title.trim().length === 0) {
+    console.error('[ERROR] No title found in task data:', taskData);
     return NextResponse.json({
       text: "I couldn't understand what task you want to create. Please try again with a clear task description, like 'Add task: workout tomorrow at 6am'.",
     });
   }
+  
+  // Clean up the title (remove empty values)
+  taskData.title = taskData.title.trim();
 
   // Build validation questions for missing important fields
   const questions: string[] = [];
@@ -232,7 +261,7 @@ If time is mentioned, extract it. If no date is mentioned, return null for dueDa
       validationText += `${idx + 1}. ${q}\n`;
     });
     
-    validationText += `\nPlease provide the missing information, or reply "skip" for any field you don't want to specify.\n\nVALIDATION_CREATE_TASK`;
+    validationText += `\nPlease provide the missing information, or reply "skip" for any field you don't want to specify.\n\nVALIDATION_CREATE_TASK\n<!-- TASK_DATA: ${JSON.stringify(taskData)} -->`;
     
     return NextResponse.json({
       text: validationText,
@@ -252,32 +281,62 @@ async function handleCreateTaskWithValidation(
   originalMessage: string,
   validationResponse: string,
   user: any,
-  supabase: SupabaseClient
+  supabase: SupabaseClient,
+  assistantMessage?: string
 ): Promise<NextResponse> {
-  // Re-parse original message to get base task data
-  const parseModel = genAI.getGenerativeModel({
-    model: 'gemini-2.5-flash',
-    systemInstruction: `You are a task parser. Extract task details from user messages and return ONLY valid JSON.`,
-  });
-
-  const parseResult = await parseModel.generateContent(
-    `Parse this task request into JSON: "${originalMessage}"`
-  );
-  const parseResponse = await parseResult.response;
-  const parseText = parseResponse.text();
-
-  let taskData: any;
-  try {
-    const jsonMatch = parseText.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      taskData = JSON.parse(jsonMatch[0]);
+  // Try to extract task data from the assistant's validation message first
+  let taskData: any = null;
+  
+  if (assistantMessage) {
+    const taskDataMatch = assistantMessage.match(/<!-- TASK_DATA: (.+?) -->/);
+    if (taskDataMatch) {
+      try {
+        taskData = JSON.parse(taskDataMatch[1]);
+        console.log('[DEBUG] Extracted task data from validation message:', taskData);
+      } catch (e) {
+        console.log('[DEBUG] Failed to parse embedded task data');
+      }
     }
-  } catch {
-    // Fallback parsing
-    const titleMatch = originalMessage.match(/(?:add|create|new task|task:)\s*:?\s*(.+?)(?:\s+tomorrow|\s+at|\s+on|$)/i);
-    taskData = {
-      title: titleMatch ? titleMatch[1].trim() : originalMessage.replace(/^(add|create|new task|task:)\s*:?\s*/i, '').trim(),
-    };
+  }
+  
+  // If we didn't get task data from the message, try re-parsing (fallback)
+  if (!taskData) {
+    console.log('[DEBUG] No embedded task data, attempting to re-parse original message');
+    const parseModel = genAI.getGenerativeModel({
+      model: 'gemini-2.5-flash',
+      systemInstruction: `You are a task parser. Extract task details from user messages and return ONLY valid JSON.`,
+    });
+
+    const parseResult = await parseModel.generateContent(
+      `Parse this task request into JSON: "${originalMessage}"`
+    );
+    const parseResponse = await parseResult.response;
+    const parseText = parseResponse.text();
+
+    try {
+      const jsonMatch = parseText.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        taskData = JSON.parse(jsonMatch[0]);
+        console.log('[DEBUG] Validation parse - task data:', taskData);
+      }
+    } catch {
+      console.log('[DEBUG] Validation parse failed, using fallback');
+      // Fallback parsing - be more permissive
+      const titleMatch = originalMessage.match(/(?:add|create|new task|task:)\s*:?\s*(.+?)(?:\s+tomorrow|\s+today|\s+next|\s+at|\s+on|\s+for|$)/i);
+      const fallbackTitle = titleMatch ? titleMatch[1].trim() : originalMessage.replace(/^(add|create|new task|task:)\s*:?\s*/i, '').trim();
+      taskData = {
+        title: fallbackTitle,
+      };
+      console.log('[DEBUG] Validation fallback title:', taskData.title);
+    }
+  }
+  
+  // Safety check for title
+  if (!taskData || !taskData.title || taskData.title.trim().length === 0) {
+    console.error('[ERROR] No title in validation path:', { originalMessage, taskData });
+    return NextResponse.json({
+      text: "❌ Failed to create task: Could not extract task title. Please try again.",
+    });
   }
 
   // Parse validation response to extract additional info
@@ -363,8 +422,22 @@ async function createTaskFromData(
   const caller = appRouter.createCaller(ctx);
 
   try {
-    const createdTask = await caller.task.create({
+    // Validate title one more time before sending
+    if (!taskData.title || typeof taskData.title !== 'string' || taskData.title.trim().length === 0) {
+      console.error('[ERROR] Invalid title at task creation:', { taskData });
+      return NextResponse.json({
+        text: "❌ Failed to create task: No valid title was provided. Please try again with a clear task description.",
+      });
+    }
+    
+    console.log('[DEBUG] Creating task with data:', JSON.stringify({
       title: taskData.title,
+      dueDate: dueDate?.toISOString(),
+      priority: taskData.priority
+    }));
+    
+    const createdTask = await caller.task.create({
+      title: taskData.title.trim(),
       description: taskData.description || undefined,
       dueDate: dueDate,
       startTime: startTime,
@@ -374,15 +447,156 @@ async function createTaskFromData(
       syncWithCalendar: false,
     });
 
+    console.log('[DEBUG] Task created successfully:', createdTask.id);
+
     return NextResponse.json({
       text: `✅ **Task Created!**\n\n**${createdTask.title}**${dueDate ? `\nDue: ${dueDate.toLocaleDateString()}` : ''}${startTime ? `\nTime: ${startTime.toLocaleTimeString()}` : ''}\n\nI've added this to your task list.`,
       commandExecuted: 'create_task',
       data: createdTask,
     });
   } catch (error: any) {
-    console.error('Task creation error:', error);
+    console.error('[ERROR] Task creation failed:', error);
     return NextResponse.json({
       text: `❌ Failed to create task: ${error.message || 'Unknown error'}. Please try again.`,
+    });
+  }
+}
+
+/**
+ * Handle task update - search for task and apply updates
+ */
+async function handleUpdateTask(
+  request: NextRequest,
+  message: string,
+  user: any,
+  supabase: SupabaseClient
+): Promise<NextResponse> {
+  try {
+    // Fetch user's pending and completed tasks (recent)
+    const { data: tasks } = await (supabase as any)
+      .from('tasks')
+      .select('id, title, description, due_date, priority, status, tags')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(50);
+
+    if (!tasks || tasks.length === 0) {
+      return NextResponse.json({
+        text: "I couldn't find any tasks to update.",
+      });
+    }
+
+    // Use AI to identify which task and what updates
+    const parseModel = genAI.getGenerativeModel({
+      model: 'gemini-2.5-flash',
+      systemInstruction: `You are a task update parser. Given a user's update request and their task list, identify:
+1. Which task to update (return task ID)
+2. What fields to update (title, description, dueDate, priority, status, tags)
+
+Return ONLY valid JSON in this format:
+{
+  "taskId": "uuid-here",
+  "updates": {
+    "title": "new title" (optional),
+    "description": "new description" (optional),
+    "dueDate": "2025-11-22" (optional, ISO date string),
+    "priority": "high|medium|low" (optional),
+    "status": "pending|completed|skipped" (optional),
+    "tags": ["tag1", "tag2"] (optional)
+  }
+}
+
+If you can't identify the task, return: { "error": "Could not identify task", "suggestions": ["task1 title", "task2 title"] }`,
+    });
+
+    const taskContext = tasks.map((t: any, idx: number) => 
+      `${idx + 1}. ID: ${t.id} | "${t.title}" | Due: ${t.due_date || 'none'} | Priority: ${t.priority} | Status: ${t.status}`
+    ).join('\n');
+
+    const parseResult = await parseModel.generateContent(
+      `User request: "${message}"\n\nUser's tasks:\n${taskContext}\n\nIdentify which task to update and what changes to make.`
+    );
+    const parseResponse = await parseResult.response;
+    const parseText = parseResponse.text();
+
+    console.log('[DEBUG] AI parse response for update:', parseText);
+
+    let updateData: any;
+    try {
+      const jsonMatch = parseText.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        updateData = JSON.parse(jsonMatch[0]);
+      }
+    } catch (e) {
+      console.error('[ERROR] Failed to parse AI response:', e);
+    }
+
+    if (!updateData || updateData.error) {
+      const suggestions = updateData?.suggestions || tasks.slice(0, 5).map((t: any) => t.title);
+      return NextResponse.json({
+        text: `I couldn't identify which task to update. Did you mean one of these?\n\n${suggestions.map((s: string, i: number) => `${i + 1}. ${s}`).join('\n')}\n\nPlease be more specific, e.g., "Update [task name] to [changes]"`,
+      });
+    }
+
+    const taskId = updateData.taskId;
+    const updates = updateData.updates || {};
+
+    if (!taskId || Object.keys(updates).length === 0) {
+      return NextResponse.json({
+        text: "I understood your request but couldn't determine what to update. Please specify both the task and the changes.",
+      });
+    }
+
+    // Find the task to show current values
+    const task = tasks.find((t: any) => t.id === taskId);
+    if (!task) {
+      return NextResponse.json({
+        text: "Task not found. Please try again.",
+      });
+    }
+
+    // Create tRPC caller
+    const callerOpts = {
+      user,
+      db: supabase,
+      headers: request.headers,
+    };
+    const caller = appRouter.createCaller(callerOpts as any);
+
+    // Prepare update payload
+    const updatePayload: any = { id: taskId };
+    
+    if (updates.title) updatePayload.title = updates.title;
+    if (updates.description !== undefined) updatePayload.description = updates.description;
+    if (updates.dueDate) updatePayload.dueDate = new Date(updates.dueDate);
+    if (updates.priority) updatePayload.priority = updates.priority;
+    if (updates.status) updatePayload.status = updates.status;
+    if (updates.tags) updatePayload.tags = updates.tags;
+
+    console.log('[DEBUG] Updating task with payload:', updatePayload);
+
+    // Execute update
+    const updatedTask = await caller.task.update(updatePayload);
+
+    // Build success message
+    let successMsg = `✅ **Task Updated**\n\n"${updatedTask.title}"\n\n**Changes:**\n`;
+    
+    if (updates.title) successMsg += `- Title: "${task.title}" → "${updates.title}"\n`;
+    if (updates.description !== undefined) successMsg += `- Description updated\n`;
+    if (updates.dueDate) successMsg += `- Due date: ${task.due_date || 'none'} → ${new Date(updates.dueDate).toLocaleDateString() || 'none'}\n`;
+    if (updates.priority) successMsg += `- Priority: ${task.priority} → ${updates.priority}\n`;
+    if (updates.status) successMsg += `- Status: ${task.status} → ${updates.status}\n`;
+    if (updates.tags) successMsg += `- Tags: ${updates.tags.join(', ') || 'none'}\n`;
+
+    return NextResponse.json({
+      text: successMsg,
+      commandExecuted: 'update_task',
+      data: { updatedTask },
+    });
+  } catch (error) {
+    console.error('[ERROR] Task update failed:', error);
+    return NextResponse.json({
+      text: `❌ Failed to update task: ${error instanceof Error ? error.message : 'Unknown error'}`,
     });
   }
 }
@@ -451,23 +665,109 @@ async function handleDeleteTaskValidation(
 /**
  * Fetch user context (current tasks, goals, patterns and recent accountability scores)
  */
-async function fetchUserContext(userId: string, supabase: SupabaseClient): Promise<string> {
+async function fetchUserContext(userId: string, userQuery: string, supabase: SupabaseClient): Promise<string> {
   try {
+    let contextStr = '\n\nUSER CONTEXT:\n';
+    
+    // Detect if query needs search-based context
+    const queryLower = userQuery.toLowerCase();
+    
+    // Broaden search keywords to catch more natural queries
+    const searchKeywords = [
+      'find', 'search', 'show', 'where', 'which', 'what', 
+      'task', 'todo', 'schedule', 'plan', 'agenda', 
+      'due', 'deadline', 'goal', 'project'
+    ];
+    
+    // Time-based keywords often imply looking for specific tasks
+    const timeKeywords = ['today', 'tomorrow', 'week', 'month', 'upcoming', 'overdue'];
+    
+    // Check if query contains search intent OR combines generic words with time
+    const hasSearchKeyword = searchKeywords.some(keyword => queryLower.includes(keyword));
+    const hasTimeKeyword = timeKeywords.some(keyword => queryLower.includes(keyword));
+    
+    // More permissive trigger: 
+    // 1. Contains search keyword AND length > 5
+    // 2. OR contains time keyword AND length > 5 (e.g. "tasks today")
+    const needsSearch = (hasSearchKeyword || hasTimeKeyword) && userQuery.length > 5;
+    
+    // If query seems to be looking for specific items, use search
+    if (needsSearch) {
+      try {
+        // Search tasks
+        const { data: searchedTasks, error: taskError } = await (supabase as any).rpc('search_tasks', {
+          query_text: userQuery,
+          query_user_id: userId,
+          match_limit: 5,
+        });
+        
+        if (taskError) {
+          console.log('Task search error (skipping):', taskError.message);
+        }
+        
+        // Search goals
+        const { data: searchedGoals, error: goalError } = await (supabase as any).rpc('search_goals', {
+          query_text: userQuery,
+          query_user_id: userId,
+          match_limit: 5,
+        });
+        
+        if (goalError) {
+          console.log('Goal search error (skipping):', goalError.message);
+        }
+        
+        if ((searchedTasks && searchedTasks.length > 0) || (searchedGoals && searchedGoals.length > 0)) {
+          contextStr += '\nRELEVANT TO YOUR QUERY:\n';
+          
+          if (searchedTasks && searchedTasks.length > 0) {
+            contextStr += '\nRelevant Tasks:\n';
+            searchedTasks.forEach((t: any) => {
+              contextStr += `- ${t.title}`;
+              if (t.description) contextStr += `: ${t.description}`;
+              contextStr += ` (Status: ${t.status}, Due: ${t.due_date || 'No due date'})\n`;
+            });
+          }
+          
+          if (searchedGoals && searchedGoals.length > 0) {
+            contextStr += '\nRelevant Goals:\n';
+            searchedGoals.forEach((g: any) => {
+              contextStr += `- ${g.title}`;
+              if (g.description) contextStr += `: ${g.description}`;
+              contextStr += ` (Status: ${g.status})\n`;
+            });
+          }
+          
+          contextStr += '\n';
+        }
+      } catch (searchError: any) {
+        console.log('Search failed, continuing without search context:', searchError?.message || searchError);
+        // Continue execution - don't let search errors break the chat
+      }
+    }
 
-    // Fetch current tasks
-    const { data: tasks } = await supabase
+    // Always fetch CRITICAL context (Today, Overdue, Upcoming)
+    // This ensures the AI always knows what's on the immediate agenda, regardless of search
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const nextWeek = new Date(today);
+    nextWeek.setDate(nextWeek.getDate() + 7);
+    
+    const { data: criticalTasks } = await supabase
       .from('tasks')
-      .select('id, title, description, due_date, start_time, end_time, status, priority, completion_proof, tags, is_synced_with_calendar, recurrence_rule, parent_task_id')
+      .select('id, title, description, due_date, status, priority, tags')
       .eq('user_id', userId)
+      .or(`due_date.lt.${today.toISOString()},and(due_date.gte.${today.toISOString()},due_date.lt.${nextWeek.toISOString()})`)
+      .in('status', ['pending', 'in_progress']) // Only active tasks
       .order('due_date', { ascending: true })
-      .limit(10);
-
-    // Fetch current goals
-    const { data: goals } = await supabase
+      .limit(20);
+      
+    const { data: activeGoals } = await supabase
       .from('goals')
-      .select('id, title, description, status, priority, target_date, time_horizon')
+      .select('id, title, status, priority, target_date')
       .eq('user_id', userId)
-      .order('target_date', { ascending: true })
+      .eq('status', 'active')
       .limit(10);
 
     // Fetch recent patterns
@@ -476,7 +776,7 @@ async function fetchUserContext(userId: string, supabase: SupabaseClient): Promi
       .select('pattern_type, description, confidence')
       .eq('user_id', userId)
       .order('last_occurred', { ascending: false })
-      .limit(10);
+      .limit(5);
 
     // Fetch recent accountability score
     const { data: scores } = await supabase
@@ -484,38 +784,44 @@ async function fetchUserContext(userId: string, supabase: SupabaseClient): Promi
       .select('*')
       .eq('user_id', userId)
       .order('week_start', { ascending: false })
-      .limit(10);
+      .limit(1);
 
-    let contextStr = '\n\nUSER CONTEXT:\n';
+    contextStr += '\nCURRENT AGENDA & CONTEXT:\n';
 
-    if (tasks && tasks.length > 0) {
-      contextStr += '\n MyTasks:\n';
-      tasks.forEach((t: any) => {
-        contextStr += `ID - ${t.id} \n - ${t.title}: ${t.description} (Due: ${t.due_date}, Status: ${t.status}) - ${t.priority} priority \n -${t.tags?.join(', ')} tags \n - ${t.completion_proof} completion proof \n - ${t.is_synced_with_calendar} synced with calendar \n - ${t.recurrence_rule} recurrence rule \n`;
+    if (criticalTasks && criticalTasks.length > 0) {
+      contextStr += '\n🚨 OVERDUE & UPCOMING TASKS (Priority List):\n';
+      criticalTasks.forEach((t: any) => {
+        const dueDate = t.due_date ? new Date(t.due_date) : null;
+        const isOverdue = dueDate && dueDate < today;
+        const isToday = dueDate && dueDate >= today && dueDate < tomorrow;
+        
+        const timeStatus = isOverdue ? '[OVERDUE]' : isToday ? '[TODAY]' : `[${dueDate?.toLocaleDateString()}]`;
+        
+        contextStr += `${timeStatus} ${t.title} (Priority: ${t.priority})\n`;
       });
+    } else {
+      contextStr += '\nNo pending tasks for today or the upcoming week.\n';
     }
 
-    if (goals && goals.length > 0) {
-      contextStr += '\n My Goals:\n';
-      goals.forEach((g: any) => {
-        contextStr += `ID - ${g.id} \n - ${g.title}: ${g.description} (Target Date: ${g.target_date}, Status: ${g.status}) - ${g.priority} priority \n - ${g.time_horizon} goal \n`;
+    if (activeGoals && activeGoals.length > 0) {
+      contextStr += '\n🎯 ACTIVE GOALS:\n';
+      activeGoals.forEach((g: any) => {
+        contextStr += `- ${g.title} (${g.priority} priority)\n`;
       });
     }
 
     if (patterns && patterns.length > 0) {
-      contextStr += '\nRecent Patterns Detected:\n';
+      contextStr += '\n🧠 BEHAVIORAL PATTERNS:\n';
       patterns.forEach((p: any) => {
-        contextStr += `- ${p.pattern_type}: ${p.description} (${Math.round(p.confidence * 100)}% confidence)\n`;
+        contextStr += `- ${p.pattern_type}: ${p.description}\n`;
       });
     }
 
     if (scores && scores.length > 0) {
       const score = scores[0];
-      contextStr += '\nCurrent Performance:\n';
+      contextStr += '\n📊 LAST WEEK PERFORMANCE:\n';
+      contextStr += `- Completion Rate: ${Math.round(score.completion_rate * 100)}%\n`;
       contextStr += `- Alignment: ${Math.round(score.alignment_score * 100)}%\n`;
-      contextStr += `- Honesty: ${Math.round(score.honesty_score * 100)}%\n`;
-      contextStr += `- Completion: ${Math.round(score.completion_rate * 100)}%\n`;
-      contextStr += `- New projects started: ${score.new_projects_started}\n`;
     }
 
     return contextStr;
@@ -557,7 +863,7 @@ export async function POST(request: NextRequest) {
       // Handle validation responses
       if (validation.type === 'create_task' && validation.data) {
         // User responded to task creation validation - now create the task
-        return await handleCreateTaskWithValidation(request, validation.data.originalMessage, validation.data.response, user, supabase);
+        return await handleCreateTaskWithValidation(request, validation.data.originalMessage, validation.data.response, user, supabase, validation.data.assistantMessage);
       }
       
       if (validation.type === 'delete_task' && validation.data) {
@@ -702,15 +1008,22 @@ export async function POST(request: NextRequest) {
     }
 
     if (command === 'create_task') {
+      console.log('[DEBUG] Create task command detected');
       return await handleCreateTaskValidation(request, lastMessage.content, user, supabase);
     }
 
+    if (command === 'update_task') {
+      console.log('[DEBUG] Update task command detected');
+      return await handleUpdateTask(request, lastMessage.content, user, supabase);
+    }
+
     if (command === 'delete_task') {
+      console.log('[DEBUG] Delete task command detected');
       return await handleDeleteTaskValidation(request, lastMessage.content, user, supabase);
     }
 
     // Regular chat - fetch user context
-    const userContext = await fetchUserContext(user.id, supabase);
+    const userContext = await fetchUserContext(user.id, lastMessage.content, supabase);
 
     // Fetch conversation history for context (if not the current conversation)
     let conversationContext = '';
@@ -773,12 +1086,45 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Send the last message
-    const result = await chat.sendMessage(lastMessage.content);
-    const response = await result.response;
-    const text = response.text();
+    // Send the last message with streaming
+    console.log('[DEBUG] Starting streaming response');
+    const result = await chat.sendMessageStream(lastMessage.content);
 
-    return NextResponse.json({ text });
+    // Create a streaming response using Server-Sent Events
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream({
+      async start(controller) {
+        try {
+          let fullText = '';
+          for await (const chunk of result.stream) {
+            const text = chunk.text();
+            fullText += text;
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text })}\n\n`));
+          }
+          
+          if (fullText.length === 0) {
+            console.error('[ERROR] Stream completed with empty text');
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
+              text: 'I apologize, I received an empty response. Please try again.' 
+            })}\n\n`));
+          }
+          
+          controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+          controller.close();
+        } catch (error) {
+          console.error('[ERROR] Streaming error:', error);
+          controller.error(error);
+        }
+      },
+    });
+
+    return new Response(stream, {
+      headers: {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+      },
+    });
   } catch (error: any) {
     console.error('Gemini API error:', error);
 

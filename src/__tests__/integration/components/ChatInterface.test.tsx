@@ -39,9 +39,29 @@ describe('ChatInterface', () => {
     mockConversationGetAll.mockReturnValue({ data: [] });
     mockConversationCreate.mockResolvedValue({ id: 'new-conv-id' });
     mockConversationUpdate.mockResolvedValue({});
-    (global.fetch as any).mockResolvedValue({
-      ok: true,
-      json: async () => ({ text: 'AI response' }),
+    
+    // Mock streaming response - create a fresh reader for each call
+    (global.fetch as any).mockImplementation(() => {
+      const mockStreamReader = {
+        read: vi.fn()
+          .mockResolvedValueOnce({ 
+            done: false, 
+            value: new TextEncoder().encode('data: {"text":"AI response"}\n\n') 
+          })
+          .mockResolvedValueOnce({ 
+            done: false, 
+            value: new TextEncoder().encode('data: [DONE]\n\n') 
+          })
+          .mockResolvedValueOnce({ done: true, value: undefined }),
+      };
+      
+      return Promise.resolve({
+        ok: true,
+        headers: new Headers({ 'content-type': 'text/event-stream' }),
+        body: {
+          getReader: () => mockStreamReader,
+        },
+      });
     });
   });
 
@@ -165,10 +185,28 @@ describe('ChatInterface', () => {
 
   it('should handle loading state', async () => {
     (global.fetch as any).mockImplementation(() => 
-      new Promise(resolve => setTimeout(() => resolve({
-        ok: true,
-        json: async () => ({ text: 'Response' }),
-      }), 50))
+      new Promise(resolve => setTimeout(() => {
+        const mockStreamReader = {
+          read: vi.fn()
+            .mockResolvedValueOnce({ 
+              done: false, 
+              value: new TextEncoder().encode('data: {"text":"Response"}\n\n') 
+            })
+            .mockResolvedValueOnce({ 
+              done: false, 
+              value: new TextEncoder().encode('data: [DONE]\n\n') 
+            })
+            .mockResolvedValueOnce({ done: true, value: undefined }),
+        };
+        
+        resolve({
+          ok: true,
+          headers: new Headers({ 'content-type': 'text/event-stream' }),
+          body: {
+            getReader: () => mockStreamReader,
+          },
+        });
+      }, 50))
     );
 
     render(<ChatInterface />);

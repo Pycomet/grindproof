@@ -6,6 +6,8 @@ import React from 'react';
  */
 export function markdownToReact(text: string): React.ReactNode {
   const parts: React.ReactNode[] = [];
+  // Use random seed for unique keys per render to avoid conflicts during streaming
+  const seed = Math.random().toString(36).substring(7);
   let key = 0;
 
   // Split by code blocks first (backticks) - allow empty code blocks
@@ -59,7 +61,7 @@ export function markdownToReact(text: string): React.ReactNode {
     if (part.type === 'code') {
       parts.push(
         <code
-          key={key++}
+          key={`${seed}-code-${key++}`}
           className="rounded bg-zinc-200 px-1.5 py-0.5 text-xs font-mono dark:bg-zinc-700"
         >
           {part.content}
@@ -126,7 +128,7 @@ export function markdownToReact(text: string): React.ReactNode {
       // Process text with matches
       if (allMatches.length === 0) {
         // No matches, just process line breaks
-        parts.push(...processLineBreaks(textContent, key));
+        parts.push(...processLineBreaks(textContent, key, seed));
       } else {
         let currentIndex = 0;
         allMatches.forEach((matchItem) => {
@@ -134,7 +136,7 @@ export function markdownToReact(text: string): React.ReactNode {
           if (matchItem.start > currentIndex) {
             const beforeText = textContent.substring(currentIndex, matchItem.start);
             if (beforeText) {
-              parts.push(...processLineBreaks(beforeText, key));
+              parts.push(...processLineBreaks(beforeText, key, seed));
               key += beforeText.split('\n').length;
             }
           }
@@ -142,13 +144,13 @@ export function markdownToReact(text: string): React.ReactNode {
           // Add match
           if (matchItem.type === 'bold') {
             parts.push(
-              <strong key={key++} className="font-semibold">
+              <strong key={`${seed}-bold-${key++}`} className="font-semibold">
                 {matchItem.content}
               </strong>
             );
           } else {
             parts.push(
-              <em key={key++} className="italic">
+              <em key={`${seed}-italic-${key++}`} className="italic">
                 {matchItem.content}
               </em>
             );
@@ -161,7 +163,7 @@ export function markdownToReact(text: string): React.ReactNode {
         if (currentIndex < textContent.length) {
           const remainingText = textContent.substring(currentIndex);
           if (remainingText) {
-            parts.push(...processLineBreaks(remainingText, key));
+            parts.push(...processLineBreaks(remainingText, key, seed));
           }
         }
       }
@@ -174,16 +176,16 @@ export function markdownToReact(text: string): React.ReactNode {
 /**
  * Process line breaks in text
  */
-function processLineBreaks(text: string, startKey: number): React.ReactNode[] {
+function processLineBreaks(text: string, startKey: number, seed: string): React.ReactNode[] {
   const parts: React.ReactNode[] = [];
   const lines = text.split('\n');
   
   lines.forEach((line, index) => {
     if (index > 0) {
-      parts.push(<br key={startKey + index - 1} />);
+      parts.push(<br key={`${seed}-br-${startKey}-${index}`} />);
     }
     if (line) {
-      parts.push(<span key={startKey + index + 1000}>{line}</span>);
+      parts.push(<span key={`${seed}-span-${startKey}-${index}`}>{line}</span>);
     }
   });
 

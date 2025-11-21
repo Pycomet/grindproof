@@ -30,10 +30,16 @@ vi.mock('@/lib/trpc/client', () => ({
       getAll: {
         useQuery: vi.fn(),
       },
+      search: {
+        useQuery: vi.fn(() => ({ data: [] })),
+      },
     },
     task: {
       getAll: {
         useQuery: vi.fn(),
+      },
+      search: {
+        useQuery: vi.fn(() => ({ data: [] })),
       },
       create: {
         useMutation: vi.fn(),

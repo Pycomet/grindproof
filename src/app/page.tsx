@@ -9,7 +9,7 @@ export default function Home() {
   const isLoggedIn = !!user;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-zinc-50 to-zinc-100 dark:from-zinc-950 dark:to-black">
+    <div className="min-h-screen bg-linear-to-br from-zinc-50 to-zinc-100 dark:from-zinc-950 dark:to-black">
       {/* Hero Section */}
       <div className="flex min-h-screen flex-col items-center justify-center px-4">
         <div className="max-w-3xl text-center">

@@ -231,5 +231,41 @@ export const goalRouter = router({
 
       return { success: true, id: input.id };
     }),
+
+  /**
+   * Search goals using full-text search
+   */
+  search: protectedProcedure
+    .input(
+      z.object({
+        query: z.string().min(1),
+        limit: z.number().default(20).optional(),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      const { data, error } = await (ctx.db as any).rpc('search_goals', {
+        query_text: input.query,
+        query_user_id: ctx.user.id,
+        match_limit: input.limit || 20,
+      });
+
+      if (error) {
+        throw new Error(`Failed to search goals: ${error.message}`);
+      }
+
+      return (data || []).map((goal: any) => ({
+        id: goal.id,
+        userId: goal.user_id,
+        title: goal.title,
+        description: goal.description || undefined,
+        targetDate: goal.target_date ? new Date(goal.target_date) : undefined,
+        status: goal.status as "active" | "completed" | "paused",
+        githubRepos: goal.github_repos || undefined,
+        priority: goal.priority as "high" | "medium" | "low",
+        timeHorizon: goal.time_horizon as "daily" | "weekly" | "monthly" | "annual" | undefined,
+        createdAt: new Date(goal.created_at),
+        updatedAt: new Date(goal.updated_at),
+      }));
+    }),
 });
 

@@ -38,7 +38,7 @@ describe('Auth Flow', () => {
       expect(screen.getByText('Sign in to your account')).toBeInTheDocument();
       expect(screen.getByLabelText('Email')).toBeInTheDocument();
       expect(screen.getByLabelText('Password')).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /sign in/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /^sign in$/i })).toBeInTheDocument();
     });
 
     it('submits login form with valid credentials', async () => {
@@ -57,7 +57,7 @@ describe('Auth Flow', () => {
       
       const emailInput = screen.getByLabelText('Email');
       const passwordInput = screen.getByLabelText('Password');
-      const submitButton = screen.getByRole('button', { name: /sign in/i });
+      const submitButton = screen.getByRole('button', { name: /^sign in$/i });
 
       fireEvent.change(emailInput, { target: { value: 'test@test.com' } });
       fireEvent.change(passwordInput, { target: { value: 'password123' } });
@@ -86,7 +86,7 @@ describe('Auth Flow', () => {
       
       const emailInput = screen.getByLabelText('Email');
       const passwordInput = screen.getByLabelText('Password');
-      const submitButton = screen.getByRole('button', { name: /sign in/i });
+      const submitButton = screen.getByRole('button', { name: /^sign in$/i });
 
       fireEvent.change(emailInput, { target: { value: 'wrong@test.com' } });
       fireEvent.change(passwordInput, { target: { value: 'wrongpass' } });
@@ -108,7 +108,7 @@ describe('Auth Flow', () => {
       
       const emailInput = screen.getByLabelText('Email');
       const passwordInput = screen.getByLabelText('Password');
-      const submitButton = screen.getByRole('button', { name: /sign in/i });
+      const submitButton = screen.getByRole('button', { name: /^sign in$/i });
 
       fireEvent.change(emailInput, { target: { value: 'test@test.com' } });
       fireEvent.change(passwordInput, { target: { value: 'password123' } });
@@ -126,7 +126,7 @@ describe('Auth Flow', () => {
       expect(screen.getByText('Create your account')).toBeInTheDocument();
       expect(screen.getByLabelText('Email')).toBeInTheDocument();
       expect(screen.getByLabelText('Password')).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /sign up/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /^sign up$/i })).toBeInTheDocument();
     });
 
     it('submits signup form successfully', async () => {
@@ -140,7 +140,7 @@ describe('Auth Flow', () => {
       const emailInput = screen.getByLabelText('Email');
       const passwordInput = screen.getByLabelText('Password');
       const termsCheckbox = screen.getByRole('checkbox', { name: /I agree to the/i });
-      const submitButton = screen.getByRole('button', { name: /sign up/i });
+      const submitButton = screen.getByRole('button', { name: /^sign up$/i });
 
       fireEvent.change(emailInput, { target: { value: 'new@test.com' } });
       fireEvent.change(passwordInput, { target: { value: 'password123' } });
@@ -167,7 +167,7 @@ describe('Auth Flow', () => {
       const emailInput = screen.getByLabelText('Email');
       const passwordInput = screen.getByLabelText('Password');
       const termsCheckbox = screen.getByRole('checkbox', { name: /I agree to the/i });
-      const submitButton = screen.getByRole('button', { name: /sign up/i });
+      const submitButton = screen.getByRole('button', { name: /^sign up$/i });
 
       fireEvent.change(emailInput, { target: { value: 'existing@test.com' } });
       fireEvent.change(passwordInput, { target: { value: 'password123' } });

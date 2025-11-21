@@ -29,27 +29,33 @@ const createMockResponse = () => {
 
 const mocks = createMockResponse();
 
-// Mock Supabase server
-vi.mock('@/lib/supabase/server', () => ({
-  createServerClient: vi.fn(() => ({
-    auth: {
-      getUser: vi.fn(() => Promise.resolve({ data: { user: { id: 'user-123' } } })),
-    },
-    from: vi.fn(() => ({
-      select: vi.fn(() => ({
-        eq: vi.fn(() => ({
-          order: vi.fn(() => ({
-            limit: vi.fn(() => ({
-              neq: vi.fn(() => Promise.resolve({ data: [] })),
-            })),
-          })),
-        })),
-      })),
-    })),
-  })),
-}));
+// Mock Supabase server with full query chain support
+vi.mock('@/lib/supabase/server', () => {
+  const createChainableMock = (finalData: any = []) => {
+    const chain = {
+      select: vi.fn(() => chain),
+      eq: vi.fn(() => chain),
+      or: vi.fn(() => chain),
+      in: vi.fn(() => chain),
+      order: vi.fn(() => chain),
+      limit: vi.fn(() => Promise.resolve({ data: finalData, error: null })),
+      neq: vi.fn(() => Promise.resolve({ data: finalData, error: null })),
+    };
+    return chain;
+  };
 
-// Mock Google Generative AI
+  return {
+    createServerClient: vi.fn(() => ({
+      auth: {
+        getUser: vi.fn(() => Promise.resolve({ data: { user: { id: 'user-123' } } })),
+      },
+      from: vi.fn(() => createChainableMock([])),
+      rpc: vi.fn(() => Promise.resolve({ data: [], error: null })),
+    })),
+  };
+});
+
+// Mock Google Generative AI with streaming support
 vi.mock('@google/generative-ai', () => {
   const mockGenerateContent = vi.fn(() => Promise.resolve({
     response: {
@@ -57,12 +63,23 @@ vi.mock('@google/generative-ai', () => {
     },
   }));
 
+  // Create async generator for streaming
+  const createStreamMock = async function* () {
+    yield { text: () => 'Hello! How can I help you today?' };
+  };
+
   const mockGetGenerativeModel = vi.fn(() => ({
     startChat: vi.fn(() => ({
       sendMessage: vi.fn(() => Promise.resolve({
         response: {
           text: vi.fn(() => 'Hello! How can I help you today?'),
         },
+      })),
+      sendMessageStream: vi.fn(() => Promise.resolve({
+        stream: createStreamMock(),
+        response: Promise.resolve({
+          text: () => 'Hello! How can I help you today?',
+        }),
       })),
     })),
     generateContent: mockGenerateContent,
@@ -83,6 +100,37 @@ vi.mock('@google/generative-ai', () => {
 // Import POST handler after mocks
 import { POST } from '@/app/api/ai/chat/route';
 
+// Helper to parse SSE response
+async function parseSSEResponse(response: Response): Promise<{ text: string }> {
+  const contentType = response.headers.get('content-type');
+  
+  // If it's a streaming response, parse SSE format
+  if (contentType?.includes('text/event-stream')) {
+    const text = await response.text();
+    const lines = text.split('\n');
+    let accumulatedText = '';
+    
+    for (const line of lines) {
+      if (line.startsWith('data: ') && !line.includes('[DONE]')) {
+        const data = line.slice(6);
+        try {
+          const parsed = JSON.parse(data);
+          if (parsed.text) {
+            accumulatedText += parsed.text;
+          }
+        } catch (e) {
+          // Skip malformed JSON
+        }
+      }
+    }
+    
+    return { text: accumulatedText };
+  }
+  
+  // Otherwise parse as JSON
+  return await response.json();
+}
+
 describe('AI Chat API Route', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -100,7 +148,7 @@ describe('AI Chat API Route', () => {
       });
 
       const response = await POST(request);
-      const data = await response.json();
+      const data = await parseSSEResponse(response);
 
       expect(response.status).toBe(200);
       expect(data).toHaveProperty('text');
@@ -120,7 +168,7 @@ describe('AI Chat API Route', () => {
       });
 
       const response = await POST(request);
-      const data = await response.json();
+      const data = await parseSSEResponse(response);
 
       expect(response.status).toBe(200);
       expect(data).toHaveProperty('text');
@@ -164,7 +212,7 @@ describe('AI Chat API Route', () => {
       });
 
       const response = await POST(request);
-      const data = await response.json();
+      const data = await parseSSEResponse(response);
 
       expect(response.status).toBe(200);
       expect(data).toHaveProperty('text');
@@ -430,7 +478,7 @@ describe('AI Chat API Route', () => {
       });
 
       const response = await POST(request);
-      const data = await response.json();
+      const data = await parseSSEResponse(response);
 
       expect(response.status).toBe(200);
       expect(data).not.toHaveProperty('commandExecuted');

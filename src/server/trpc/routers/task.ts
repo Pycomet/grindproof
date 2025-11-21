@@ -1238,5 +1238,29 @@ export const taskRouter = router({
         updatedCount: tasks.length,
       };
     }),
+
+  /**
+   * Search tasks using full-text search
+   */
+  search: protectedProcedure
+    .input(
+      z.object({
+        query: z.string().min(1),
+        limit: z.number().default(20).optional(),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      const { data, error } = await (ctx.db as any).rpc('search_tasks', {
+        query_text: input.query,
+        query_user_id: ctx.user.id,
+        match_limit: input.limit || 20,
+      });
+
+      if (error) {
+        throw new Error(`Failed to search tasks: ${error.message}`);
+      }
+
+      return (data || []).map(mapTaskFromDb);
+    }),
 });
 

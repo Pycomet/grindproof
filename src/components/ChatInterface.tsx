@@ -66,8 +66,19 @@ export function ChatInterface() {
     setIsLoading(true);
     setError(null);
 
+    // Create a placeholder for the AI message
+    const aiMessageId = `assistant-${Date.now()}-${Math.random()}`;
+    const aiMessage: Message = {
+      id: aiMessageId,
+      role: 'assistant',
+      content: '',
+      timestamp: new Date().toISOString(),
+    };
+    
+    setMessages([...updatedMessages, aiMessage]);
+
     try {
-      // Call AI API
+      // Call AI API with streaming
       const response = await fetch('/api/ai/chat', {
         method: 'POST',
         headers: {
@@ -84,24 +95,70 @@ export function ChatInterface() {
         throw new Error(errorData.error || 'Failed to get response');
       }
 
-      const data = await response.json();
-      
-      const aiMessage: Message = {
-        id: `assistant-${Date.now()}-${Math.random()}`,
-        role: 'assistant',
-        content: data.text,
-        timestamp: new Date().toISOString(),
-      };
+      // Check if response is streaming
+      const contentType = response.headers.get('content-type');
+      if (contentType?.includes('text/event-stream')) {
+        // Handle streaming response
+        const reader = response.body?.getReader();
+        const decoder = new TextDecoder();
+        let accumulatedText = '';
 
-      const finalMessages = [...updatedMessages, aiMessage];
-      setMessages(finalMessages);
-      
-      // Save to database
-      await saveConversation(finalMessages);
+        if (reader) {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            const chunk = decoder.decode(value, { stream: true });
+            const lines = chunk.split('\n');
+
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                const data = line.slice(6);
+                if (data === '[DONE]') {
+                  break;
+                }
+                try {
+                  const parsed = JSON.parse(data);
+                  if (parsed.text) {
+                    accumulatedText += parsed.text;
+                    // Update the message with accumulated text
+                    setMessages(prev => 
+                      prev.map(msg => 
+                        msg.id === aiMessageId 
+                          ? { ...msg, content: accumulatedText }
+                          : msg
+                      )
+                    );
+                  }
+                } catch (e) {
+                  // Skip malformed JSON
+                }
+              }
+            }
+          }
+        }
+
+        // Save final conversation
+        const finalMessages = [...updatedMessages, { ...aiMessage, content: accumulatedText }];
+        await saveConversation(finalMessages);
+      } else {
+        // Handle non-streaming response (fallback for commands)
+        const data = await response.json();
+        setMessages(prev => 
+          prev.map(msg => 
+            msg.id === aiMessageId 
+              ? { ...msg, content: data.text }
+              : msg
+          )
+        );
+        
+        const finalMessages = [...updatedMessages, { ...aiMessage, content: data.text }];
+        await saveConversation(finalMessages);
+      }
     } catch (err: any) {
       console.error('Error sending message:', err);
       setError(err.message || 'Failed to send message. Please try again.');
-      // Remove the user message if AI failed
+      // Remove the user message and placeholder if AI failed
       setMessages(messages);
     } finally {
       setIsLoading(false);
@@ -170,10 +227,10 @@ export function ChatInterface() {
           </div>
         ) : (
           <div className="space-y-4">
-            <AnimatePresence>
-              {messages.map((message) => (
+            <AnimatePresence mode="popLayout">
+              {messages.map((message, index) => (
                 <motion.div
-                  key={message.id || `${message.role}-${message.timestamp}`}
+                  key={message.id || `${message.role}-${index}`}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0 }}
@@ -182,22 +239,32 @@ export function ChatInterface() {
                   }`}
                 >
                   <div
-                    className={`max-w-[80%] rounded-2xl px-4 py-3 cursor-text ${
+                    className={`max-w-[85%] rounded-2xl px-4 py-3 cursor-text ${
                       message.role === 'user'
-                        ? 'bg-blue-600 text-white'
+                        ? 'bg-blue-600 text-white shadow-sm'
                         : 'bg-zinc-200 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100'
                     }`}
                   >
-                    <div className="text-sm leading-relaxed whitespace-pre-wrap">
-                      {message.role === 'assistant' 
-                        ? markdownToReact(message.content)
-                        : message.content
-                      }
-                    </div>
+                    {/* Show content or typing indicator */}
+                    {message.content ? (
+                      <div className="text-sm leading-relaxed whitespace-pre-wrap break-words">
+                        {message.role === 'assistant' 
+                          ? markdownToReact(message.content)
+                          : message.content
+                        }
+                      </div>
+                    ) : message.role === 'assistant' ? (
+                      <div className="flex space-x-2 py-1.5">
+                        <div className="h-2 w-2 animate-bounce rounded-full bg-zinc-400" style={{ animationDelay: '0ms' }} />
+                        <div className="h-2 w-2 animate-bounce rounded-full bg-zinc-400" style={{ animationDelay: '150ms' }} />
+                        <div className="h-2 w-2 animate-bounce rounded-full bg-zinc-400" style={{ animationDelay: '300ms' }} />
+                      </div>
+                    ) : null}
+                    
                     <p
-                      className={`mt-1 text-xs ${
+                      className={`mt-1.5 text-[10px] opacity-70 ${
                         message.role === 'user'
-                          ? 'text-blue-100'
+                          ? 'text-blue-100 text-right'
                           : 'text-zinc-500 dark:text-zinc-400'
                       }`}
                     >
@@ -210,28 +277,6 @@ export function ChatInterface() {
                 </motion.div>
               ))}
             </AnimatePresence>
-
-            {isLoading && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="flex justify-start"
-              >
-                <div className="max-w-[80%] rounded-2xl bg-zinc-200 px-4 py-3 cursor-default dark:bg-zinc-800">
-                  <div className="flex space-x-2">
-                    <div className="h-2 w-2 animate-bounce rounded-full bg-zinc-500" />
-                    <div
-                      className="h-2 w-2 animate-bounce rounded-full bg-zinc-500"
-                      style={{ animationDelay: '0.1s' }}
-                    />
-                    <div
-                      className="h-2 w-2 animate-bounce rounded-full bg-zinc-500"
-                      style={{ animationDelay: '0.2s' }}
-                    />
-                  </div>
-                </div>
-              </motion.div>
-            )}
 
             <div ref={messagesEndRef} />
           </div>
