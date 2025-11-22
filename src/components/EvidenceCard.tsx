@@ -249,12 +249,15 @@ export function EvidenceList({ taskId }: EvidenceListProps) {
     return null; // Don't show anything if no evidence
   }
 
+  // Type-safe evidence array
+  const evidenceList: Evidence[] = evidence as Evidence[];
+
   return (
     <div className="space-y-2">
       <p className="text-xs font-medium text-gray-700 dark:text-gray-300">
-        Evidence ({evidence.length})
+        Evidence ({evidenceList.length})
       </p>
-      {evidence.map((item: Evidence) => (
+      {evidenceList.map((item) => (
         <EvidenceCard
           key={item.id}
           evidence={item}
