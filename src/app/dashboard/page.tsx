@@ -22,6 +22,8 @@ import { useOfflineSync } from '@/hooks/useOfflineSync';
 import { TaskListSkeleton, GoalListSkeleton } from '@/components/LoadingSkeletons';
 import { ChatInterface } from '@/components/ChatInterface';
 import { SearchInput } from '@/components/SearchInput';
+import { ProfilePictureUpload } from '@/components/ProfilePictureUpload';
+import { EvidenceList } from '@/components/EvidenceCard';
 
 type ViewMode = 'chat' | 'today' | 'goals' | 'evening' | 'weekly' | 'integrations';
 
@@ -346,7 +348,7 @@ function TodayView() {
   const [searchQuery, setSearchQuery] = useState('');
   
   // Use AppContext instead of tRPC queries
-  const { tasks: allTasks, goals, refreshTasks, isLoading, isHydrated, isGoogleCalendarConnected } = useApp();
+  const { user, tasks: allTasks, goals, refreshTasks, isLoading, isHydrated, isGoogleCalendarConnected } = useApp();
   const isCalendarConnected = isGoogleCalendarConnected();
   
   // Search query
@@ -656,46 +658,48 @@ function TodayView() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
-            Tasks ✓
-          </h2>
-          <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-            {filteredTasks.filter((t: any) => t.status === 'completed').length} of {filteredTasks.length} completed
-          </p>
+      {/* Sticky Header Section */}
+      <div className="sticky top-0 z-10 bg-white dark:bg-zinc-950 pb-4 space-y-4">
+        {/* Header */}
+        <div className="flex items-center justify-between pt-2">
+          <div>
+            <h2 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
+              Tasks ✓
+            </h2>
+            <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+              {filteredTasks.filter((t: any) => t.status === 'completed').length} of {filteredTasks.length} completed
+            </p>
+          </div>
+          {isCalendarConnected && (
+            <button
+              onClick={handleSync}
+              disabled={isSyncing}
+              className="rounded-lg border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Sync tasks with Google Calendar"
+            >
+              {isSyncing ? (
+                <span className="flex items-center gap-2">
+                  <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Syncing...
+                </span>
+              ) : '🔄 Sync Calendar'}
+            </button>
+          )}
         </div>
-        {isCalendarConnected && (
-          <button
-            onClick={handleSync}
-            disabled={isSyncing}
-            className="rounded-lg border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed"
-            title="Sync tasks with Google Calendar"
-          >
-            {isSyncing ? (
-              <span className="flex items-center gap-2">
-                <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Syncing...
-              </span>
-            ) : '🔄 Sync Calendar'}
-          </button>
-        )}
-      </div>
 
-      {/* Search Bar */}
-      <SearchInput
-        onSearch={setSearchQuery}
-        placeholder="Search tasks..."
-        className="w-full sm:w-96"
-      />
+        {/* Search Bar */}
+        <SearchInput
+          onSearch={setSearchQuery}
+          placeholder="Search tasks..."
+          className="w-full sm:w-96"
+        />
 
-      {/* Filter Chips */}
-      {!searchQuery && (
-        <div className="flex flex-wrap gap-2">
+        {/* Filter Chips */}
+        {!searchQuery && (
+          <div className="flex flex-wrap gap-2">
           {filters.map((filter) => (
             <button
               key={filter.id}
@@ -716,6 +720,7 @@ function TodayView() {
           ))}
         </div>
       )}
+      </div>
 
       {/* Task List */}
       {!isHydrated || isLoading ? (
@@ -790,13 +795,13 @@ function TodayView() {
                       {task.title}
                     </h3>
                     {task.isSyncedWithCalendar && (
-                      <span className="text-xs text-blue-600 dark:text-blue-400 flex-shrink-0">🔗</span>
+                      <span className="text-xs text-blue-600 dark:text-blue-400 shrink-0">🔗</span>
                     )}
                     {task.recurrenceRule && (
-                      <span className="text-xs text-purple-600 dark:text-purple-400 flex-shrink-0" title="Recurring task">🔁</span>
+                      <span className="text-xs text-purple-600 dark:text-purple-400 shrink-0" title="Recurring task">🔁</span>
                     )}
                     {task.recurringEventId && (
-                      <span className="text-xs text-indigo-600 dark:text-indigo-400 flex-shrink-0" title={`Series ID: ${task.recurringEventId}`}>📆</span>
+                      <span className="text-xs text-indigo-600 dark:text-indigo-400 shrink-0" title={`Series ID: ${task.recurringEventId}`}>📆</span>
                     )}
                   </div>
                   
@@ -835,7 +840,14 @@ function TodayView() {
                   {task.status === 'completed' && task.completionProof && (
                     <div className="mt-2 rounded-md bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-900 p-2">
                       <p className="text-xs font-medium text-green-700 dark:text-green-300">✓ Proof of Completion:</p>
-                      <p className="mt-0.5 text-xs text-green-600 dark:text-green-400 break-words">{task.completionProof}</p>
+                      <p className="mt-0.5 text-xs text-green-600 dark:text-green-400 wrap-break-word">{task.completionProof}</p>
+                    </div>
+                  )}
+                  
+                  {/* Show evidence with AI validation */}
+                  {task.status === 'completed' && (
+                    <div className="mt-3">
+                      <EvidenceList taskId={task.id} />
                     </div>
                   )}
                 </div>
@@ -951,9 +963,17 @@ function TodayView() {
                 {task.status === 'completed' && task.completionProof && (
                   <div className="mt-2 rounded-md bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-900 p-2">
                     <p className="text-xs font-medium text-green-700 dark:text-green-300">✓ Proof of Completion:</p>
-                    <p className="mt-0.5 text-xs text-green-600 dark:text-green-400 break-words">{task.completionProof}</p>
+                    <p className="mt-0.5 text-xs text-green-600 dark:text-green-400 wrap-break-word">{task.completionProof}</p>
                   </div>
                 )}
+                
+                {/* Show evidence with AI validation */}
+                {task.status === 'completed' && (
+                  <div className="mt-3">
+                    <EvidenceList taskId={task.id} />
+                  </div>
+                )}
+                
                 <div className="mt-1 flex flex-wrap items-center gap-2">
                   {task.startTime && task.endTime && (
                     <span className="text-xs text-blue-600 dark:text-blue-400">
@@ -1083,6 +1103,8 @@ function TodayView() {
             onSubmit={handleCompleteTask}
             isPending={completeMutation.isPending}
             taskTitle={selectedTask.title}
+            taskId={selectedTask.id}
+            userId={user?.id || ''}
           />
 
           <RescheduleTaskDialog
@@ -1298,8 +1320,10 @@ function GoalsView() {
 
   return (
     <div className="space-y-6">
-      {/* Header with Create Button */}
-      <div className="flex items-center justify-between">
+      {/* Sticky Header Section */}
+      <div className="sticky top-0 z-10 bg-white dark:bg-zinc-950 pb-4 space-y-4">
+        {/* Header with Create Button */}
+        <div className="flex items-center justify-between pt-2">
         <div>
           <h2 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
             Goals 🎯
@@ -1452,14 +1476,15 @@ function GoalsView() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
-      </div>
+        </div>
 
-      {/* Search Bar */}
-      <SearchInput
-        onSearch={setSearchQuery}
-        placeholder="Search goals..."
-        className="w-full sm:w-96"
-      />
+        {/* Search Bar */}
+        <SearchInput
+          onSearch={setSearchQuery}
+          placeholder="Search goals..."
+          className="w-full sm:w-96"
+        />
+      </div>
 
       {/* Active Goals List */}
       {totalGoals === 0 ? (
@@ -1901,7 +1926,7 @@ function GoalsView() {
                               : 'bg-zinc-50 border-zinc-200 dark:bg-zinc-900 dark:border-zinc-800'
                           }`}
                         >
-                          <div className={`flex h-4 w-4 flex-shrink-0 items-center justify-center rounded border ${
+                          <div className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border ${
                             task.status === 'completed'
                               ? 'border-green-600 bg-green-600'
                               : 'border-zinc-400'
@@ -2177,7 +2202,7 @@ function EveningCheck() {
           className="group relative flex w-full items-center justify-center gap-2.5 rounded-full border border-zinc-200 bg-white px-4 py-2.5 shadow-sm transition-all hover:shadow-md disabled:opacity-50 dark:border-zinc-800 dark:bg-zinc-900 sm:w-auto sm:justify-start"
         >
           {/* Refresh Icon */}
-          <div className={`relative flex-shrink-0 ${isRefreshing ? 'animate-spin' : ''}`}>
+          <div className={`relative shrink-0 ${isRefreshing ? 'animate-spin' : ''}`}>
             <svg
               className="h-4 w-4 text-zinc-700 dark:text-zinc-300"
               fill="none"
@@ -2631,7 +2656,7 @@ function WeeklyRoast() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="rounded-xl border border-zinc-200 bg-gradient-to-br from-red-50 to-orange-50 p-8 dark:border-zinc-800 dark:from-red-950/20 dark:to-orange-950/20">
+      <div className="rounded-xl border border-zinc-200 bg-linear-to-br from-red-50 to-orange-50 p-8 dark:border-zinc-800 dark:from-red-950/20 dark:to-orange-950/20">
         <h2 className="text-3xl font-bold text-zinc-900 dark:text-zinc-50">
           Weekly Roast Report 🔥
         </h2>
@@ -2851,20 +2876,8 @@ function WeeklyRoast() {
 
 // Integrations Component
 function Integrations() {
-  // Get AppContext refresh function to sync integrations state
-  const { refreshIntegrations: refreshAppIntegrations } = useApp();
-  
-  // Preset avatar URLs
-  const presetAvatars = [
-    'https://api.dicebear.com/7.x/avataaars/svg?seed=default',
-    'https://api.dicebear.com/7.x/avataaars/svg?seed=felix',
-    'https://api.dicebear.com/7.x/avataaars/svg?seed=aurora',
-    'https://api.dicebear.com/7.x/avataaars/svg?seed=zoe',
-    'https://api.dicebear.com/7.x/avataaars/svg?seed=mia',
-    'https://api.dicebear.com/7.x/avataaars/svg?seed=jack',
-    'https://api.dicebear.com/7.x/avataaars/svg?seed=charlie',
-    'https://api.dicebear.com/7.x/avataaars/svg?seed=sam',
-  ];
+  // Get AppContext refresh function and user
+  const { user, refreshIntegrations: refreshAppIntegrations } = useApp();
 
   // Profile management
   const { data: profile, isLoading: profileLoading, refetch: refetchProfile } = trpc.profile.getCurrent.useQuery();
@@ -2872,19 +2885,16 @@ function Integrations() {
     onSuccess: () => {
       refetchProfile();
       setProfileName(profile?.name || '');
-      setProfilePicUrl(profile?.profilePicUrl || '');
     },
   });
 
   const [profileName, setProfileName] = useState('');
-  const [profilePicUrl, setProfilePicUrl] = useState('');
   const [isEditingProfile, setIsEditingProfile] = useState(false);
 
   // Initialize form when profile loads
   useEffect(() => {
     if (profile) {
       setProfileName(profile.name || '');
-      setProfilePicUrl(profile.profilePicUrl || '');
     }
   }, [profile]);
 
@@ -2939,7 +2949,6 @@ function Integrations() {
     e.preventDefault();
     updateProfile.mutate({
       name: profileName || undefined,
-      profilePicUrl: profilePicUrl || undefined,
     });
     setIsEditingProfile(false);
   };
@@ -2994,7 +3003,7 @@ function Integrations() {
       {/* Profile Management Section */}
       <div className="rounded-xl sm:rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900 overflow-hidden">
         {/* Header */}
-        <div className="bg-gradient-to-r from-zinc-50 to-zinc-100 dark:from-zinc-800/50 dark:to-zinc-900/50 px-4 sm:px-6 py-3 sm:py-4 border-b border-zinc-200 dark:border-zinc-800">
+        <div className="bg-linear-to-r from-zinc-50 to-zinc-100 dark:from-zinc-800/50 dark:to-zinc-900/50 px-4 sm:px-6 py-3 sm:py-4 border-b border-zinc-200 dark:border-zinc-800">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
               <h3 className="text-lg sm:text-xl font-semibold text-zinc-900 dark:text-zinc-50">
@@ -3035,115 +3044,33 @@ function Integrations() {
           </div>
         ) : (
           <form onSubmit={handleProfileSubmit} className="p-4 sm:p-6 md:p-8">
-            {/* Avatar Section - Prominent Display */}
+            {/* Avatar Section - Profile Picture Upload */}
             <div className="mb-6 sm:mb-8 pb-6 sm:pb-8 border-b border-zinc-200 dark:border-zinc-800">
               <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-start sm:gap-6">
-                {/* Avatar Display */}
-                <div className="flex-shrink-0">
-                  {profile?.profilePicUrl ? (
-                    <div className="relative">
-                      <img
-                        src={profile.profilePicUrl}
-                        alt="Profile"
-                        className="w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 rounded-xl sm:rounded-2xl object-cover border-3 sm:border-4 border-zinc-200 dark:border-zinc-700 shadow-lg"
-                      />
-                      {isEditingProfile && (
-                        <div className="absolute -bottom-1 -right-1 sm:-bottom-2 sm:-right-2 w-7 h-7 sm:w-8 sm:h-8 bg-zinc-900 dark:bg-zinc-50 rounded-full flex items-center justify-center border-2 border-white dark:border-zinc-900 shadow-md">
-                          <svg
-                            className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white dark:text-zinc-900"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
-                            />
-                          </svg>
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 rounded-xl sm:rounded-2xl bg-gradient-to-br from-zinc-200 to-zinc-300 dark:from-zinc-700 dark:to-zinc-800 flex items-center justify-center border-3 sm:border-4 border-zinc-200 dark:border-zinc-700 shadow-lg">
-                      <span className="text-3xl sm:text-4xl md:text-5xl font-semibold text-zinc-600 dark:text-zinc-300">
-                        {profile?.name?.[0]?.toUpperCase() || profile?.email?.[0]?.toUpperCase() || '?'}
-                      </span>
-                    </div>
-                  )}
-                </div>
+                {/* Profile Picture Upload Component */}
+                {user && (
+                  <ProfilePictureUpload
+                    userId={user.id}
+                    currentPictureUrl={profile?.profilePicUrl}
+                    onUploadComplete={() => {
+                      refetchProfile();
+                    }}
+                  />
+                )}
 
                 {/* Avatar Info */}
                 <div className="flex-1 text-center sm:text-left w-full sm:w-auto">
                   <h4 className="text-base sm:text-lg font-semibold text-zinc-900 dark:text-zinc-50 mb-1">
                     Profile Picture
                   </h4>
-                  {!isEditingProfile && (
-                    <p className="text-xs sm:text-sm text-zinc-600 dark:text-zinc-400">
-                      {profile?.profilePicUrl ? 'Custom avatar selected' : 'No avatar selected'}
-                    </p>
-                  )}
-                  {isEditingProfile && (
-                    <p className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-500 mb-0 sm:mb-4">
-                      Choose an avatar from the options below
-                    </p>
-                  )}
+                  <p className="text-xs sm:text-sm text-zinc-600 dark:text-zinc-400 mb-2">
+                    {profile?.profilePicUrl ? 'Click to change your profile picture' : 'Click to upload your profile picture'}
+                  </p>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-500">
+                    Supported: JPEG, PNG, WebP • Max 5MB
+                  </p>
                 </div>
               </div>
-
-              {/* Avatar Selection Grid */}
-              {isEditingProfile && (
-                <div className="mt-4 sm:mt-6">
-                  <div className="grid grid-cols-4 gap-2.5 sm:gap-3 md:grid-cols-8 md:gap-4">
-                    {presetAvatars.map((avatarUrl) => (
-                      <button
-                        key={avatarUrl}
-                        type="button"
-                        onClick={() => setProfilePicUrl(avatarUrl)}
-                        className={`group relative aspect-square rounded-lg sm:rounded-xl border-2 overflow-hidden transition-all active:scale-95 touch-manipulation ${
-                          profilePicUrl === avatarUrl
-                            ? 'border-zinc-900 dark:border-zinc-50 ring-2 sm:ring-4 ring-zinc-900/20 dark:ring-zinc-50/20 shadow-md sm:shadow-lg scale-105'
-                            : 'border-zinc-300 dark:border-zinc-700 active:border-zinc-500 dark:active:border-zinc-500'
-                        }`}
-                      >
-                        <img
-                          src={avatarUrl}
-                          alt="Avatar"
-                          className="w-full h-full object-cover"
-                        />
-                        {profilePicUrl === avatarUrl && (
-                          <div className="absolute inset-0 bg-zinc-900/30 dark:bg-zinc-50/30 flex items-center justify-center">
-                            <div className="w-5 h-5 sm:w-6 sm:h-6 bg-zinc-900 dark:bg-zinc-50 rounded-full flex items-center justify-center">
-                              <svg
-                                className="w-3 h-3 sm:w-4 sm:h-4 text-white dark:text-zinc-900"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={3}
-                                  d="M5 13l4 4L19 7"
-                                />
-                              </svg>
-                            </div>
-                          </div>
-                        )}
-                        <div className="absolute inset-0 bg-black/0 group-active:bg-black/10 dark:group-active:bg-white/10 transition-colors" />
-                      </button>
-                    ))}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setProfilePicUrl('')}
-                    className="mt-3 sm:mt-4 text-sm font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50 transition-colors touch-manipulation py-1"
-                  >
-                    Clear selection
-                  </button>
-                </div>
-              )}
             </div>
 
             {/* Form Fields */}
@@ -3228,7 +3155,6 @@ function Integrations() {
                   onClick={() => {
                     setIsEditingProfile(false);
                     setProfileName(profile?.name || '');
-                    setProfilePicUrl(profile?.profilePicUrl || '');
                   }}
                   className="w-full px-6 py-3.5 border-2 border-zinc-300 dark:border-zinc-700 rounded-xl font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 active:scale-[0.98] transition-all touch-manipulation"
                 >

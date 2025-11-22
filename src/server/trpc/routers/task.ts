@@ -17,6 +17,7 @@ export const taskSchema = z.object({
   reminders: z.array(z.enum(['15min', '1hour', '1day'])).nullable(),
   status: z.enum(["pending", "completed", "skipped"]),
   completionProof: z.string().nullable(),
+  attachments: z.array(z.string().url()).nullable(),
   tags: z.array(z.string()).nullable(),
   googleCalendarEventId: z.string().nullable(),
   isSyncedWithCalendar: z.boolean(),
@@ -35,6 +36,7 @@ export const createTaskSchema = z.object({
   reminders: z.array(z.enum(['15min', '1hour', '1day'])).optional(),
   priority: z.enum(['high', 'medium', 'low']).default('medium'),
   goalId: z.string().optional(),
+  attachments: z.array(z.string().url()).optional(),
   tags: z.array(z.string()).optional(),
   recurrenceRule: z.string().optional(),
   syncWithCalendar: z.boolean().default(true),
@@ -50,6 +52,7 @@ export const updateTaskSchema = z.object({
   reminders: z.array(z.enum(['15min', '1hour', '1day'])).optional().nullable(),
   priority: z.enum(['high', 'medium', 'low']).optional(),
   goalId: z.string().optional(),
+  attachments: z.array(z.string().url()).optional().nullable(),
   tags: z.array(z.string()).optional(),
   status: z.enum(["pending", "completed", "skipped"]).optional(),
   recurrenceRule: z.string().optional(),
@@ -73,6 +76,7 @@ function mapTaskFromDb(task: any): z.infer<typeof taskSchema> {
     reminders: task.reminders || null,
     status: task.status as "pending" | "completed" | "skipped",
     completionProof: task.completion_proof || null,
+    attachments: task.attachments || null,
     tags: task.tags || null,
     googleCalendarEventId: task.google_calendar_event_id || null,
     isSyncedWithCalendar: task.is_synced_with_calendar || false,
@@ -483,6 +487,7 @@ export const taskRouter = router({
           reminders: input.reminders || null,
           priority: input.priority || 'medium',
           goal_id: input.goalId || null,
+          attachments: input.attachments || null,
           tags: input.tags || null,
           google_calendar_event_id: googleCalendarEventId,
           is_synced_with_calendar: !!googleCalendarEventId,
@@ -603,6 +608,7 @@ export const taskRouter = router({
         updateData.reminders = input.reminders || null;
       if (input.priority !== undefined) updateData.priority = input.priority;
       if (input.goalId !== undefined) updateData.goal_id = input.goalId || null;
+      if (input.attachments !== undefined) updateData.attachments = input.attachments || null;
       if (input.tags !== undefined) updateData.tags = input.tags || null;
       if (input.status !== undefined) updateData.status = input.status;
       if (input.recurrenceRule !== undefined)

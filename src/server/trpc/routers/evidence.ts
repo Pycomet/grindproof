@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { router, protectedProcedure } from "../context";
+import { APP_CONFIG } from "@/lib/config";
 
 /**
  * Evidence schemas
@@ -217,6 +218,21 @@ export const evidenceRouter = router({
         throw new Error("Failed to create evidence: No data returned");
       }
 
+      // Trigger AI validation asynchronously (don't wait for it)
+      const evidenceId = data.id;
+
+      // Fire and forget - validation happens in background
+      fetch(`${APP_CONFIG.BASE_URL}/api/ai/validate-evidence`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ evidenceId }),
+      }).catch((error) => {
+        console.error('Background validation failed:', error);
+        // Don't throw - evidence is still created even if validation fails
+      });
+
       return mapEvidenceFromDb(data);
     }),
 
@@ -329,6 +345,44 @@ export const evidenceRouter = router({
       }
 
       return { success: true, id: input.id };
+    }),
+
+  /**
+   * Trigger AI validation for evidence
+   */
+  validateEvidence: protectedProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      // Get evidence with task details
+      const { data: evidence } = await (ctx.db as any)
+        .from("evidence")
+        .select("*, tasks!inner(id, title, description, user_id)")
+        .eq("id", input.id)
+        .maybeSingle();
+
+      if (!evidence) {
+        throw new Error("Evidence not found");
+      }
+
+      // Verify the evidence belongs to a task owned by the user
+      if (evidence.tasks.user_id !== ctx.user.id) {
+        throw new Error("Evidence not found or access denied");
+      }
+
+      // Trigger validation asynchronously using internal API call
+      // Note: This bypasses authentication since it's server-to-server
+      const { validateEvidenceInternal } = await import('../../../app/api/ai/validate-evidence/validate');
+      
+      // Run validation in background
+      validateEvidenceInternal(input.id).catch((err: Error) => 
+        console.error('Background validation failed:', err)
+      );
+
+      // Return immediately - user will see updated status on next refetch
+      return {
+        success: true,
+        message: 'Validation started - refresh to see results',
+      };
     }),
 });
 

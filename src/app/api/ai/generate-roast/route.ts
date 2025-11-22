@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { env } from '@/lib/env';
+import { VALIDATION_CONFIG, AI_CONFIG } from '@/lib/config';
 import { createServerClient } from '@/lib/supabase/server';
 import { analyzeUserData } from '@/lib/ai/data-analyzer';
 import { WEEKLY_ROAST_PROMPT } from '@/lib/prompts/weekly-roast-prompt';
@@ -112,6 +113,7 @@ async function calculateWeeklyMetrics(
   const userTaskIds = (allUserTasks || []).map((t: any) => t.id);
 
   let evidenceSubmissions = 0;
+  let validatedEvidenceCount = 0;
   if (userTaskIds.length > 0) {
     const { data: evidence } = await supabase
       .from('evidence')
@@ -121,6 +123,7 @@ async function calculateWeeklyMetrics(
       .lt('submitted_at', weekEnd.toISOString());
 
     evidenceSubmissions = (evidence || []).length;
+    validatedEvidenceCount = (evidence || []).filter((e: any) => e.ai_validated === true).length;
   }
 
   // Calculate metrics
@@ -150,9 +153,14 @@ async function calculateWeeklyMetrics(
       ? completed.length / weekTasks.length 
       : 0;
 
-  // Honesty score: evidence submissions vs tasks completed
+  // Honesty score: weighted by AI validation (configurable weights)
+  const validatedWeight = VALIDATION_CONFIG.EVIDENCE_WEIGHTS.VALIDATED;
+  const unvalidatedWeight = VALIDATION_CONFIG.EVIDENCE_WEIGHTS.UNVALIDATED;
   const honestyScore = completed.length > 0 
-    ? Math.min(evidenceSubmissions / completed.length, 1.0) 
+    ? Math.min(
+        (validatedEvidenceCount * validatedWeight + (evidenceSubmissions - validatedEvidenceCount) * unvalidatedWeight) / completed.length,
+        1.0
+      )
     : 0;
 
   // Completion rate: completed / (completed + pending + skipped)
@@ -249,7 +257,7 @@ export async function POST(request: NextRequest) {
 
     // Generate roast with AI
     const model = genAI.getGenerativeModel({
-      model: 'gemini-2.5-flash',
+      model: AI_CONFIG.MODELS.TEXT,
       systemInstruction: WEEKLY_ROAST_PROMPT,
     });
 

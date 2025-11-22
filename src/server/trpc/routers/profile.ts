@@ -15,7 +15,7 @@ export const profileSchema = z.object({
 
 export const updateProfileSchema = z.object({
   name: z.string().optional(),
-  profilePicUrl: z.string().optional(),
+  profilePicUrl: z.string().url("Invalid URL format").optional(),
 });
 
 /**

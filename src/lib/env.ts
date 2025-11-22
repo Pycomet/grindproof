@@ -13,6 +13,24 @@ const serverEnvSchema = clientEnvSchema.extend({
   NEXT_GOOGLE_CALENDAR_CLIENT_ID: z.string().min(1),
   NEXT_GOOGLE_CALENDAR_CLIENT_SECRET: z.string().min(1),
   NEXT_GOOGLE_GEMINI_API_KEY: z.string().min(1),
+  
+  // Storage configuration (optional with defaults)
+  STORAGE_MAX_FILE_SIZE_MB: z.string().optional().default('5'),
+  STORAGE_MAX_IMAGE_DIMENSION: z.string().optional().default('4096'),
+  STORAGE_PROFILE_BUCKET: z.string().optional().default('profile-pictures'),
+  STORAGE_EVIDENCE_BUCKET: z.string().optional().default('task-evidence'),
+  
+  // AI model configuration (optional with defaults)
+  AI_TEXT_MODEL: z.string().optional().default('gemini-2.5-flash'),
+  AI_VISION_MODEL: z.string().optional().default('gemini-2.5-flash'),
+  
+  // Validation configuration (optional with defaults)
+  VALIDATION_MIN_CONFIDENCE: z.string().optional().default('0.5'),
+  VALIDATION_VALIDATED_WEIGHT: z.string().optional().default('1.0'),
+  VALIDATION_UNVALIDATED_WEIGHT: z.string().optional().default('0.5'),
+  
+  // App configuration (optional with defaults)
+  NEXT_PUBLIC_APP_URL: z.string().url().optional(),
 });
 
 function getEnv(): z.infer<typeof serverEnvSchema> {
@@ -31,6 +49,16 @@ function getEnv(): z.infer<typeof serverEnvSchema> {
       NEXT_GOOGLE_CALENDAR_CLIENT_SECRET: 'test-google-client-secret',
       NEXT_GOOGLE_GEMINI_API_KEY: 'test-google-gemini-api-key',
       NODE_ENV: 'test' as const,
+      STORAGE_MAX_FILE_SIZE_MB: '5',
+      STORAGE_MAX_IMAGE_DIMENSION: '4096',
+      STORAGE_PROFILE_BUCKET: 'profile-pictures',
+      STORAGE_EVIDENCE_BUCKET: 'task-evidence',
+      AI_TEXT_MODEL: 'gemini-2.5-flash',
+      AI_VISION_MODEL: 'gemini-2.0-flash-exp',
+      VALIDATION_MIN_CONFIDENCE: '0.5',
+      VALIDATION_VALIDATED_WEIGHT: '1.0',
+      VALIDATION_UNVALIDATED_WEIGHT: '0.5',
+      NEXT_PUBLIC_APP_URL: undefined,
     };
   }
 
@@ -46,6 +74,18 @@ function getEnv(): z.infer<typeof serverEnvSchema> {
     NEXT_GOOGLE_CALENDAR_CLIENT_ID: process.env.NEXT_GOOGLE_CALENDAR_CLIENT_ID,
     NEXT_GOOGLE_CALENDAR_CLIENT_SECRET: process.env.NEXT_GOOGLE_CALENDAR_CLIENT_SECRET,
     NEXT_GOOGLE_GEMINI_API_KEY: process.env.NEXT_GOOGLE_GEMINI_API_KEY,
+    STORAGE_MAX_FILE_SIZE_MB: process.env.STORAGE_MAX_FILE_SIZE_MB,
+    STORAGE_MAX_IMAGE_DIMENSION: process.env.STORAGE_MAX_IMAGE_DIMENSION,
+    STORAGE_PROFILE_BUCKET: process.env.STORAGE_PROFILE_BUCKET,
+    STORAGE_EVIDENCE_BUCKET: process.env.STORAGE_EVIDENCE_BUCKET,
+    AI_TEXT_MODEL: process.env.AI_TEXT_MODEL,
+    AI_VISION_MODEL: process.env.AI_VISION_MODEL,
+    VALIDATION_MIN_CONFIDENCE: process.env.VALIDATION_MIN_CONFIDENCE,
+    VALIDATION_VALIDATED_WEIGHT: process.env.VALIDATION_VALIDATED_WEIGHT,
+    VALIDATION_UNVALIDATED_WEIGHT: process.env.VALIDATION_UNVALIDATED_WEIGHT,
+    NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_VERCEL_URL 
+      ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}`
+      : undefined,
   });
 
   if (!parsed.success) {

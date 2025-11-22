@@ -8,6 +8,9 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Calendar } from '@/components/ui/calendar';
+import { FileUpload, FilePreview } from '@/components/FileUpload';
+import { STORAGE_BUCKETS } from '@/lib/storage/upload';
+import { trpc } from '@/lib/trpc/client';
 
 // Helper function to format date for datetime-local input (in local timezone)
 function formatDateTimeLocal(date: Date): string {
@@ -423,6 +426,8 @@ interface CompleteTaskDialogProps {
   onSubmit: (proof: string) => void;
   isPending: boolean;
   taskTitle: string;
+  taskId: string;
+  userId: string;
 }
 
 export function CompleteTaskDialog({
@@ -431,41 +436,111 @@ export function CompleteTaskDialog({
   onSubmit,
   isPending,
   taskTitle,
+  taskId,
+  userId,
 }: CompleteTaskDialogProps) {
   const [proof, setProof] = useState('');
+  const [uploadedImages, setUploadedImages] = useState<string[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  const createEvidenceMutation = trpc.evidence.create.useMutation();
 
-  const handleSubmit = () => {
-    onSubmit(proof);
-    setProof('');
+  const handleSubmit = async () => {
+    setIsSubmitting(true);
+    try {
+      // First, mark task as complete with text proof
+      onSubmit(proof);
+      
+      // Then create evidence entries for uploaded images
+      for (const imageUrl of uploadedImages) {
+        await createEvidenceMutation.mutateAsync({
+          taskId: taskId,
+          type: 'photo',
+          content: imageUrl,
+        });
+      }
+      
+      // Reset form
+      setProof('');
+      setUploadedImages([]);
+    } catch (error) {
+      console.error('Error submitting evidence:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleRemoveImage = (urlToRemove: string) => {
+    setUploadedImages(uploadedImages.filter(url => url !== urlToRemove));
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Complete Task</DialogTitle>
           <DialogDescription>
-            Mark &quot;{taskTitle}&quot; as complete. Optionally add proof of completion.
+            Mark &quot;{taskTitle}&quot; as complete. Add proof of completion (text and/or images).
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
+          {/* Text Proof */}
           <div className="space-y-2">
-            <Label htmlFor="proof">Proof of Completion (Optional)</Label>
+            <Label htmlFor="proof">Proof of Completion (Text)</Label>
             <Textarea
               id="proof"
-              placeholder="Add notes or proof that you completed this task..."
+              placeholder="Describe what you completed (e.g., 'Deployed to production', 'Finished the report')..."
               value={proof}
               onChange={(e) => setProof(e.target.value)}
-              rows={4}
+              rows={3}
             />
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Add details to help AI validate your completion
+            </p>
           </div>
+
+          {/* Image Upload */}
+          <div className="space-y-2">
+            <Label>Evidence (Images)</Label>
+            <FileUpload
+              bucket={STORAGE_BUCKETS.TASK_EVIDENCE}
+              userId={userId}
+              onUploadComplete={(url) => {
+                setUploadedImages([...uploadedImages, url]);
+              }}
+              maxFiles={5}
+              existingFiles={uploadedImages}
+            />
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Screenshots, photos, or other visual proof (optional)
+            </p>
+          </div>
+
+          {/* Show uploaded images */}
+          {uploadedImages.length > 0 && (
+            <div className="space-y-2">
+              <Label>Uploaded Images ({uploadedImages.length})</Label>
+              <div className="grid grid-cols-2 gap-2">
+                {uploadedImages.map((url) => (
+                  <FilePreview
+                    key={url}
+                    url={url}
+                    onRemove={() => handleRemoveImage(url)}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button onClick={handleSubmit} disabled={isPending}>
-            {isPending ? 'Completing...' : 'Mark Complete'}
+          <Button 
+            onClick={handleSubmit} 
+            disabled={isPending || isSubmitting}
+          >
+            {isSubmitting ? 'Submitting...' : isPending ? 'Completing...' : 'Mark Complete'}
           </Button>
         </DialogFooter>
       </DialogContent>
