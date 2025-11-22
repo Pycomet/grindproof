@@ -224,6 +224,49 @@ export async function POST(request: NextRequest) {
       .order('confidence', { ascending: false })
       .limit(5);
 
+    // Fetch accountability scores for the week (reflections)
+    const { data: accountabilityScores } = await (supabase as any)
+      .from('accountability_scores')
+      .select('*')
+      .eq('user_id', user.id)
+      .gte('week_start', weekStart.toISOString().split('T')[0])
+      .lt('week_start', weekEnd.toISOString().split('T')[0])
+      .order('week_start', { ascending: true });
+
+    // Extract all reflections from the week
+    const weekReflections: string[] = [];
+    const reflectionPatterns: Record<string, number> = {};
+    
+    if (accountabilityScores) {
+      accountabilityScores.forEach((score: any) => {
+        const metadata = score.roast_metadata || {};
+        const reflections = metadata.reflections || {};
+        
+        Object.values(reflections).forEach((reflection: any) => {
+          if (reflection && typeof reflection === 'string') {
+            weekReflections.push(reflection.toLowerCase());
+            
+            // Detect common excuse patterns
+            const commonExcuses = {
+              'distracted': /distract|interrupt/i,
+              'time_underestimated': /underestimate|took longer|more time/i,
+              'tired': /tired|exhausted|energy|sleep/i,
+              'procrastination': /procrastinat|put off|delay/i,
+              'forgot': /forgot|remember/i,
+              'unexpected': /unexpected|came up|emergency/i,
+              'priority_change': /priority|changed|urgent/i,
+            };
+            
+            Object.entries(commonExcuses).forEach(([pattern, regex]) => {
+              if (regex.test(reflection)) {
+                reflectionPatterns[pattern] = (reflectionPatterns[pattern] || 0) + 1;
+              }
+            });
+          }
+        });
+      });
+    }
+
     // Prepare data for AI
     const roastData = {
       week: {
@@ -246,6 +289,17 @@ export async function POST(request: NextRequest) {
         description: p.description,
         confidence: Math.round(p.confidence * 100),
       })),
+      reflections: {
+        totalReflections: weekReflections.length,
+        topExcuses: Object.entries(reflectionPatterns)
+          .sort(([,a], [,b]) => b - a)
+          .slice(0, 3)
+          .map(([pattern, count]) => ({
+            pattern: pattern.replace('_', ' '),
+            count,
+          })),
+        sampleReflections: weekReflections.slice(0, 5),
+      },
       overall: {
         totalGoals: analysis.goalStats.total,
         activeGoals: analysis.goalStats.active,

@@ -22,6 +22,7 @@ interface FileUploadProps {
   maxFiles?: number;
   existingFiles?: string[];
   className?: string;
+  simple?: boolean; // Simple button mode without drag-and-drop
 }
 
 interface UploadingFile {
@@ -40,6 +41,7 @@ export function FileUpload({
   maxFiles = 1,
   existingFiles = [],
   className = '',
+  simple = false,
 }: FileUploadProps) {
   const [uploadingFiles, setUploadingFiles] = useState<UploadingFile[]>([]);
   const [dragActive, setDragActive] = useState(false);
@@ -181,42 +183,56 @@ export function FileUpload({
 
   return (
     <div className={className}>
-      <div
-        className={`relative border-2 border-dashed rounded-lg p-6 transition-colors ${
-          dragActive
-            ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/20'
-            : 'border-gray-300 dark:border-gray-700 hover:border-gray-400 dark:hover:border-gray-600'
-        }`}
-        onDragEnter={handleDrag}
-        onDragLeave={handleDrag}
-        onDragOver={handleDrag}
-        onDrop={handleDrop}
-      >
-        <input
-          ref={fileInputRef}
-          type="file"
-          className="hidden"
-          accept={STORAGE_LIMITS.ALLOWED_IMAGE_TYPES.join(',')}
-          multiple={maxFiles > 1}
-          onChange={handleChange}
-        />
+      <input
+        ref={fileInputRef}
+        type="file"
+        className="hidden"
+        accept={STORAGE_LIMITS.ALLOWED_IMAGE_TYPES.join(',')}
+        multiple={maxFiles > 1}
+        onChange={handleChange}
+      />
 
-        <div className="flex flex-col items-center justify-center text-center">
-          <Upload className="w-12 h-12 text-gray-400 dark:text-gray-600 mb-4" />
-          <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-            Drag and drop your image{maxFiles > 1 ? 's' : ''} here, or
-          </p>
-          <Button type="button" variant="outline" onClick={handleButtonClick}>
-            Browse Files
-          </Button>
-          <p className="text-xs text-gray-500 dark:text-gray-500 mt-4">
-            Supported: {STORAGE_LIMITS.ALLOWED_IMAGE_TYPES.map((type) => type.split('/')[1].toUpperCase()).join(', ')}
-            <br />
-            Max size: {formatFileSize(STORAGE_LIMITS.MAX_FILE_SIZE)}
-            {maxFiles > 1 && ` • Max ${maxFiles} files`}
-          </p>
+      {simple ? (
+        // Simple button mode
+        <Button 
+          type="button" 
+          variant="outline" 
+          onClick={handleButtonClick}
+          className="w-full"
+        >
+          <Upload className="w-4 h-4 mr-2" />
+          Upload Evidence
+        </Button>
+      ) : (
+        // Full drag-and-drop mode
+        <div
+          className={`relative border-2 border-dashed rounded-lg p-6 transition-colors ${
+            dragActive
+              ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/20'
+              : 'border-gray-300 dark:border-gray-700 hover:border-gray-400 dark:hover:border-gray-600'
+          }`}
+          onDragEnter={handleDrag}
+          onDragLeave={handleDrag}
+          onDragOver={handleDrag}
+          onDrop={handleDrop}
+        >
+          <div className="flex flex-col items-center justify-center text-center">
+            <Upload className="w-12 h-12 text-gray-400 dark:text-gray-600 mb-4" />
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+              Drag and drop your image{maxFiles > 1 ? 's' : ''} here, or
+            </p>
+            <Button type="button" variant="outline" onClick={handleButtonClick}>
+              Browse Files
+            </Button>
+            <p className="text-xs text-gray-500 dark:text-gray-500 mt-4">
+              Supported: {STORAGE_LIMITS.ALLOWED_IMAGE_TYPES.map((type) => type.split('/')[1].toUpperCase()).join(', ')}
+              <br />
+              Max size: {formatFileSize(STORAGE_LIMITS.MAX_FILE_SIZE)}
+              {maxFiles > 1 && ` • Max ${maxFiles} files`}
+            </p>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Uploading files preview */}
       {uploadingFiles.length > 0 && (

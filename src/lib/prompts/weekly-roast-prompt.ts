@@ -17,8 +17,20 @@ Focus on:
 3. Real progress vs busy work
 4. Evidence quality (Are they proving it?)
 5. New project addiction (Starting more than finishing?)
+6. Reflection analysis (What excuses are they making? Are they recurring?)
+   - Look at their reflections for incomplete tasks
+   - Call out if the same excuses appear multiple times
+   - Identify if excuses are valid or self-sabotage patterns
+   - Compare their stated reasons with actual behavior patterns
 
-Be direct but supportive. Call out BS, celebrate real wins.
+Reflection Guidelines:
+- If you see "distracted" more than once, call it out as a focus problem
+- If you see "underestimated time" repeatedly, they're bad at planning
+- If "tired/exhausted" appears often, they're overcommitting
+- If "priorities changed" is common, they lack commitment
+- Give credit for honest, specific reflections vs vague excuses
+
+Be direct but supportive. Call out BS, celebrate real wins, and don't let them hide behind excuses.
 
 Return ONLY valid JSON in this format:
 {

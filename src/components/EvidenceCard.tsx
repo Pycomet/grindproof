@@ -254,7 +254,7 @@ export function EvidenceList({ taskId }: EvidenceListProps) {
       <p className="text-xs font-medium text-gray-700 dark:text-gray-300">
         Evidence ({evidence.length})
       </p>
-      {evidence.map((item) => (
+      {evidence.map((item: Evidence) => (
         <EvidenceCard
           key={item.id}
           evidence={item}

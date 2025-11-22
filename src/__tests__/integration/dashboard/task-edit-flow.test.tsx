@@ -67,11 +67,68 @@ vi.mock('@/lib/trpc/client', () => ({
       getAll: {
         useQuery: vi.fn(),
       },
+      getGitHubActivity: {
+        useQuery: vi.fn(() => ({ data: null })),
+      },
+      getGoogleCalendarActivity: {
+        useQuery: vi.fn(() => ({ data: null })),
+      },
     },
     conversation: {
       getAll: { useQuery: vi.fn(() => ({ data: [] })) },
       create: { useMutation: vi.fn(() => ({ mutateAsync: vi.fn() })) },
       update: { useMutation: vi.fn(() => ({ mutateAsync: vi.fn() })) },
+    },
+    accountabilityScore: {
+      getAll: { useQuery: vi.fn(() => ({ data: [] })) },
+    },
+    pattern: {
+      getAll: { useQuery: vi.fn(() => ({ data: [] })) },
+    },
+    dailyCheck: {
+      getMorningSchedule: {
+        useQuery: vi.fn(() => ({
+          data: { tasks: [], calendarEvents: [], hasCalendarIntegration: false },
+        })),
+      },
+      getEveningComparison: {
+        useQuery: vi.fn(() => ({
+          data: {
+            tasks: [],
+            stats: { total: 0, completed: 0, pending: 0, skipped: 0, alignmentScore: 0 },
+            integrations: { hasGitHub: false, hasCalendar: false },
+            existingReflection: null,
+          },
+        })),
+      },
+      saveMorningPlan: {
+        useMutation: vi.fn(() => ({ mutateAsync: vi.fn().mockResolvedValue({ success: true }) })),
+      },
+      saveEveningReflection: {
+        useMutation: vi.fn(() => ({ mutateAsync: vi.fn().mockResolvedValue({ success: true }) })),
+      },
+      refineTasks: {
+        useMutation: vi.fn(() => ({ mutateAsync: vi.fn().mockResolvedValue({ tasks: [] }) })),
+      },
+    },
+    notification: {
+      getPublicKey: { useQuery: vi.fn(() => ({ data: { publicKey: 'test-key' } })) },
+      getSettings: {
+        useQuery: vi.fn(() => ({
+          data: {
+            morningCheckEnabled: true,
+            morningCheckTime: '09:00',
+            eveningCheckEnabled: true,
+            eveningCheckTime: '18:00',
+            timezone: 'UTC',
+          },
+        })),
+      },
+      getSubscriptions: { useQuery: vi.fn(() => ({ data: [] })) },
+      subscribe: { useMutation: vi.fn() },
+      unsubscribe: { useMutation: vi.fn() },
+      updateSettings: { useMutation: vi.fn() },
+      sendTest: { useMutation: vi.fn() },
     },
   },
 }));

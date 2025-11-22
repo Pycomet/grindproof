@@ -13,6 +13,12 @@ const serverEnvSchema = clientEnvSchema.extend({
   NEXT_GOOGLE_CALENDAR_CLIENT_ID: z.string().min(1),
   NEXT_GOOGLE_CALENDAR_CLIENT_SECRET: z.string().min(1),
   NEXT_GOOGLE_GEMINI_API_KEY: z.string().min(1),
+  CRON_SECRET: z.string().min(1),
+  
+  // Push notification configuration
+  VAPID_PUBLIC_KEY: z.string().min(1),
+  VAPID_PRIVATE_KEY: z.string().min(1),
+  VAPID_EMAIL: z.string().min(1),
   
   // Storage configuration (optional with defaults)
   STORAGE_MAX_FILE_SIZE_MB: z.string().optional().default('5'),
@@ -48,6 +54,7 @@ function getEnv(): z.infer<typeof serverEnvSchema> {
       NEXT_GOOGLE_CALENDAR_CLIENT_ID: 'test-google-client-id',
       NEXT_GOOGLE_CALENDAR_CLIENT_SECRET: 'test-google-client-secret',
       NEXT_GOOGLE_GEMINI_API_KEY: 'test-google-gemini-api-key',
+      CRON_SECRET: 'test-cron-secret',
       NODE_ENV: 'test' as const,
       STORAGE_MAX_FILE_SIZE_MB: '5',
       STORAGE_MAX_IMAGE_DIMENSION: '4096',
@@ -59,6 +66,9 @@ function getEnv(): z.infer<typeof serverEnvSchema> {
       VALIDATION_VALIDATED_WEIGHT: '1.0',
       VALIDATION_UNVALIDATED_WEIGHT: '0.5',
       NEXT_PUBLIC_APP_URL: undefined,
+      VAPID_PUBLIC_KEY: 'test-vapid-public-key',
+      VAPID_PRIVATE_KEY: 'test-vapid-private-key',
+      VAPID_EMAIL: 'mailto:test@test.com',
     };
   }
 
@@ -74,6 +84,7 @@ function getEnv(): z.infer<typeof serverEnvSchema> {
     NEXT_GOOGLE_CALENDAR_CLIENT_ID: process.env.NEXT_GOOGLE_CALENDAR_CLIENT_ID,
     NEXT_GOOGLE_CALENDAR_CLIENT_SECRET: process.env.NEXT_GOOGLE_CALENDAR_CLIENT_SECRET,
     NEXT_GOOGLE_GEMINI_API_KEY: process.env.NEXT_GOOGLE_GEMINI_API_KEY,
+    CRON_SECRET: process.env.CRON_SECRET,
     STORAGE_MAX_FILE_SIZE_MB: process.env.STORAGE_MAX_FILE_SIZE_MB,
     STORAGE_MAX_IMAGE_DIMENSION: process.env.STORAGE_MAX_IMAGE_DIMENSION,
     STORAGE_PROFILE_BUCKET: process.env.STORAGE_PROFILE_BUCKET,
@@ -86,6 +97,9 @@ function getEnv(): z.infer<typeof serverEnvSchema> {
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_VERCEL_URL 
       ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}`
       : undefined,
+    VAPID_PUBLIC_KEY: process.env.VAPID_PUBLIC_KEY,
+    VAPID_PRIVATE_KEY: process.env.VAPID_PRIVATE_KEY,
+    VAPID_EMAIL: process.env.VAPID_EMAIL,
   });
 
   if (!parsed.success) {

@@ -24,6 +24,9 @@ import { ChatInterface } from '@/components/ChatInterface';
 import { SearchInput } from '@/components/SearchInput';
 import { ProfilePictureUpload } from '@/components/ProfilePictureUpload';
 import { EvidenceList } from '@/components/EvidenceCard';
+import { useNotifications } from '@/hooks/useNotifications';
+import { MorningCheckDialog } from '@/components/MorningCheckDialog';
+import { EveningCheckDialog } from '@/components/EveningCheckDialog';
 
 type ViewMode = 'chat' | 'today' | 'goals' | 'evening' | 'weekly' | 'integrations';
 
@@ -31,10 +34,11 @@ export default function Dashboard() {
   const router = useRouter();
   const [view, setView] = useState<ViewMode>('chat');
   const [isFabTaskDialogOpen, setIsFabTaskDialogOpen] = useState(false);
+  const [activeModal, setActiveModal] = useState<'morning' | 'evening' | null>(null);
 
   // Use AppContext instead of individual queries
   const { user, goals, setUser, refreshTasks, refreshIntegrations, isGoogleCalendarConnected } = useApp();
-  const { isOnline, pendingCount } = useOfflineSync();
+
   
   const currentTime = new Date().toLocaleTimeString('en-US', { 
     hour: 'numeric', 
@@ -68,6 +72,17 @@ export default function Dashboard() {
       window.history.replaceState({}, '', window.location.pathname);
     }
   }, [refreshIntegrations]);
+
+  // Check for modal parameter from notification clicks
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const modal = urlParams.get('modal');
+    if (modal === 'morning' || modal === 'evening') {
+      setActiveModal(modal);
+      // Set view based on modal type
+      setView(modal === 'morning' ? 'today' : 'evening');
+    }
+  }, []);
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -113,7 +128,7 @@ export default function Dashboard() {
       id: 'evening',
       emoji: '🌙',
       title: 'Reality Check',
-      content: <EveningCheck />,
+      content: <RealityCheck />,
     },
     {
       id: 'weekly',
@@ -272,7 +287,7 @@ export default function Dashboard() {
               exit={{ opacity: 0, x: 20 }}
               transition={{ duration: 0.3, ease: 'easeInOut' }}
             >
-              <EveningCheck />
+              <RealityCheck />
             </motion.div>
           )}
           {view === 'weekly' && (
@@ -329,6 +344,30 @@ export default function Dashboard() {
         isPending={createTaskMutation.isPending}
         goals={goals?.map(g => ({ id: g.id, title: g.title }))}
         isCalendarConnected={isGoogleCalendarConnected()}
+      />
+
+      {/* Morning & Evening Check Dialogs */}
+      <MorningCheckDialog
+        open={activeModal === 'morning'}
+        onClose={() => {
+          setActiveModal(null);
+          // Clean up URL parameter
+          window.history.replaceState({}, '', window.location.pathname);
+        }}
+        onComplete={() => {
+          refreshTasks();
+        }}
+      />
+      <EveningCheckDialog
+        open={activeModal === 'evening'}
+        onClose={() => {
+          setActiveModal(null);
+          // Clean up URL parameter
+          window.history.replaceState({}, '', window.location.pathname);
+        }}
+        onComplete={() => {
+          refreshTasks();
+        }}
       />
     </div>
   );
@@ -658,8 +697,8 @@ function TodayView() {
 
   return (
     <div className="space-y-6">
-      {/* Sticky Header Section */}
-      <div className="sticky top-0 z-10 bg-white dark:bg-zinc-950 pb-4 space-y-4">
+      {/* Header Section */}
+      <div className="bg-white dark:bg-zinc-950 pb-4 space-y-4">
         {/* Header */}
         <div className="flex items-center justify-between pt-2">
           <div>
@@ -1320,8 +1359,8 @@ function GoalsView() {
 
   return (
     <div className="space-y-6">
-      {/* Sticky Header Section */}
-      <div className="sticky top-0 z-10 bg-white dark:bg-zinc-950 pb-4 space-y-4">
+      {/* Header Section */}
+      <div className="bg-white dark:bg-zinc-950 pb-4 space-y-4">
         {/* Header with Create Button */}
         <div className="flex items-center justify-between pt-2">
         <div>
@@ -2118,10 +2157,35 @@ function GoalsView() {
 }
 
 // Evening Reality Check Component
-function EveningCheck() {
+function RealityCheck() {
   const [lastUpdated, setLastUpdated] = useState(new Date());
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [timeRange, setTimeRange] = useState(24); // Default: 24 hours
+  const [showReflections, setShowReflections] = useState(true); // Default to true so reflections are visible
+  const [showPastCheckIns, setShowPastCheckIns] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+
+  // Fetch today's task comparison
+  const { data: comparison, isLoading: comparisonLoading, refetch: refetchComparison } = trpc.dailyCheck.getEveningComparison.useQuery();
+
+  // Fetch all accountability scores for past check-ins
+  const { data: allScores } = trpc.accountabilityScore.getAll.useQuery();
+
+  // Set selectedDate to the most recent check-in when data loads
+  useEffect(() => {
+    if (allScores && allScores.length > 0) {
+      console.log('All scores loaded:', allScores);
+      const mostRecent = allScores[0];
+      console.log('Most recent score:', mostRecent);
+      console.log('RoastMetadata:', mostRecent.roastMetadata);
+      
+      // Only set selectedDate if it's not already set or different
+      const mostRecentDate = new Date(mostRecent.weekStart);
+      if (!selectedDate || selectedDate.toISOString().split('T')[0] !== mostRecentDate.toISOString().split('T')[0]) {
+        setSelectedDate(mostRecentDate);
+      }
+    }
+  }, [allScores]);
 
   // Fetch GitHub activity with time range
   const { data: githubActivity, isLoading: githubLoading, refetch: refetchGitHub } = trpc.integration.getGitHubActivity.useQuery({
@@ -2133,11 +2197,17 @@ function EveningCheck() {
     hours: timeRange,
   });
 
+  // Debug: Log when showReflections changes
+  useEffect(() => {
+    console.log('Reality Check - showReflections state changed to:', showReflections);
+  }, [showReflections]);
+
   const handleRefresh = () => {
     setIsRefreshing(true);
-    // Refresh both regular data and integrations
+    // Refresh all data: tasks, integrations
     Promise.all([
       new Promise((resolve) => setTimeout(resolve, 800)),
+      refetchComparison(),
       refetchGitHub(),
       refetchCalendar(),
     ]).then(() => {
@@ -2155,32 +2225,6 @@ function EveningCheck() {
     return `${hours}h ago`;
   };
 
-  const tasks = [
-    {
-      id: 1,
-      title: 'Work on AI Assistant',
-      planned: true,
-      githubCommits: 0,
-      expectedRepo: 'ai-assistant',
-      actualActivity: '6 commits to random-fork',
-      status: 'mismatch' as const,
-    },
-    {
-      id: 2,
-      title: 'Gym Session',
-      planned: true,
-      requiresProof: true,
-      proofProvided: false,
-      status: 'pending' as const,
-    },
-    {
-      id: 3,
-      title: 'Team Standup',
-      planned: true,
-      calendarAttended: true,
-      status: 'completed' as const,
-    },
-  ];
 
   return (
     <div className="space-y-6">
@@ -2235,6 +2279,423 @@ function EveningCheck() {
           </div>
         </button>
       </div>
+
+      {/* Today's Task Performance */}
+      {comparison && (
+        <div className="rounded-xl border border-zinc-200 bg-linear-to-br from-orange-50 to-white p-6 shadow-sm dark:border-zinc-800 dark:from-orange-950/20 dark:to-zinc-900">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="text-2xl">📊</div>
+            <div>
+              <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+                Today's Performance
+              </h3>
+              <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                How your plan matched reality
+              </p>
+            </div>
+          </div>
+
+          {/* Helper Text */}
+          <div className="mb-4 rounded-lg bg-blue-50 p-3 dark:bg-blue-950/20">
+            <p className="text-xs text-blue-900 dark:text-blue-200">
+              <span className="font-semibold">💡 Alignment Score:</span> Shows how well you followed your plan today. It&apos;s calculated as: (completed tasks ÷ total planned tasks) × 100. Higher = better execution!
+            </p>
+          </div>
+
+          {/* Alignment Score */}
+          <div className="mb-6 rounded-lg border border-orange-200 bg-white p-4 dark:border-orange-900/50 dark:bg-zinc-900/50">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-zinc-600 dark:text-zinc-400">Alignment Score</p>
+                <p className="text-xs text-zinc-500 dark:text-zinc-500 mt-1">
+                  {comparison.stats.completed} of {comparison.stats.total} tasks completed
+                </p>
+              </div>
+              <div className="text-4xl font-bold text-orange-600 dark:text-orange-400">
+                {Math.round((comparison.stats.alignmentScore) * 100)}%
+              </div>
+            </div>
+          </div>
+
+          {/* Task Status Legend */}
+          <div className="mb-3 rounded-md bg-zinc-50 p-2 dark:bg-zinc-900/50">
+            <p className="text-xs text-zinc-600 dark:text-zinc-400">
+              <span className="font-semibold">Task Status:</span> <span className="text-green-600">✓ Completed</span> · <span className="text-red-600">✗ Skipped</span> · <span className="text-yellow-600">⏱ Pending</span>
+            </p>
+          </div>
+
+          {/* Toggle Reflections Button */}
+          {(() => {
+            const hasReflections = comparison.existingReflection && Object.keys(comparison.existingReflection.reflections || {}).length > 0;
+            const hasEvidence = comparison.existingReflection && Object.keys(comparison.existingReflection.evidenceUrls || {}).length > 0;
+            
+            return (hasReflections || hasEvidence) && (
+              <button
+                onClick={() => {
+                  console.log('Toggle reflections clicked. Current state:', showReflections);
+                  setShowReflections(!showReflections);
+                }}
+                className="mb-3 flex items-center gap-2 text-sm font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50 transition-colors"
+              >
+                <svg className={`h-4 w-4 transition-transform ${showReflections ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+                {showReflections ? 'Hide' : 'Show'} reflections & evidence
+                <span className="text-xs text-zinc-500">
+                  ({hasReflections && hasEvidence ? 'reasons & proof' : hasReflections ? 'reasons for incomplete tasks' : 'uploaded proof'})
+                </span>
+              </button>
+            );
+          })()}
+
+          {/* Task Breakdown */}
+          {comparison.tasks && comparison.tasks.length > 0 ? (
+            <div className="space-y-2">
+              {[...comparison.tasks]
+                .sort((a, b) => {
+                  const aIncomplete = a.status !== 'completed' ? 0 : 1;
+                  const bIncomplete = b.status !== 'completed' ? 0 : 1;
+                  return aIncomplete - bIncomplete;
+                })
+                .map((task: any) => {
+                  const reflection = comparison.existingReflection?.reflections?.[task.id];
+                  const evidenceUrls = comparison.existingReflection?.evidenceUrls?.[task.id] || [];
+                  
+                  return (
+                    <div
+                      key={task.id}
+                      className="rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900/50"
+                    >
+                      <div className="flex items-start gap-3 p-3">
+                        {task.status === 'completed' ? (
+                          <svg className="h-5 w-5 shrink-0 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                        ) : task.status === 'skipped' ? (
+                          <svg className="h-5 w-5 shrink-0 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                        ) : (
+                          <svg className="h-5 w-5 shrink-0 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                        )}
+                        <div className="flex-1">
+                          <p className="font-medium text-zinc-900 dark:text-zinc-50">{task.title}</p>
+                          {task.description && (
+                            <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">{task.description}</p>
+                          )}
+                          
+                          {/* Show reflection if available and toggled on */}
+                          {showReflections && reflection && task.status !== 'completed' && (
+                            <div className="mt-2 rounded-md bg-blue-50 p-2 dark:bg-blue-950/20 border-l-4 border-blue-500">
+                              <p className="text-xs font-medium text-blue-900 dark:text-blue-200 mb-1">💭 Your reflection:</p>
+                              <p className="text-sm text-blue-800 dark:text-blue-300 italic">&quot;{reflection}&quot;</p>
+                            </div>
+                          )}
+                          
+                          {/* Show evidence for completed tasks */}
+                          {showReflections && evidenceUrls.length > 0 && task.status === 'completed' && (
+                            <div className="mt-2 rounded-md bg-green-50 p-2 dark:bg-green-950/20 border-l-4 border-green-500">
+                              <p className="text-xs font-medium text-green-900 dark:text-green-200 mb-1">
+                                📎 Evidence uploaded: {evidenceUrls.length} file(s)
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                        <Badge
+                          className={
+                            task.status === 'completed'
+                              ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                              : task.status === 'skipped'
+                              ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                              : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+                          }
+                        >
+                          {task.status}
+                        </Badge>
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+          ) : (
+            <p className="text-center text-sm text-zinc-500 dark:text-zinc-400 py-4">
+              No tasks planned for today
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Past Check-ins Section */}
+      {allScores && allScores.length > 0 && (
+        <div className="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+          <button
+            onClick={() => setShowPastCheckIns(!showPastCheckIns)}
+            className="flex w-full items-center justify-between"
+          >
+            <div className="flex items-center gap-3">
+              <div className="text-2xl">📅</div>
+              <div className="text-left">
+                <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+                  Past Check-ins
+                </h3>
+                <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                  View your reflection history ({allScores.length} check-ins)
+                </p>
+              </div>
+            </div>
+            <svg 
+              className={`h-5 w-5 text-zinc-500 transition-transform ${showPastCheckIns ? 'rotate-180' : ''}`} 
+              fill="none" 
+              viewBox="0 0 24 24" 
+              stroke="currentColor"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+
+          {showPastCheckIns && (
+            <div className="mt-6 space-y-4">
+              {/* Quick Stats Overview */}
+              {(() => {
+                const avgAlignment = allScores.reduce((acc: number, s: any) => acc + (s.alignmentScore || 0), 0) / allScores.length;
+                const totalReflections = allScores.reduce((acc: number, s: any) => {
+                  const metadata = s.roastMetadata || {};
+                  const reflectionCount = Object.keys(metadata.reflections || {}).length;
+                  console.log(`Score ID: ${s.id}, Metadata:`, metadata, `Reflection count: ${reflectionCount}`);
+                  return acc + reflectionCount;
+                }, 0);
+                console.log('Total reflections across all scores:', totalReflections);
+                const bestDay = allScores.reduce((best: any, s: any) => {
+                  return (s.alignmentScore || 0) > (best.alignmentScore || 0) ? s : best;
+                }, allScores[0]);
+                const recentTrend = allScores.slice(0, 3);
+                const trendDirection = recentTrend.length >= 2 
+                  ? (recentTrend[0].alignmentScore || 0) - (recentTrend[recentTrend.length - 1].alignmentScore || 0)
+                  : 0;
+
+                return (
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div className="rounded-lg bg-zinc-50 p-3 dark:bg-zinc-800/50">
+                      <p className="text-xs text-zinc-600 dark:text-zinc-400 mb-1">Avg Alignment</p>
+                      <p className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
+                        {Math.round(avgAlignment * 100)}%
+                      </p>
+                    </div>
+                    <div className="rounded-lg bg-zinc-50 p-3 dark:bg-zinc-800/50">
+                      <p className="text-xs text-zinc-600 dark:text-zinc-400 mb-1">Best Day</p>
+                      <p className="text-2xl font-bold text-green-600 dark:text-green-400">
+                        {Math.round((bestDay.alignmentScore || 0) * 100)}%
+                      </p>
+                    </div>
+                    <div className="rounded-lg bg-zinc-50 p-3 dark:bg-zinc-800/50">
+                      <p className="text-xs text-zinc-600 dark:text-zinc-400 mb-1">Check-ins</p>
+                      <p className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
+                        {allScores.length}
+                      </p>
+                    </div>
+                    <div className="rounded-lg bg-zinc-50 p-3 dark:bg-zinc-800/50">
+                      <p className="text-xs text-zinc-600 dark:text-zinc-400 mb-1">Trend</p>
+                      <p className={`text-2xl font-bold ${trendDirection > 0 ? 'text-green-600' : trendDirection < 0 ? 'text-red-600' : 'text-zinc-500'}`}>
+                        {trendDirection > 0 ? '📈' : trendDirection < 0 ? '📉' : '➡️'} {Math.abs(Math.round(trendDirection * 100))}%
+                      </p>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Patterns & Insights */}
+              {(() => {
+                // Analyze all reflections for patterns
+                const allReflections: string[] = [];
+                const excusePatterns: Record<string, number> = {};
+                
+                allScores.forEach((score: any) => {
+                  const metadata = score.roastMetadata || {};
+                  const reflections = metadata.reflections || {};
+                  Object.values(reflections).forEach((reflection: any) => {
+                    if (reflection && typeof reflection === 'string') {
+                      allReflections.push(reflection.toLowerCase());
+                      
+                      const patterns = {
+                        'Distracted': /distract|interrupt/i,
+                        'Time underestimated': /underestimate|took longer|more time/i,
+                        'Tired/exhausted': /tired|exhausted|energy|sleep/i,
+                        'Procrastination': /procrastinat|put off|delay/i,
+                        'Forgot': /forgot|remember/i,
+                        'Unexpected issues': /unexpected|came up|emergency/i,
+                        'Priority changed': /priority|changed|urgent/i,
+                      };
+                      
+                      Object.entries(patterns).forEach(([pattern, regex]) => {
+                        if (regex.test(reflection)) {
+                          excusePatterns[pattern] = (excusePatterns[pattern] || 0) + 1;
+                        }
+                      });
+                    }
+                  });
+                });
+
+                const topExcuses = Object.entries(excusePatterns)
+                  .sort(([,a], [,b]) => b - a)
+                  .slice(0, 3);
+
+                if (topExcuses.length > 0) {
+                  return (
+                    <div className="rounded-lg border border-orange-200 bg-orange-50 p-4 dark:border-orange-900 dark:bg-orange-950/20">
+                      <h4 className="text-sm font-semibold text-orange-900 dark:text-orange-200 mb-3">
+                        🔍 Your Most Common Patterns:
+                      </h4>
+                      <div className="space-y-2">
+                        {topExcuses.map(([pattern, count]) => (
+                          <div key={pattern} className="flex items-center justify-between">
+                            <span className="text-sm text-orange-800 dark:text-orange-300">{pattern}</span>
+                            <div className="flex items-center gap-2">
+                              <div className="h-2 w-24 bg-orange-200 dark:bg-orange-900 rounded-full overflow-hidden">
+                                <div 
+                                  className="h-full bg-orange-500 dark:bg-orange-400"
+                                  style={{ width: `${(count / allReflections.length) * 100 * 3}%` }}
+                                />
+                              </div>
+                              <span className="text-sm font-semibold text-orange-900 dark:text-orange-200 w-8">
+                                {count}×
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                }
+                return null;
+              })()}
+
+              {/* Recent Check-ins List */}
+              <div>
+                <h4 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50 mb-3">
+                  Recent Check-ins:
+                </h4>
+                <div className="space-y-2 max-h-64 overflow-y-auto">
+                  {allScores.slice(0, 10).map((score: any) => {
+                    const metadata = score.roastMetadata || {};
+                    const reflectionCount = Object.keys(metadata.reflections || {}).length;
+                    const alignment = Math.round((score.alignmentScore || 0) * 100);
+                    
+                    return (
+                      <button
+                        key={score.id}
+                        onClick={() => setSelectedDate(new Date(score.weekStart))}
+                        className={`w-full text-left rounded-lg border p-3 transition-colors ${
+                          selectedDate.toISOString().split('T')[0] === (typeof score.weekStart === 'string' ? score.weekStart : new Date(score.weekStart).toISOString().split('T')[0])
+                            ? 'border-blue-500 bg-blue-50 dark:border-blue-400 dark:bg-blue-950/20'
+                            : 'border-zinc-200 bg-white hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-900/50 dark:hover:border-zinc-700'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-zinc-900 dark:text-zinc-50">
+                              {new Date(score.weekStart).toLocaleDateString('en-US', { 
+                                month: 'short', 
+                                day: 'numeric',
+                                year: 'numeric'
+                              })}
+                            </p>
+                            <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-1">
+                              {reflectionCount} reflection{reflectionCount !== 1 ? 's' : ''} · {score.completedTasks}/{score.totalTasks} tasks
+                            </p>
+                          </div>
+                          <div className={`text-xl font-bold ${
+                            alignment >= 70 ? 'text-green-600' :
+                            alignment >= 40 ? 'text-orange-600' :
+                            'text-red-600'
+                          }`}>
+                            {alignment}%
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Display selected check-in */}
+              {(() => {
+                const selectedDateStr = selectedDate.toISOString().split('T')[0];
+                const selectedScore = allScores.find((s: any) => {
+                  const scoreWeekStart = typeof s.weekStart === 'string' ? s.weekStart : new Date(s.weekStart).toISOString().split('T')[0];
+                  return scoreWeekStart === selectedDateStr;
+                });
+                
+                if (!selectedScore) return null;
+                
+                const metadata = selectedScore.roastMetadata || {};
+                const reflections = metadata.reflections || {};
+                const evidenceUrls = metadata.evidenceUrls || {};
+                const hasReflections = Object.keys(reflections).length > 0;
+                const hasEvidence = Object.keys(evidenceUrls).length > 0;
+
+                return (
+                  <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-900/50">
+                    {/* Stats */}
+                    <div className="mb-4 grid grid-cols-3 gap-4">
+                      <div className="text-center">
+                        <p className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
+                          {Math.round((selectedScore.alignmentScore || 0) * 100)}%
+                        </p>
+                        <p className="text-xs text-zinc-600 dark:text-zinc-400">Alignment</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
+                          {selectedScore.completedTasks || 0}/{selectedScore.totalTasks || 0}
+                        </p>
+                        <p className="text-xs text-zinc-600 dark:text-zinc-400">Tasks</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
+                          {Object.keys(reflections).length}
+                        </p>
+                        <p className="text-xs text-zinc-600 dark:text-zinc-400">Reflections</p>
+                      </div>
+                    </div>
+
+                    {/* Reflections */}
+                    {hasReflections && (
+                      <div className="space-y-2">
+                        <h4 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50 mb-2">
+                          Your Reflections:
+                        </h4>
+                        {Object.entries(reflections).map(([taskId, reflection]: [string, any]) => (
+                          <div key={taskId} className="rounded-md bg-blue-50 p-3 dark:bg-blue-950/20">
+                            <p className="text-sm text-blue-800 dark:text-blue-300 italic">
+                              &quot;{reflection}&quot;
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Evidence count */}
+                    {hasEvidence && (
+                      <div className="mt-3 rounded-md bg-green-50 p-3 dark:bg-green-950/20">
+                        <p className="text-sm font-medium text-green-900 dark:text-green-200">
+                          📎 {Object.values(evidenceUrls).flat().length} evidence file(s) uploaded
+                        </p>
+                      </div>
+                    )}
+
+                    {!hasReflections && !hasEvidence && (
+                      <p className="text-center text-sm text-zinc-500 dark:text-zinc-400 py-4">
+                        No reflections or evidence recorded for this check-in
+                      </p>
+                    )}
+                  </div>
+                );
+              })()}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* GitHub Activity Summary - Only show if GitHub is connected */}
       {githubActivity && (
@@ -2482,106 +2943,7 @@ function EveningCheck() {
         </div>
       )}
 
-      <div className="space-y-4">
-        {tasks.map((task) => (
-          <div
-            key={task.id}
-            className={`rounded-xl border p-6 shadow-sm transition-all ${
-              task.status === 'completed'
-                ? 'border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950/20'
-                : task.status === 'mismatch'
-                ? 'border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950/20'
-                : 'border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900'
-            }`}
-          >
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                <div className="flex items-center gap-3">
-                  <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
-                    {task.title}
-                  </h3>
-                  {task.status === 'completed' && (
-                    <span className="rounded-full bg-green-600 px-3 py-1 text-xs font-medium text-white">
-                      ✓ Completed
-                    </span>
-                  )}
-                  {task.status === 'mismatch' && (
-                    <span className="rounded-full bg-red-600 px-3 py-1 text-xs font-medium text-white">
-                      ⚠ Mismatch
-                    </span>
-                  )}
-                </div>
 
-                {task.status === 'mismatch' && (
-                  <div className="mt-3 space-y-2 rounded-lg bg-white p-4 dark:bg-zinc-900">
-                    <div className="text-sm">
-                      <span className="font-medium text-zinc-700 dark:text-zinc-300">
-                        Planned:
-                      </span>{' '}
-                      <span className="text-zinc-600 dark:text-zinc-400">
-                        {task.expectedRepo}
-                      </span>
-                    </div>
-                    <div className="text-sm">
-                      <span className="font-medium text-zinc-700 dark:text-zinc-300">
-                        GitHub shows:
-                      </span>{' '}
-                      <span className="text-red-600 dark:text-red-400">
-                        {task.actualActivity}
-                      </span>
-                    </div>
-                    <div className="mt-3">
-                      <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                        What happened?
-                      </label>
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        {['Meeting overrun', 'Got distracted', 'Task too vague', 'Other'].map(
-                          (reason) => (
-                            <button
-                              key={reason}
-                              className="rounded-lg border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-700 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
-                            >
-                              {reason}
-                            </button>
-                          )
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {task.requiresProof && !task.proofProvided && (
-                  <div className="mt-4 space-y-3">
-                    <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                      You said you went to the gym. Upload proof:
-                    </p>
-                    <div className="flex gap-2">
-                      <button className="flex items-center gap-2 rounded-lg border-2 border-dashed border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-600 transition-colors hover:border-zinc-400 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-400 dark:hover:border-zinc-600 dark:hover:bg-zinc-800">
-                        📸 Add Photo
-                      </button>
-                      <button className="flex items-center gap-2 rounded-lg border-2 border-dashed border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-600 transition-colors hover:border-zinc-400 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-400 dark:hover:border-zinc-600 dark:hover:bg-zinc-800">
-                        📝 Add Note
-                      </button>
-                      <button className="rounded-lg px-4 py-2 text-sm font-medium text-zinc-400 transition-colors hover:text-zinc-600 dark:text-zinc-600 dark:hover:text-zinc-400">
-                        ⏭️ Skip Proof
-                      </button>
-                    </div>
-                    <p className="text-xs text-zinc-500">
-                      Skipped proof 3 times this week. Honesty score: 42%
-                    </p>
-                  </div>
-                )}
-
-                {task.status === 'completed' && (
-                  <p className="mt-2 text-sm text-green-700 dark:text-green-400">
-                    ✓ Automatically verified via calendar
-                  </p>
-                )}
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
     </div>
   );
 }
@@ -2734,6 +3096,21 @@ function WeeklyRoast() {
       {/* Display Roast Data */}
       {displayData && !isGenerating && (
         <>
+          {/* Helper Text for Metrics */}
+          <div className="hidden md:block rounded-lg bg-blue-50 p-4 dark:bg-blue-950/20 mb-4">
+            <h4 className="text-sm font-semibold text-blue-900 dark:text-blue-200 mb-2">
+              📊 Understanding Your Scores:
+            </h4>
+            <div className="space-y-1 text-xs text-blue-800 dark:text-blue-300">
+              <p><span className="font-semibold">Alignment Score:</span> How well your actions matched your plans (completed tasks ÷ planned tasks)</p>
+              <p><span className="font-semibold">Honesty Score:</span> How truthful you are with yourself based on evidence, reflections, and actual vs claimed completion</p>
+              <p><span className="font-semibold">Completion Rate:</span> Percentage of all your tasks (not just today) that you actually finish</p>
+              <p><span className="font-semibold">New Projects:</span> Goals you started while existing goals are under 50% complete (red flag for focus issues)</p>
+              <p><span className="font-semibold">Evidence Submissions:</span> How many times you uploaded proof of completion (validates honesty)</p>
+              <p><span className="font-semibold">Patterns:</span> Recurring behaviors the AI detected in your work habits (based on your data)</p>
+            </div>
+          </div>
+
       {/* Score Cards */}
           <div className="grid gap-4 sm:grid-cols-3">
         <div className="rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
@@ -2821,6 +3198,9 @@ function WeeklyRoast() {
         <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
           The Uncomfortable Truth
         </h3>
+        <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+          AI-analyzed observations from your week. Color indicates severity: Red = critical issue, Orange = warning, Green = win!
+        </p>
         <div className="mt-4 space-y-3">
                 {displayData.insights.map((insight: any, idx: number) => (
             <div
@@ -2847,6 +3227,9 @@ function WeeklyRoast() {
               <h3 className="text-lg font-semibold text-blue-900 dark:text-blue-50">
                 Next Week&apos;s Challenge
               </h3>
+              <p className="text-xs text-blue-800 dark:text-blue-200 mt-1">
+                AI-generated action items based on your patterns and reflections. These are specific steps to improve next week.
+              </p>
               <ul className="mt-4 space-y-2">
                 {displayData.recommendations.map((rec: string, idx: number) => (
                   <li key={idx} className="flex items-start gap-2 text-blue-900 dark:text-blue-50">
@@ -2878,6 +3261,48 @@ function WeeklyRoast() {
 function Integrations() {
   // Get AppContext refresh function and user
   const { user, refreshIntegrations: refreshAppIntegrations } = useApp();
+  
+  // Notification hooks
+  const { 
+    permission, 
+    isSupported, 
+    isSubscribed, 
+    isLoading: notificationLoading,
+    requestPermission,
+    subscribe,
+    unsubscribe,
+    sendTestNotification 
+  } = useNotifications();
+  
+  const { data: notificationSettings, refetch: refetchSettings } = trpc.notification.getSettings.useQuery();
+  const updateSettings = trpc.notification.updateSettings.useMutation({
+    onSuccess: () => {
+      refetchSettings();
+    },
+  });
+  
+  const [notifMorningEnabled, setNotifMorningEnabled] = useState(true);
+  const [notifMorningTime, setNotifMorningTime] = useState('09:00');
+  const [notifEveningEnabled, setNotifEveningEnabled] = useState(true);
+  const [notifEveningTime, setNotifEveningTime] = useState('18:00');
+  const [userTimezone, setUserTimezone] = useState('');
+  
+  // Initialize notification settings
+  useEffect(() => {
+    if (notificationSettings) {
+      setNotifMorningEnabled(notificationSettings.morningCheckEnabled);
+      setNotifMorningTime(notificationSettings.morningCheckTime);
+      setNotifEveningEnabled(notificationSettings.eveningCheckEnabled);
+      setNotifEveningTime(notificationSettings.eveningCheckTime);
+      setUserTimezone(notificationSettings.timezone);
+    }
+  }, [notificationSettings]);
+  
+  // Detect timezone on mount
+  useEffect(() => {
+    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    setUserTimezone(timezone);
+  }, []);
 
   // Profile management
   const { data: profile, isLoading: profileLoading, refetch: refetchProfile } = trpc.profile.getCurrent.useQuery();
@@ -2987,6 +3412,72 @@ function Integrations() {
 
   const getConnectedIntegration = (serviceType: string) => {
     return userIntegrations?.find((int) => int.serviceType === serviceType);
+  };
+  
+  // Notification handlers
+  const handleSubscribe = async () => {
+    try {
+      await subscribe();
+      // Save timezone preference
+      if (userTimezone) {
+        await updateSettings.mutateAsync({ timezone: userTimezone });
+      }
+    } catch (error) {
+      console.error('Failed to subscribe:', error);
+      alert('Failed to enable notifications. Please try again.');
+    }
+  };
+  
+  const handleUnsubscribe = async () => {
+    try {
+      await unsubscribe();
+    } catch (error) {
+      console.error('Failed to unsubscribe:', error);
+      alert('Failed to disable notifications. Please try again.');
+    }
+  };
+  
+  const handleTestNotification = async () => {
+    try {
+      await sendTestNotification();
+    } catch (error) {
+      console.error('Failed to send test notification:', error);
+      alert('Failed to send test notification. Make sure notifications are enabled.');
+    }
+  };
+
+  const handleTestMorningNotification = async () => {
+    try {
+      await sendTestNotification('morning');
+    } catch (error) {
+      console.error('Failed to send morning test notification:', error);
+      alert('Failed to send morning notification. Make sure notifications are enabled.');
+    }
+  };
+
+  const handleTestEveningNotification = async () => {
+    try {
+      await sendTestNotification('evening');
+    } catch (error) {
+      console.error('Failed to send evening test notification:', error);
+      alert('Failed to send evening notification. Make sure notifications are enabled.');
+    }
+  };
+  
+  const handleSaveNotificationSettings = async () => {
+    try {
+      await updateSettings.mutateAsync({
+        morningCheckEnabled: notifMorningEnabled,
+        morningCheckTime: notifMorningTime,
+        eveningCheckEnabled: notifEveningEnabled,
+        eveningCheckTime: notifEveningTime,
+        timezone: userTimezone,
+      });
+      alert('Notification settings saved!');
+    } catch (error) {
+      console.error('Failed to save notification settings:', error);
+      alert('Failed to save notification settings. Please try again.');
+    }
   };
 
   return (
@@ -3247,6 +3738,182 @@ function Integrations() {
                 </div>
               );
             })
+          )}
+        </div>
+      </div>
+
+      {/* Push Notifications Section */}
+      <div>
+        <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50 mb-4">
+          Push Notifications 🔔
+        </h3>
+        <div className="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+          {!isSupported ? (
+            <div className="text-center py-8">
+              <p className="text-zinc-600 dark:text-zinc-400">
+                Push notifications are not supported in your browser.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {/* Permission Status */}
+              <div className="flex items-start justify-between border-b border-zinc-200 dark:border-zinc-800 pb-4">
+                <div className="flex-1">
+                  <h4 className="font-semibold text-zinc-900 dark:text-zinc-50 mb-2">
+                    Notification Status
+                  </h4>
+                  <div className="flex items-center gap-2">
+                    {permission === 'granted' && isSubscribed ? (
+                      <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-700 dark:bg-green-900 dark:text-green-300">
+                        ✓ Enabled
+                      </span>
+                    ) : permission === 'denied' ? (
+                      <span className="rounded-full bg-red-100 px-3 py-1 text-xs font-medium text-red-700 dark:bg-red-900 dark:text-red-300">
+                        ✗ Blocked
+                      </span>
+                    ) : (
+                      <span className="rounded-full bg-zinc-100 px-3 py-1 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
+                        Not Enabled
+                      </span>
+                    )}
+                  </div>
+                  {permission === 'denied' && (
+                    <p className="mt-2 text-xs text-zinc-600 dark:text-zinc-400">
+                      Please enable notifications in your browser settings
+                    </p>
+                  )}
+                  {userTimezone && (
+                    <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-500">
+                      Timezone: {userTimezone}
+                    </p>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  {!isSubscribed ? (
+                    <button
+                      onClick={handleSubscribe}
+                      disabled={notificationLoading || permission === 'denied'}
+                      className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {notificationLoading ? 'Enabling...' : 'Enable Notifications'}
+                    </button>
+                  ) : (
+                    <>
+                      <button
+                        onClick={handleTestNotification}
+                        disabled={notificationLoading}
+                        className="rounded-lg border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800 disabled:opacity-50"
+                      >
+                        Test
+                      </button>
+                      <button
+                        onClick={handleUnsubscribe}
+                        disabled={notificationLoading}
+                        className="rounded-lg border border-red-200 px-4 py-2 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950/20 disabled:opacity-50"
+                      >
+                        {notificationLoading ? 'Disabling...' : 'Disable'}
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Notification Settings */}
+              {isSubscribed && (
+                <div className="space-y-4">
+                  <h4 className="font-semibold text-zinc-900 dark:text-zinc-50">
+                    Notification Schedule
+                  </h4>
+                  
+                  {/* Morning Check */}
+                  <div className="flex items-center justify-between p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/50">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="checkbox"
+                          checked={notifMorningEnabled}
+                          onChange={(e) => setNotifMorningEnabled(e.target.checked)}
+                          className="w-4 h-4 rounded border-zinc-300 dark:border-zinc-700"
+                        />
+                        <div>
+                          <p className="font-medium text-zinc-900 dark:text-zinc-50">
+                            🌅 Morning Planning
+                          </p>
+                          <p className="text-xs text-zinc-600 dark:text-zinc-400">
+                            Set priorities for the day
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="time"
+                        value={notifMorningTime}
+                        onChange={(e) => setNotifMorningTime(e.target.value)}
+                        disabled={!notifMorningEnabled}
+                        className="px-3 py-2 text-sm border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      />
+                      <button
+                        onClick={handleTestMorningNotification}
+                        disabled={notificationLoading}
+                        className="px-3 py-2 text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-50 transition-colors disabled:opacity-50"
+                        title="Test morning notification"
+                      >
+                        Test
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Evening Check */}
+                  <div className="flex items-center justify-between p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/50">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="checkbox"
+                          checked={notifEveningEnabled}
+                          onChange={(e) => setNotifEveningEnabled(e.target.checked)}
+                          className="w-4 h-4 rounded border-zinc-300 dark:border-zinc-700"
+                        />
+                        <div>
+                          <p className="font-medium text-zinc-900 dark:text-zinc-50">
+                            🌙 Evening Reality Check
+                          </p>
+                          <p className="text-xs text-zinc-600 dark:text-zinc-400">
+                            Review what you accomplished
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="time"
+                        value={notifEveningTime}
+                        onChange={(e) => setNotifEveningTime(e.target.value)}
+                        disabled={!notifEveningEnabled}
+                        className="px-3 py-2 text-sm border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      />
+                      <button
+                        onClick={handleTestEveningNotification}
+                        disabled={notificationLoading}
+                        className="px-3 py-2 text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-50 transition-colors disabled:opacity-50"
+                        title="Test evening notification"
+                      >
+                        Test
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Save Button */}
+                  <button
+                    onClick={handleSaveNotificationSettings}
+                    disabled={updateSettings.isPending}
+                    className="w-full rounded-lg bg-zinc-900 px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200 disabled:opacity-50"
+                  >
+                    {updateSettings.isPending ? 'Saving...' : 'Save Notification Settings'}
+                  </button>
+                </div>
+              )}
+            </div>
           )}
         </div>
       </div>

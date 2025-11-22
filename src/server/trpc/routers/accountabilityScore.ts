@@ -16,6 +16,9 @@ export const accountabilityScoreSchema = z.object({
   insights: z.array(z.any()).optional(),
   recommendations: z.array(z.string()).optional(),
   weekSummary: z.string().optional(),
+  completedTasks: z.number().int().min(0).optional(),
+  totalTasks: z.number().int().min(0).optional(),
+  roastMetadata: z.any().optional(),
   createdAt: z.date(),
   updatedAt: z.date(),
 });
@@ -54,6 +57,9 @@ function mapAccountabilityScoreFromDb(score: any): z.infer<typeof accountability
     insights: score.insights || [],
     recommendations: score.recommendations || [],
     weekSummary: score.week_summary || null,
+    completedTasks: score.completed_tasks ?? 0,
+    totalTasks: score.total_tasks ?? 0,
+    roastMetadata: score.roast_metadata || {},
     createdAt: new Date(score.created_at),
     updatedAt: new Date(score.updated_at),
   };

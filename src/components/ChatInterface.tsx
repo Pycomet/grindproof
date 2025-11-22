@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { trpc } from '@/lib/trpc/client';
 import { motion, AnimatePresence } from 'framer-motion';
 import { markdownToReact } from '@/lib/markdown';
@@ -12,13 +12,30 @@ interface Message {
   timestamp: string;
 }
 
-export function ChatInterface() {
+interface ChatInterfaceProps {
+  initialPrompt?: string;
+  mode?: 'planning' | 'reflection' | 'general';
+  onTasksParsed?: (response: string) => void;
+  autoSubmit?: boolean;
+  compact?: boolean;
+  contextMessage?: string;
+}
+
+export function ChatInterface({ 
+  initialPrompt, 
+  mode = 'general',
+  onTasksParsed,
+  autoSubmit = false,
+  compact = false,
+  contextMessage,
+}: ChatInterfaceProps = {}) {
   const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState('');
+  const [input, setInput] = useState(initialPrompt || '');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const hasAutoSubmitted = useRef(false);
 
   // Mutations
   const createConversation = trpc.conversation.create.useMutation();
@@ -49,7 +66,7 @@ export function ChatInterface() {
     }
   };
 
-  const sendMessage = async () => {
+  const sendMessage = useCallback(async () => {
     if (!input.trim() || isLoading) return;
 
     const userMessage: Message = {
@@ -141,6 +158,11 @@ export function ChatInterface() {
         // Save final conversation
         const finalMessages = [...updatedMessages, { ...aiMessage, content: accumulatedText }];
         await saveConversation(finalMessages);
+        
+        // Call onTasksParsed if in planning mode
+        if (mode === 'planning' && onTasksParsed && accumulatedText) {
+          onTasksParsed(accumulatedText);
+        }
       } else {
         // Handle non-streaming response (fallback for commands)
         const data = await response.json();
@@ -154,6 +176,11 @@ export function ChatInterface() {
         
         const finalMessages = [...updatedMessages, { ...aiMessage, content: data.text }];
         await saveConversation(finalMessages);
+        
+        // Call onTasksParsed if in planning mode
+        if (mode === 'planning' && onTasksParsed && data.text) {
+          onTasksParsed(data.text);
+        }
       }
     } catch (err: any) {
       console.error('Error sending message:', err);
@@ -163,7 +190,15 @@ export function ChatInterface() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [input, isLoading, messages, conversationId, saveConversation, mode, onTasksParsed]);
+
+  // Auto-submit initial prompt if specified
+  useEffect(() => {
+    if (autoSubmit && initialPrompt && !hasAutoSubmitted.current && messages.length === 0) {
+      hasAutoSubmitted.current = true;
+      sendMessage();
+    }
+  }, [autoSubmit, initialPrompt, messages.length, sendMessage]);
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -173,23 +208,38 @@ export function ChatInterface() {
   };
 
   return (
-    <div className="flex h-[calc(100vh-12rem)] flex-col">
+    <div className="flex flex-col h-[calc(100vh-12rem)]">
       {/* Messages Area */}
       <div className="flex-1 overflow-y-auto p-4">
         {messages.length === 0 ? (
           <div className="flex h-full items-center justify-center">
             <div className="w-full max-w-2xl px-4">
-              <div className="text-center mb-6">
-                <div className="mb-4 text-6xl">💬</div>
-                <h3 className="mb-2 text-lg font-semibold text-zinc-900 dark:text-zinc-100">
-                  Your Accountability Coach
-                </h3>
-                <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-6">
-                  I'm here to help you stay on track, analyze your patterns, and hold you accountable.
-                </p>
-              </div>
-              
-              <div className="md:block hidden space-y-3 text-left">
+              {compact ? (
+                <div className="text-center">
+                  {contextMessage && (
+                    <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-4">
+                      {contextMessage}
+                    </p>
+                  )}
+                  <p className="text-xs text-zinc-500 dark:text-zinc-500">
+                    {mode === 'planning' && '✨ Describe your priorities naturally, like talking to a friend'}
+                    {mode === 'reflection' && '💭 Be honest about what happened - no judgment'}
+                    {mode === 'general' && 'Ask me anything about your tasks, goals, or progress'}
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <div className="text-center mb-6">
+                    <div className="mb-4 text-6xl">💬</div>
+                    <h3 className="mb-2 text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+                      Your Accountability Coach
+                    </h3>
+                    <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-6">
+                      I'm here to help you stay on track, analyze your patterns, and hold you accountable.
+                    </p>
+                  </div>
+                  
+                  <div className="md:block hidden space-y-3 text-left">
                 <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-4 cursor-default dark:border-zinc-700 dark:bg-zinc-800/50">
                   <h4 className="mb-2 text-sm font-semibold text-zinc-900 dark:text-zinc-100">
                     📋 Task Management
@@ -223,6 +273,8 @@ export function ChatInterface() {
                   </ul>
                 </div>
               </div>
+                </>
+              )}
             </div>
           </div>
         ) : (
@@ -247,7 +299,7 @@ export function ChatInterface() {
                   >
                     {/* Show content or typing indicator */}
                     {message.content ? (
-                      <div className="text-sm leading-relaxed whitespace-pre-wrap break-words">
+                      <div className="text-sm leading-relaxed whitespace-pre-wrap wrap-break-word">
                         {message.role === 'assistant' 
                           ? markdownToReact(message.content)
                           : message.content
@@ -291,7 +343,7 @@ export function ChatInterface() {
       )}
 
       {/* Input Area */}
-      <div className="border-t border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+      <div className="border-t border-zinc-200 bg-white px-4 pt-4 pb-2 md:pb-4 dark:border-zinc-800 dark:bg-zinc-900">
         <div className="mx-auto max-w-3xl">
           <div className="flex gap-2">
             <input

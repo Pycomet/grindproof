@@ -9,6 +9,8 @@ import { patternRouter } from "./pattern";
 import { conversationRouter } from "./conversation";
 import { accountabilityScoreRouter } from "./accountabilityScore";
 import { uploadRouter } from "./upload";
+import { notificationRouter } from "./notification";
+import { dailyCheckRouter } from "./dailyCheck";
 
 /**
  * Main application router
@@ -25,6 +27,8 @@ export const appRouter = router({
   conversation: conversationRouter,
   accountabilityScore: accountabilityScoreRouter,
   upload: uploadRouter,
+  notification: notificationRouter,
+  dailyCheck: dailyCheckRouter,
 });
 
 export type AppRouter = typeof appRouter;

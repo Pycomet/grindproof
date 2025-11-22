@@ -36,9 +36,21 @@ export const VALIDATION_CONFIG = {
 // App Configuration
 export const APP_CONFIG = {
   BASE_URL: env.NEXT_PUBLIC_APP_URL || 
-    (env.NEXT_PUBLIC_VERCEL_URL ? `https://${env.NEXT_PUBLIC_VERCEL_URL}` : null) ||
     (typeof window !== 'undefined' ? window.location.origin : null) ||
-    (process.env.NODE_ENV === 'production' ? 'https://your-domain.com' : 'http://localhost:3000'),
+    (process.env.NODE_ENV === 'production' ? 'https://grindproof.co' : 'http://localhost:3000'),
+} as const;
+
+// Push Notification Configuration
+export const NOTIFICATION_CONFIG = {
+  VAPID: {
+    PUBLIC_KEY: env.VAPID_PUBLIC_KEY,
+    PRIVATE_KEY: env.VAPID_PRIVATE_KEY,
+    EMAIL: env.VAPID_EMAIL,
+  },
+  DEFAULT_TIMES: {
+    MORNING: '09:00', // 9am
+    EVENING: '18:00', // 6pm
+  },
 } as const;
 
 // Re-export for convenience
