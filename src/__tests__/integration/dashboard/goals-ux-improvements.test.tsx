@@ -2,41 +2,126 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import Dashboard from "@/app/dashboard/page";
 import { useApp } from "@/contexts/AppContext";
-import { trpc } from "@/lib/trpc/client";
 
 // Mock dependencies
-vi.mock("@/contexts/AppContext");
 vi.mock("next/navigation", () => ({
   useRouter: () => ({
     push: vi.fn(),
-    replace: vi.fn(),
-    prefetch: vi.fn(),
+    refresh: vi.fn(),
   }),
-  useSearchParams: () => ({
-    get: vi.fn(),
+}));
+
+vi.mock("@/lib/supabase/client", () => ({
+  supabase: {
+    auth: {
+      getUser: vi.fn().mockResolvedValue({
+        data: { user: { id: "123", email: "test@test.com" } },
+        error: null,
+      }),
+      signOut: vi.fn(),
+    },
+  },
+}));
+
+vi.mock("@/contexts/AppContext", () => ({
+  useApp: vi.fn(),
+  AppProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}));
+
+vi.mock("@/hooks/useOfflineSync", () => ({
+  useOfflineSync: () => ({
+    isOnline: true,
+    isSyncing: false,
+    pendingCount: 0,
+    queueMutation: vi.fn(),
+    syncPendingMutations: vi.fn(),
   }),
-  usePathname: () => "/dashboard",
 }));
 
 vi.mock("@/lib/trpc/client", () => ({
   trpc: {
     task: {
-      getAll: { useQuery: vi.fn() },
-      create: { useMutation: vi.fn() },
-      update: { useMutation: vi.fn() },
-      delete: { useMutation: vi.fn() },
-      search: { useQuery: vi.fn() },
+      search: { useQuery: vi.fn(() => ({ data: [] })) },
+      create: { useMutation: vi.fn(() => ({ mutate: vi.fn(), isPending: false })) },
+      update: { useMutation: vi.fn(() => ({ mutate: vi.fn(), isPending: false })) },
+      complete: { useMutation: vi.fn(() => ({ mutate: vi.fn(), isPending: false })) },
+      skip: { useMutation: vi.fn(() => ({ mutate: vi.fn(), isPending: false })) },
+      reschedule: { useMutation: vi.fn(() => ({ mutate: vi.fn(), isPending: false })) },
+      delete: { useMutation: vi.fn(() => ({ mutate: vi.fn(), isPending: false })) },
+      syncFromCalendar: { useMutation: vi.fn(() => ({ mutate: vi.fn(), isPending: false })) },
     },
     goal: {
-      getAll: { useQuery: vi.fn() },
-      create: { useMutation: vi.fn() },
-      update: { useMutation: vi.fn() },
-      delete: { useMutation: vi.fn() },
-      search: { useQuery: vi.fn() },
+      search: { useQuery: vi.fn(() => ({ data: [] })) },
+      create: { useMutation: vi.fn(() => ({ mutate: vi.fn(), isPending: false })) },
+      update: { useMutation: vi.fn(() => ({ mutate: vi.fn(), isPending: false })) },
+      delete: { useMutation: vi.fn(() => ({ mutate: vi.fn(), isPending: false })) },
     },
     integration: {
-      getByServiceType: { useQuery: vi.fn() },
-      getGitHubActivity: { useQuery: vi.fn() },
+      getAll: { useQuery: vi.fn(() => ({ data: [], isLoading: false })) },
+      getByServiceType: { useQuery: vi.fn(() => ({ data: null })) },
+      getGitHubActivity: { useQuery: vi.fn(() => ({ data: null })) },
+      getGoogleCalendarActivity: { useQuery: vi.fn(() => ({ data: null })) },
+    },
+    evidence: {
+      getByTaskId: { useQuery: vi.fn(() => ({ data: [], refetch: vi.fn() })) },
+      create: { useMutation: vi.fn(() => ({ mutateAsync: vi.fn() })) },
+      validateEvidence: { useMutation: vi.fn(() => ({ mutateAsync: vi.fn() })) },
+    },
+    conversation: {
+      getAll: { useQuery: vi.fn(() => ({ data: [] })) },
+      create: { useMutation: vi.fn(() => ({ mutateAsync: vi.fn() })) },
+      update: { useMutation: vi.fn(() => ({ mutateAsync: vi.fn() })) },
+    },
+    accountabilityScore: {
+      getAll: { useQuery: vi.fn(() => ({ data: [] })) },
+    },
+    pattern: {
+      getAll: { useQuery: vi.fn(() => ({ data: [] })) },
+    },
+    dailyCheck: {
+      getMorningSchedule: {
+        useQuery: vi.fn(() => ({
+          data: { tasks: [], calendarEvents: [], hasCalendarIntegration: false },
+        })),
+      },
+      getEveningComparison: {
+        useQuery: vi.fn(() => ({
+          data: {
+            tasks: [],
+            stats: { total: 0, completed: 0, pending: 0, skipped: 0, alignmentScore: 0 },
+            integrations: { hasGitHub: false, hasCalendar: false },
+            existingReflection: null,
+          },
+        })),
+      },
+      saveMorningPlan: {
+        useMutation: vi.fn(() => ({ mutateAsync: vi.fn().mockResolvedValue({ success: true }) })),
+      },
+      saveEveningReflection: {
+        useMutation: vi.fn(() => ({ mutateAsync: vi.fn().mockResolvedValue({ success: true }) })),
+      },
+      refineTasks: {
+        useMutation: vi.fn(() => ({ mutateAsync: vi.fn().mockResolvedValue({ tasks: [] }) })),
+      },
+    },
+    notification: {
+      getPublicKey: { useQuery: vi.fn(() => ({ data: { publicKey: "test-key" } })) },
+      getSettings: {
+        useQuery: vi.fn(() => ({
+          data: {
+            morningCheckEnabled: true,
+            morningCheckTime: "09:00",
+            eveningCheckEnabled: true,
+            eveningCheckTime: "18:00",
+            timezone: "UTC",
+          },
+        })),
+      },
+      getSubscriptions: { useQuery: vi.fn(() => ({ data: [] })) },
+      subscribe: { useMutation: vi.fn() },
+      unsubscribe: { useMutation: vi.fn() },
+      updateSettings: { useMutation: vi.fn() },
+      sendTest: { useMutation: vi.fn() },
     },
   },
 }));
@@ -87,28 +172,6 @@ const switchToGoalsView = async () => {
 describe("Goals View UX Improvements", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    
-    // Default mocks
-    vi.mocked(trpc.goal.search.useQuery).mockReturnValue({
-      data: null,
-      isLoading: false,
-    } as any);
-
-    vi.mocked(trpc.task.getAll.useQuery).mockReturnValue({
-      data: [],
-      isLoading: false,
-      refetch: vi.fn(),
-    } as any);
-
-    vi.mocked(trpc.integration.getByServiceType.useQuery).mockReturnValue({
-      data: null,
-      isLoading: false,
-    } as any);
-
-    vi.mocked(trpc.integration.getGitHubActivity.useQuery).mockReturnValue({
-      data: null,
-      isLoading: false,
-    } as any);
   });
 
   describe("Stats Summary Cards", () => {

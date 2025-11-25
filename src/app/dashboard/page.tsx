@@ -1735,7 +1735,7 @@ function GoalsView() {
   const activeGoals = (filteredGoals?.filter((g: any) => g.status !== 'completed') || [])
     .sort((a: any, b: any) => {
       // Priority first (high > medium > low)
-      const priorityWeight = { high: 3, medium: 2, low: 1 };
+      const priorityWeight: { [key: string]: number } = { high: 3, medium: 2, low: 1 };
       const priorityDiff = (priorityWeight[b.priority] || 2) - (priorityWeight[a.priority] || 2);
       if (priorityDiff !== 0) return priorityDiff;
 
