@@ -1080,7 +1080,7 @@ export async function POST(request: NextRequest) {
     const chat = model.startChat({
       history: geminiMessages.slice(0, -1),
       generationConfig: {
-        maxOutputTokens: 1200,
+        maxOutputTokens: 600,
         temperature: 0.2,
         topP: 0.1
       },
@@ -1132,7 +1132,7 @@ export async function POST(request: NextRequest) {
     if (error.message?.includes('quota') || error.message?.includes('RESOURCE_EXHAUSTED')) {
       return NextResponse.json(
         { 
-          error: "We've hit our daily AI message limit. The chat will be back tomorrow! In the meantime, you can still manage your tasks and goals.",
+          error: "We've hit our daily message limit. Your coach will be back tomorrow! In the meantime, you can still manage your tasks and goals.",
           errorType: 'quota_exceeded',
           retryable: false,
         },
@@ -1143,7 +1143,7 @@ export async function POST(request: NextRequest) {
     if (error.message?.includes('invalid') || error.message?.includes('API key')) {
       return NextResponse.json(
         { 
-          error: 'AI chat is temporarily unavailable due to a configuration issue. Please contact support.',
+          error: 'Your coach is temporarily unavailable due to a configuration issue. Please contact support.',
           errorType: 'service_unavailable',
           retryable: false,
         },
@@ -1154,7 +1154,7 @@ export async function POST(request: NextRequest) {
     if (error.message?.includes('model not found') || error.message?.includes('404')) {
       return NextResponse.json(
         { 
-          error: 'AI chat is temporarily unavailable. We\'re working on it!',
+          error: 'Your coach is temporarily unavailable. We\'re working on it!',
           errorType: 'service_unavailable',
           retryable: false,
         },

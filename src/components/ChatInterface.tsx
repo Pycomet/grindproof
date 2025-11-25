@@ -208,7 +208,7 @@ export function ChatInterface({
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-12rem)]">
+    <div className={`flex flex-col ${compact ? 'h-full' : 'h-[calc(100vh-12rem)]'}`}>
       {/* Messages Area */}
       <div className="flex-1 overflow-y-auto p-4">
         {messages.length === 0 ? (
@@ -224,7 +224,7 @@ export function ChatInterface({
                   <p className="text-xs text-zinc-500 dark:text-zinc-500">
                     {mode === 'planning' && '✨ Describe your priorities naturally, like talking to a friend'}
                     {mode === 'reflection' && '💭 Be honest about what happened - no judgment'}
-                    {mode === 'general' && 'Ask me anything about your tasks, goals, or progress'}
+                    {mode === 'general' && 'Create tasks, analyze patterns, get roasted, or discuss your progress'}
                   </p>
                 </div>
               ) : (

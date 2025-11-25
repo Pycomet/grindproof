@@ -27,13 +27,13 @@ import { EvidenceList } from '@/components/EvidenceCard';
 import { useNotifications } from '@/hooks/useNotifications';
 import { MorningCheckDialog } from '@/components/MorningCheckDialog';
 import { EveningCheckDialog } from '@/components/EveningCheckDialog';
+import { ChatWidget } from '@/components/ChatWidget';
 
-type ViewMode = 'chat' | 'today' | 'goals' | 'evening' | 'weekly' | 'integrations';
+type ViewMode = 'today' | 'goals' | 'evening' | 'weekly' | 'integrations';
 
 export default function Dashboard() {
   const router = useRouter();
-  const [view, setView] = useState<ViewMode>('chat');
-  const [isFabTaskDialogOpen, setIsFabTaskDialogOpen] = useState(false);
+  const [view, setView] = useState<ViewMode>('today');
   const [activeModal, setActiveModal] = useState<'morning' | 'evening' | null>(null);
 
   // Use AppContext instead of individual queries
@@ -49,7 +49,6 @@ export default function Dashboard() {
   const createTaskMutation = trpc.task.create.useMutation({
     onSuccess: async () => {
       await refreshTasks();
-      setIsFabTaskDialogOpen(false);
     },
   });
 
@@ -106,12 +105,6 @@ export default function Dashboard() {
   };
 
   const views = [
-    {
-      id: 'chat',
-      emoji: '💬',
-      title: 'AI Chat',
-      content: <ChatInterface />,
-    },
     {
       id: 'today',
       emoji: '✓',
@@ -175,16 +168,6 @@ export default function Dashboard() {
         <div className="mx-auto max-w-5xl px-4">
           <div className="flex gap-1">
             <button
-              onClick={() => setView('chat')}
-              className={`px-6 py-3 text-sm font-medium transition-colors ${
-                view === 'chat'
-                  ? 'border-b-2 border-zinc-900 text-zinc-900 dark:border-zinc-50 dark:text-zinc-50'
-                  : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-50'
-              }`}
-            >
-              💬
-            </button>
-            <button
               onClick={() => setView('today')}
               className={`px-6 py-3 text-sm font-medium transition-colors ${
                 view === 'today'
@@ -246,17 +229,6 @@ export default function Dashboard() {
       {/* Desktop Content - Hidden on Mobile */}
       <main className="hidden md:block mx-auto max-w-5xl px-4 py-8">
         <AnimatePresence mode="wait">
-          {view === 'chat' && (
-            <motion.div
-              key="chat"
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 20 }}
-              transition={{ duration: 0.3, ease: 'easeInOut' }}
-            >
-              <ChatInterface />
-            </motion.div>
-          )}
           {view === 'today' && (
             <motion.div
               key="today"
@@ -315,34 +287,11 @@ export default function Dashboard() {
         </AnimatePresence>
       </main>
 
-      {/* Persistent FAB (Floating Action Button) */}
-      <button
-        onClick={() => setIsFabTaskDialogOpen(true)}
-        className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-zinc-900 text-white shadow-lg transition-all hover:scale-110 hover:shadow-xl dark:bg-zinc-50 dark:text-zinc-900"
-        aria-label="Add Task"
-      >
-        <svg
-          className="h-6 w-6"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M12 4v16m8-8H4"
-          />
-        </svg>
-      </button>
-
-      {/* Global Task Creation Dialog */}
-      <CreateTaskDialog
-        open={isFabTaskDialogOpen}
-        onOpenChange={setIsFabTaskDialogOpen}
-        onSubmit={handleCreateTaskFromFab}
-        isPending={createTaskMutation.isPending}
+      {/* Chat Widget - Replaces FAB */}
+      <ChatWidget
         goals={goals?.map(g => ({ id: g.id, title: g.title }))}
+        onCreateTask={handleCreateTaskFromFab}
+        isCreatingTask={createTaskMutation.isPending}
         isCalendarConnected={isGoogleCalendarConnected()}
       />
 
@@ -373,9 +322,109 @@ export default function Dashboard() {
   );
 }
 
+// Filter Dropdown Component
+interface FilterDropdownProps {
+  activeFilters: Set<string>;
+  onFilterChange: (filters: Set<string>) => void;
+  counts: {
+    today: number;
+    week: number;
+    nextweek: number;
+    month: number;
+    overdue: number;
+    all: number;
+    skipped: number;
+  };
+}
+
+function FilterDropdown({ activeFilters, onFilterChange, counts }: FilterDropdownProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  
+  const filterOptions = [
+    { id: 'all', label: 'All Tasks', count: counts.all },
+    { id: 'today', label: 'Today', count: counts.today },
+    { id: 'week', label: 'This Week', count: counts.week },
+    { id: 'nextweek', label: 'Next Week', count: counts.nextweek },
+    { id: 'month', label: 'This Month', count: counts.month },
+    { id: 'overdue', label: 'Overdue', count: counts.overdue },
+    { id: 'skipped', label: 'Skipped', count: counts.skipped },
+  ];
+
+  const toggleFilter = (filterId: string) => {
+    const newFilters = new Set(activeFilters);
+    if (newFilters.has(filterId)) {
+      newFilters.delete(filterId);
+    } else {
+      newFilters.add(filterId);
+    }
+    // Ensure at least one filter is always active
+    if (newFilters.size === 0) {
+      newFilters.add('all');
+    }
+    onFilterChange(newFilters);
+  };
+
+  const getActiveFilterLabel = () => {
+    if (activeFilters.size === 1 && activeFilters.has('all')) {
+      return 'All Tasks';
+    }
+    if (activeFilters.size === 1) {
+      const filter = filterOptions.find(f => activeFilters.has(f.id));
+      return filter?.label || 'Filters';
+    }
+    return `${activeFilters.size} Filters`;
+  };
+
+  return (
+    <div className="relative w-full sm:w-auto">
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="flex w-full items-center justify-between gap-2 rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100 active:scale-95 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800 sm:w-auto"
+      >
+        <span>Filters: {getActiveFilterLabel()}</span>
+        <svg className={`h-4 w-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      {isOpen && (
+        <>
+          <div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)} />
+          <div className="absolute left-0 right-0 top-full z-20 mt-2 rounded-lg border border-zinc-200 bg-white shadow-lg dark:border-zinc-800 dark:bg-zinc-900 sm:left-0 sm:right-auto sm:w-64">
+            <div className="p-2">
+              <div className="mb-2 px-2 py-1 text-xs font-semibold text-zinc-500 dark:text-zinc-400">
+                Select filters (multiple allowed)
+              </div>
+              {filterOptions.map((filter) => (
+                <label
+                  key={filter.id}
+                  className="flex cursor-pointer items-center gap-3 rounded-md px-2 py-3 transition-colors hover:bg-zinc-100 active:bg-zinc-200 dark:hover:bg-zinc-800 dark:active:bg-zinc-700"
+                >
+                  <input
+                    type="checkbox"
+                    checked={activeFilters.has(filter.id)}
+                    onChange={() => toggleFilter(filter.id)}
+                    className="h-4 w-4 rounded border-zinc-300 text-blue-600 focus:ring-2 focus:ring-blue-500 dark:border-zinc-700"
+                  />
+                  <span className="flex-1 text-sm text-zinc-700 dark:text-zinc-300">
+                    {filter.label}
+                  </span>
+                  <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">
+                    {filter.count}
+                  </span>
+                </label>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 // Today View Component
 function TodayView() {
-  const [activeFilter, setActiveFilter] = useState('today');
+  const [activeFilters, setActiveFilters] = useState<Set<string>>(new Set(['all']));
   const [isSyncing, setIsSyncing] = useState(false);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -385,6 +434,7 @@ function TodayView() {
   const [selectedTask, setSelectedTask] = useState<any>(null);
   const [pendingRecurringAction, setPendingRecurringAction] = useState<'edit-single' | 'edit-all' | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [focusMode, setFocusMode] = useState(false);
   
   // Use AppContext instead of tRPC queries
   const { user, tasks: allTasks, goals, refreshTasks, isLoading, isHydrated, isGoogleCalendarConnected } = useApp();
@@ -500,6 +550,32 @@ function TodayView() {
     },
   });
 
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      // Don't trigger if user is typing in an input/textarea
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+      
+      // Cmd/Ctrl + K to create new task
+      if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        setIsCreateOpen(true);
+      }
+      
+      // Cmd/Ctrl + / to focus search
+      if (e.key === '/' && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        const searchInput = document.querySelector<HTMLInputElement>('[placeholder*="Search tasks"]');
+        searchInput?.focus();
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, []);
+
   const handleSync = () => {
     setIsSyncing(true);
     syncMutation.mutate();
@@ -513,6 +589,7 @@ function TodayView() {
       startTime: data.startTime || undefined,
       endTime: data.endTime || undefined,
       reminders: data.reminders && data.reminders.length > 0 ? data.reminders : undefined,
+      priority: data.priority || 'medium',
       goalId: data.goalId || undefined,
       tags: data.tags.length > 0 ? data.tags : undefined,
       syncWithCalendar: data.syncWithCalendar,
@@ -530,6 +607,7 @@ function TodayView() {
         startTime: data.startTime !== undefined ? (data.startTime || undefined) : undefined,
         endTime: data.endTime !== undefined ? (data.endTime || undefined) : undefined,
         reminders: data.reminders !== undefined ? (data.reminders && data.reminders.length > 0 ? data.reminders : undefined) : undefined,
+        priority: data.priority || undefined,
         goalId: data.goalId || undefined,
         tags: data.tags.length > 0 ? data.tags : undefined,
         syncWithCalendar: data.syncWithCalendar,
@@ -598,55 +676,74 @@ function TodayView() {
     ? searchResults
     : (allTasks || [])
         .filter(task => {
-          // If viewing skipped filter, only show skipped tasks
-          if (activeFilter === 'skipped') {
+          // Always hide skipped unless explicitly filtered
+          if (task.status === 'skipped' && !activeFilters.has('skipped')) {
+            return false;
+          }
+          
+          // If only skipped filter is active
+          if (activeFilters.size === 1 && activeFilters.has('skipped')) {
             return task.status === 'skipped';
           }
           
-          // For all other filters, hide skipped tasks by default
-          if (task.status === 'skipped') {
-            return false;
+          // If 'all' is in filters, show all non-skipped
+          if (activeFilters.has('all')) {
+            return task.status !== 'skipped';
           }
           
           const dueDate = task.dueDate ? new Date(task.dueDate) : null;
           
-          if (activeFilter === 'today') {
+          // Check if task matches any active filter
+          return Array.from(activeFilters).some(filter => {
+            if (filter === 'today') {
             return dueDate && dueDate >= today && dueDate < tomorrow;
           }
-          if (activeFilter === 'week') {
+            if (filter === 'week') {
             return dueDate && dueDate >= today && dueDate < weekEnd;
           }
-          if (activeFilter === 'nextweek') {
+            if (filter === 'nextweek') {
             return dueDate && dueDate >= nextWeekStart && dueDate < nextWeekEnd;
           }
-          if (activeFilter === 'month') {
+            if (filter === 'month') {
             return dueDate && dueDate >= today && dueDate <= monthEnd;
           }
-          if (activeFilter === 'overdue') {
+            if (filter === 'overdue') {
             return dueDate && dueDate < today && task.status === 'pending';
           }
-          return true; // 'all' (excluding skipped)
+            return false;
+          });
+        })
+        .filter(task => {
+          // Apply focus mode after other filters
+          if (focusMode && task.status !== 'completed' && task.status !== 'skipped') {
+            const dueDate = task.dueDate ? new Date(task.dueDate) : null;
+            const isDueToday = dueDate && dueDate >= today && dueDate < tomorrow;
+            return task.priority === 'high' || isDueToday;
+          }
+          return true;
         })
         .sort((a, b) => {
-          // Completed/skipped go to bottom (by availability)
+          // Status first (pending before completed/skipped)
           if ((a.status === 'completed' || a.status === 'skipped') && 
               b.status === 'pending') return 1;
           if (a.status === 'pending' && 
               (b.status === 'completed' || b.status === 'skipped')) return -1;
           
-          // Sort by priority (high > medium > low) for urgency
+          // Priority second (high > medium > low)
           const priorityWeight = { high: 3, medium: 2, low: 1 };
           const priorityDiff = (priorityWeight[b.priority] || 2) - (priorityWeight[a.priority] || 2);
           if (priorityDiff !== 0) return priorityDiff;
+          
+          // Tasks with due dates come before those without
+          if (a.dueDate && !b.dueDate) return -1;
+          if (!a.dueDate && b.dueDate) return 1;
           
           // Then by due date (earlier = more urgent)
           if (a.dueDate && b.dueDate) {
             return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
           }
-          if (a.dueDate) return -1;
-          if (b.dueDate) return 1;
       
-      // Finally, sort by creation date
+          // Finally, sort by creation date (newest first)
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
 
@@ -700,20 +797,42 @@ function TodayView() {
       {/* Header Section */}
       <div className="bg-white dark:bg-zinc-950 pb-4 space-y-4">
         {/* Header */}
-        <div className="flex items-center justify-between pt-2">
+        <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
               Tasks ✓
             </h2>
             <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
               {filteredTasks.filter((t: any) => t.status === 'completed').length} of {filteredTasks.length} completed
+              <span className="ml-3 text-xs opacity-60 hidden sm:inline">Press Cmd+K to add task</span>
             </p>
           </div>
+          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+            <button
+              onClick={() => setIsCreateOpen(true)}
+              className="rounded-lg bg-white border border-zinc-200 px-4 py-2 text-sm font-medium text-zinc-900 transition-colors hover:bg-zinc-50 active:scale-95 dark:bg-white dark:border-zinc-200 dark:text-zinc-900 dark:hover:bg-zinc-100"
+              title="Create new task (Cmd+K)"
+            >
+              <span className="sm:hidden">+</span>
+              <span className="hidden sm:inline">+ Add Task</span>
+            </button>
+            <button
+              onClick={() => setFocusMode(!focusMode)}
+              className={`rounded-lg border px-3 py-2 text-sm font-medium transition-colors active:scale-95 whitespace-nowrap ${
+                focusMode
+                  ? 'border-blue-600 bg-blue-50 text-blue-700 dark:border-blue-500 dark:bg-blue-950/20 dark:text-blue-400'
+                  : 'border-zinc-300 text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800'
+              }`}
+              title={focusMode ? 'Showing only high priority & due today tasks' : 'Click to show only urgent tasks'}
+            >
+              <span className="sm:hidden">{focusMode ? '🎯 Focus' : '👁️ All'}</span>
+              <span className="hidden sm:inline">{focusMode ? '🎯 Focus: High Priority & Today' : '👁️ Show All Tasks'}</span>
+            </button>
           {isCalendarConnected && (
             <button
               onClick={handleSync}
               disabled={isSyncing}
-              className="rounded-lg border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="rounded-lg border border-zinc-300 px-3 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100 active:scale-95 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
               title="Sync tasks with Google Calendar"
             >
               {isSyncing ? (
@@ -722,43 +841,46 @@ function TodayView() {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  Syncing...
+                    <span className="hidden sm:inline">Syncing...</span>
                 </span>
-              ) : '🔄 Sync Calendar'}
+                ) : (
+                  <>
+                    <span className="sm:hidden">🔄</span>
+                    <span className="hidden sm:inline">🔄 Sync</span>
+                  </>
+                )}
             </button>
           )}
+          </div>
         </div>
 
-        {/* Search Bar */}
+        {/* Search and Filter Row */}
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <div className="flex-1">
         <SearchInput
           onSearch={setSearchQuery}
           placeholder="Search tasks..."
-          className="w-full sm:w-96"
+              className="w-full"
         />
-
-        {/* Filter Chips */}
+          </div>
         {!searchQuery && (
-          <div className="flex flex-wrap gap-2">
-          {filters.map((filter) => (
-            <button
-              key={filter.id}
-              onClick={() => setActiveFilter(filter.id)}
-              className={`rounded-full px-4 py-2 text-sm font-medium transition-all ${
-                activeFilter === filter.id
-                  ? 'bg-zinc-900 text-white shadow-sm dark:bg-zinc-50 dark:text-zinc-900'
-                  : 'border border-zinc-300 text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800'
-              }`}
-            >
-              {filter.label}
-              <span className={`ml-1.5 ${
-                activeFilter === filter.id ? 'opacity-80' : 'opacity-60'
-              }`}>
-                {filter.count}
-              </span>
-            </button>
-          ))}
+            <div className="sm:shrink-0">
+              <FilterDropdown
+                activeFilters={activeFilters}
+                onFilterChange={setActiveFilters}
+                counts={{
+                  today: todayCount,
+                  week: weekCount,
+                  nextweek: nextWeekCount,
+                  month: monthCount,
+                  overdue: overdueCount,
+                  all: allCount,
+                  skipped: skippedCount,
+                }}
+              />
         </div>
       )}
+        </div>
       </div>
 
       {/* Task List */}
@@ -778,11 +900,23 @@ function TodayView() {
                 delay: index < 10 ? index * 0.05 : 0,
               }}
               layout
+              style={{
+                borderLeftWidth: '5px',
+                borderLeftColor: 
+                  task.priority === 'high' ? '#ef4444' : 
+                  task.priority === 'medium' ? '#f59e0b' : 
+                  '#10b981'
+              }}
               className={`rounded-lg border p-3 sm:p-4 transition-all ${
+              // Background based on status  
               task.status === 'completed'
                 ? 'border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950/20'
                 : task.status === 'skipped'
                 ? 'border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950/20'
+                : task.priority === 'high'
+                ? 'border-red-100 bg-white hover:bg-red-50/30 hover:shadow-md dark:border-red-900/30 dark:bg-zinc-900 dark:hover:bg-red-950/10'
+                : task.priority === 'medium'
+                ? 'border-amber-100 bg-white hover:bg-amber-50/30 hover:shadow-md dark:border-amber-900/30 dark:bg-zinc-900 dark:hover:bg-amber-950/10'
                 : 'border-zinc-200 bg-white hover:shadow-sm dark:border-zinc-800 dark:bg-zinc-900'
             }`}
           >
@@ -824,6 +958,26 @@ function TodayView() {
                 {/* Task Content */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5">
+                    {/* Priority Badge - subtle */}
+                    {task.status !== 'completed' && task.status !== 'skipped' && (
+                      <>
+                        {task.priority === 'high' && (
+                          <span className="shrink-0 rounded bg-red-50 px-1.5 py-0.5 text-[9px] font-medium text-red-600 dark:bg-red-950/20 dark:text-red-400">
+                            HIGH
+                          </span>
+                        )}
+                        {task.priority === 'medium' && (
+                          <span className="shrink-0 rounded bg-amber-50 px-1.5 py-0.5 text-[9px] font-medium text-amber-600 dark:bg-amber-950/20 dark:text-amber-400">
+                            MED
+                          </span>
+                        )}
+                        {task.priority === 'low' && (
+                          <span className="shrink-0 rounded bg-green-50 px-1.5 py-0.5 text-[9px] font-medium text-green-600 dark:bg-green-950/20 dark:text-green-400">
+                            LOW
+                          </span>
+                        )}
+                      </>
+                    )}
                     <h3 className={`text-sm font-medium truncate ${
                       task.status === 'completed'
                         ? 'text-zinc-500 line-through dark:text-zinc-500'
@@ -857,6 +1011,11 @@ function TodayView() {
                     {task.dueDate && !(task.startTime && task.endTime) && (
                       <span className="text-xs text-zinc-500">
                         📅 {new Date(task.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      </span>
+                    )}
+                    {!task.dueDate && (
+                      <span className="text-xs text-zinc-400 dark:text-zinc-500">
+                        📌 No due date
                       </span>
                     )}
                     {task.reminders && task.reminders.length > 0 && (
@@ -967,6 +1126,26 @@ function TodayView() {
               {/* Task Content */}
               <div className="flex-1">
                 <div className="flex items-center gap-2">
+                  {/* Priority Badge - subtle */}
+                  {task.status !== 'completed' && task.status !== 'skipped' && (
+                    <>
+                      {task.priority === 'high' && (
+                        <span className="shrink-0 rounded bg-red-50 px-1.5 py-0.5 text-[10px] font-medium text-red-600 dark:bg-red-950/20 dark:text-red-400">
+                          HIGH
+                        </span>
+                      )}
+                      {task.priority === 'medium' && (
+                        <span className="shrink-0 rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-600 dark:bg-amber-950/20 dark:text-amber-400">
+                          MED
+                        </span>
+                      )}
+                      {task.priority === 'low' && (
+                        <span className="shrink-0 rounded bg-green-50 px-1.5 py-0.5 text-[10px] font-medium text-green-600 dark:bg-green-950/20 dark:text-green-400">
+                          LOW
+                        </span>
+                      )}
+                    </>
+                  )}
                   <h3 className={`font-medium ${
                     task.status === 'completed'
                       ? 'text-zinc-500 line-through dark:text-zinc-500'
@@ -1024,6 +1203,11 @@ function TodayView() {
                       Due: {new Date(task.dueDate).toLocaleDateString()}
                     </span>
                   )}
+                  {!task.dueDate && !(task.startTime && task.endTime) && (
+                    <span className="text-xs text-zinc-400 dark:text-zinc-500">
+                      📌 No due date
+                    </span>
+                  )}
                   {task.reminders && task.reminders.length > 0 && (
                     <span className="text-xs text-amber-600 dark:text-amber-400">
                       🔔 {task.reminders.length} reminder{task.reminders.length > 1 ? 's' : ''}
@@ -1078,18 +1262,18 @@ function TodayView() {
 
       {/* Empty State / Add Task */}
       {filteredTasks.length === 0 && (
-        <div className="rounded-xl border-2 border-dashed border-zinc-300 bg-zinc-50 p-12 text-center dark:border-zinc-700 dark:bg-zinc-900/50">
+        <div className="rounded-xl border-2 border-dashed border-zinc-300 bg-zinc-50 p-8 sm:p-12 text-center dark:border-zinc-700 dark:bg-zinc-900/50">
           <div className="text-4xl">📝</div>
           <h3 className="mt-3 font-semibold text-zinc-900 dark:text-zinc-50">
             No tasks yet
           </h3>
           <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-            Add your first task to get started or sync from Google Calendar
+            Add your first task to get started{isCalendarConnected ? ' or sync from Google Calendar' : ''}
           </p>
-          <div className="mt-4 flex justify-center gap-2">
+          <div className="mt-4 flex flex-col sm:flex-row justify-center gap-2">
             <button
               onClick={() => setIsCreateOpen(true)}
-              className="rounded-lg bg-zinc-900 px-6 py-2 text-sm font-semibold text-white transition-colors hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+              className="rounded-lg bg-zinc-900 px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-zinc-800 active:scale-95 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
             >
               + Add Task
             </button>
@@ -1097,10 +1281,10 @@ function TodayView() {
               <button
                 onClick={handleSync}
                 disabled={isSyncing}
-                className="rounded-lg border border-zinc-300 px-6 py-2 text-sm font-semibold text-zinc-700 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="rounded-lg border border-zinc-300 px-6 py-2.5 text-sm font-semibold text-zinc-700 transition-colors hover:bg-zinc-100 active:scale-95 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isSyncing ? (
-                  <span className="flex items-center gap-2">
+                  <span className="flex items-center gap-2 justify-center">
                     <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -1174,6 +1358,165 @@ function TodayView() {
   );
 }
 
+// Goals Filter Dropdown Component
+interface GoalsFilterDropdownProps {
+  activeFilters: Set<string>;
+  onFilterChange: (filters: Set<string>) => void;
+  counts: {
+    all: number;
+    high: number;
+    medium: number;
+    low: number;
+    active: number;
+    paused: number;
+    completed: number;
+    daily: number;
+    weekly: number;
+    monthly: number;
+    annual: number;
+  };
+}
+
+function GoalsFilterDropdown({ activeFilters, onFilterChange, counts }: GoalsFilterDropdownProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  
+  const filterGroups = [
+    {
+      label: 'Priority',
+      options: [
+        { id: 'high', label: '🔴 High', count: counts.high },
+        { id: 'medium', label: '🟡 Medium', count: counts.medium },
+        { id: 'low', label: '🟢 Low', count: counts.low },
+      ]
+    },
+    {
+      label: 'Status',
+      options: [
+        { id: 'active', label: 'Active', count: counts.active },
+        { id: 'paused', label: 'Paused', count: counts.paused },
+        { id: 'completed', label: 'Completed', count: counts.completed },
+      ]
+    },
+    {
+      label: 'Time Horizon',
+      options: [
+        { id: 'daily', label: 'Daily', count: counts.daily },
+        { id: 'weekly', label: 'Weekly', count: counts.weekly },
+        { id: 'monthly', label: 'Monthly', count: counts.monthly },
+        { id: 'annual', label: 'Annual', count: counts.annual },
+      ]
+    }
+  ];
+
+  const toggleFilter = (filterId: string) => {
+    const newFilters = new Set(activeFilters);
+    if (filterId === 'all') {
+      onFilterChange(new Set(['all']));
+      return;
+    }
+    
+    // Remove 'all' when selecting specific filters
+    newFilters.delete('all');
+    
+    if (newFilters.has(filterId)) {
+      newFilters.delete(filterId);
+    } else {
+      newFilters.add(filterId);
+    }
+    
+    // If no filters selected, default to 'all'
+    if (newFilters.size === 0) {
+      newFilters.add('all');
+    }
+    onFilterChange(newFilters);
+  };
+
+  const getActiveFilterLabel = () => {
+    if (activeFilters.size === 1 && activeFilters.has('all')) {
+      return 'All Goals';
+    }
+    if (activeFilters.size === 1) {
+      const allOptions = filterGroups.flatMap(g => g.options);
+      const filter = allOptions.find(f => activeFilters.has(f.id));
+      return filter?.label || 'Filters';
+    }
+    return `${activeFilters.size} Filters`;
+  };
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="flex items-center gap-2 rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800 sm:px-4"
+      >
+        <span className="hidden sm:inline">Filters:</span> <span>{getActiveFilterLabel()}</span>
+        <svg className={`h-4 w-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      {isOpen && (
+        <>
+          <div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)} />
+          <div className="absolute left-0 top-full z-20 mt-2 w-72 rounded-lg border border-zinc-200 bg-white shadow-lg dark:border-zinc-800 dark:bg-zinc-900 max-h-[80vh] overflow-y-auto">
+            <div className="p-2">
+              {/* All Goals Option */}
+              <label className="flex cursor-pointer items-center gap-3 rounded-md px-2 py-2 hover:bg-zinc-100 dark:hover:bg-zinc-800">
+                <input
+                  type="checkbox"
+                  checked={activeFilters.has('all')}
+                  onChange={() => toggleFilter('all')}
+                  className="h-4 w-4 rounded border-zinc-300 text-blue-600 focus:ring-2 focus:ring-blue-500 dark:border-zinc-700"
+                />
+                <span className="flex-1 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                  All Goals
+                </span>
+                <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                  {counts.all}
+                </span>
+              </label>
+
+              {/* Separator */}
+              <div className="my-2 border-t border-zinc-200 dark:border-zinc-800" />
+
+              {/* Filter Groups */}
+              {filterGroups.map((group, groupIdx) => (
+                <div key={group.label}>
+                  <div className="px-2 py-1.5 text-xs font-semibold text-zinc-500 dark:text-zinc-400">
+                    {group.label}
+                  </div>
+                  {group.options.map((option) => (
+                    <label
+                      key={option.id}
+                      className="flex cursor-pointer items-center gap-3 rounded-md px-2 py-2 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={activeFilters.has(option.id)}
+                        onChange={() => toggleFilter(option.id)}
+                        className="h-4 w-4 rounded border-zinc-300 text-blue-600 focus:ring-2 focus:ring-blue-500 dark:border-zinc-700"
+                      />
+                      <span className="flex-1 text-sm text-zinc-700 dark:text-zinc-300">
+                        {option.label}
+                      </span>
+                      <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                        {option.count}
+                      </span>
+                    </label>
+                  ))}
+                  {groupIdx < filterGroups.length - 1 && (
+                    <div className="my-2 border-t border-zinc-200 dark:border-zinc-800" />
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 // Goals View Component
 function GoalsView() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -1185,6 +1528,7 @@ function GoalsView() {
   const [showCalendar, setShowCalendar] = useState(false);
   const [showCompleted, setShowCompleted] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [activeFilters, setActiveFilters] = useState<Set<string>>(new Set(['all']));
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -1240,7 +1584,33 @@ function GoalsView() {
     },
   });
 
+  const markAsCompleteMutation = trpc.goal.update.useMutation({
+    onSuccess: () => {
+      refreshGoals();
+    },
+  });
+
+  const markAsActiveMutation = trpc.goal.update.useMutation({
+    onSuccess: () => {
+      refreshGoals();
+    },
+  });
+
   const availableRepos = githubActivity?.repositories || [];
+
+  const handleMarkAsComplete = (goal: any) => {
+    markAsCompleteMutation.mutate({
+      id: goal.id,
+      status: 'completed',
+    });
+  };
+
+  const handleMarkAsActive = (goal: any) => {
+    markAsActiveMutation.mutate({
+      id: goal.id,
+      status: 'active',
+    });
+  };
 
   const resetForm = () => {
     setFormData({
@@ -1314,16 +1684,83 @@ function GoalsView() {
   // Use search results if search is active, otherwise use normal filtering
   const displayGoals = searchQuery.length >= 2 && searchResults ? searchResults : goals;
   
-  // Split goals into active and completed
-  const activeGoals = displayGoals?.filter((g: any) => g.status !== 'completed') || [];
-  const completedGoals = displayGoals?.filter((g: any) => g.status === 'completed') || [];
-  const totalGoals = displayGoals?.length || 0;
+  // Calculate filter counts
+  const allGoals = displayGoals || [];
+  const filterCounts = {
+    all: allGoals.length,
+    high: allGoals.filter((g: any) => g.priority === 'high').length,
+    medium: allGoals.filter((g: any) => g.priority === 'medium').length,
+    low: allGoals.filter((g: any) => g.priority === 'low').length,
+    active: allGoals.filter((g: any) => g.status === 'active').length,
+    paused: allGoals.filter((g: any) => g.status === 'paused').length,
+    completed: allGoals.filter((g: any) => g.status === 'completed').length,
+    daily: allGoals.filter((g: any) => g.timeHorizon === 'daily').length,
+    weekly: allGoals.filter((g: any) => g.timeHorizon === 'weekly').length,
+    monthly: allGoals.filter((g: any) => g.timeHorizon === 'monthly').length,
+    annual: allGoals.filter((g: any) => g.timeHorizon === 'annual').length,
+  };
 
+  // Apply filters
+  const filteredGoals = allGoals.filter((g: any) => {
+    // If 'all' is selected, show everything
+    if (activeFilters.has('all')) {
+      return true;
+    }
+
+    // Check if goal matches any active filter
+    const matchesPriority = activeFilters.has(g.priority);
+    const matchesStatus = activeFilters.has(g.status);
+    const matchesTimeHorizon = g.timeHorizon && activeFilters.has(g.timeHorizon);
+
+    // Goal must match at least one filter from each category that has active filters
+    const hasPriorityFilter = Array.from(activeFilters).some(f => ['high', 'medium', 'low'].includes(f));
+    const hasStatusFilter = Array.from(activeFilters).some(f => ['active', 'paused', 'completed'].includes(f));
+    const hasTimeHorizonFilter = Array.from(activeFilters).some(f => ['daily', 'weekly', 'monthly', 'annual'].includes(f));
+
+    const priorityMatch = !hasPriorityFilter || matchesPriority;
+    const statusMatch = !hasStatusFilter || matchesStatus;
+    const timeHorizonMatch = !hasTimeHorizonFilter || matchesTimeHorizon;
+
+    return priorityMatch && statusMatch && timeHorizonMatch;
+  });
+  
+  // Define helper function first
   const getTaskCountsForGoal = (goalId: string) => {
     const goalTasks = allTasks?.filter(t => t.goalId === goalId) || [];
     const completed = goalTasks.filter(t => t.status === 'completed').length;
     return { total: goalTasks.length, completed };
   };
+  
+  // Split goals into active and completed
+  const activeGoals = (filteredGoals?.filter((g: any) => g.status !== 'completed') || [])
+    .sort((a: any, b: any) => {
+      // Priority first (high > medium > low)
+      const priorityWeight = { high: 3, medium: 2, low: 1 };
+      const priorityDiff = (priorityWeight[b.priority] || 2) - (priorityWeight[a.priority] || 2);
+      if (priorityDiff !== 0) return priorityDiff;
+
+      // Then by deadline urgency (closer deadlines first)
+      if (a.targetDate && !b.targetDate) return -1;
+      if (!a.targetDate && b.targetDate) return 1;
+      if (a.targetDate && b.targetDate) {
+        return new Date(a.targetDate).getTime() - new Date(b.targetDate).getTime();
+      }
+
+      // Finally by creation date (newest first)
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+  const completedGoals = filteredGoals?.filter((g: any) => g.status === 'completed') || [];
+  const totalGoals = filteredGoals?.length || 0;
+  
+  // Calculate stats for summary
+  const goalsWithTasks = activeGoals.filter((g: any) => {
+    const { total } = getTaskCountsForGoal(g.id);
+    return total > 0;
+  });
+  const onTrackGoals = goalsWithTasks.filter((g: any) => {
+    const { total, completed } = getTaskCountsForGoal(g.id);
+    return completed / total >= 0.5; // 50% or more completed
+  }).length;
 
   const handleCreateTaskForGoal = (data: any) => {
     createTaskMutation.mutate({
@@ -1517,26 +1954,81 @@ function GoalsView() {
         </Dialog>
         </div>
 
-        {/* Search Bar */}
+        {/* Stats Summary */}
+        {totalGoals > 0 && (
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
+            <div className="rounded-lg border border-zinc-200 bg-zinc-50/50 p-3 dark:border-zinc-800 dark:bg-zinc-900/50">
+              <div className="text-xs font-medium text-zinc-600 dark:text-zinc-400">Active</div>
+              <div className="mt-1 text-2xl font-bold text-zinc-900 dark:text-zinc-50">{activeGoals.length}</div>
+            </div>
+            <div className="rounded-lg border border-green-200 bg-green-50/50 p-3 dark:border-green-900 dark:bg-green-950/20">
+              <div className="text-xs font-medium text-green-700 dark:text-green-400">Completed</div>
+              <div className="mt-1 text-2xl font-bold text-green-700 dark:text-green-400">{completedGoals.length}</div>
+            </div>
+            <div className="rounded-lg border border-blue-200 bg-blue-50/50 p-3 dark:border-blue-900 dark:bg-blue-950/20">
+              <div className="text-xs font-medium text-blue-700 dark:text-blue-400">On Track</div>
+              <div className="mt-1 text-2xl font-bold text-blue-700 dark:text-blue-400">{onTrackGoals}</div>
+            </div>
+            <div className="rounded-lg border border-amber-200 bg-amber-50/50 p-3 dark:border-amber-900 dark:bg-amber-950/20">
+              <div className="text-xs font-medium text-amber-700 dark:text-amber-400">No Tasks</div>
+              <div className="mt-1 text-2xl font-bold text-amber-700 dark:text-amber-400">
+                {activeGoals.length - goalsWithTasks.length}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Search and Filter Row */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <SearchInput
           onSearch={setSearchQuery}
           placeholder="Search goals..."
           className="w-full sm:w-96"
         />
+          {!searchQuery && (
+            <GoalsFilterDropdown
+              activeFilters={activeFilters}
+              onFilterChange={setActiveFilters}
+              counts={filterCounts}
+            />
+          )}
+        </div>
       </div>
 
-      {/* Active Goals List */}
+      {/* Goals List */}
       {totalGoals === 0 ? (
-        <div className="rounded-xl border border-zinc-200 bg-white p-12 text-center dark:border-zinc-800 dark:bg-zinc-900">
-          <div className="text-4xl mb-4">🎯</div>
-          <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50 mb-2">
-            No goals yet
+        <div className="rounded-xl border border-zinc-200 bg-gradient-to-br from-white to-zinc-50 p-8 text-center dark:border-zinc-800 dark:from-zinc-900 dark:to-zinc-950 sm:p-12">
+          <div className="text-5xl mb-4 sm:text-6xl">🎯</div>
+          <h3 className="text-lg font-bold text-zinc-900 dark:text-zinc-50 mb-2 sm:text-xl">
+            Set Your First Goal
           </h3>
-          <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-4">
-            Create your first goal to start tracking your progress
+          <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-6 max-w-md mx-auto">
+            Goals help you stay focused and track your progress. Start by creating a goal and break it down into actionable tasks.
           </p>
-          <Button onClick={() => setIsCreateOpen(true)}>
+          <Button 
+            onClick={() => setIsCreateOpen(true)}
+            className="bg-blue-600 hover:bg-blue-700 text-white"
+          >
+            <svg className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
             Create Your First Goal
+          </Button>
+        </div>
+      ) : activeGoals.length === 0 && completedGoals.length > 0 ? (
+        <div className="rounded-xl border border-green-200 bg-green-50/50 p-8 text-center dark:border-green-900 dark:bg-green-950/20 sm:p-12">
+          <div className="text-5xl mb-4">🎉</div>
+          <h3 className="text-lg font-bold text-green-900 dark:text-green-50 mb-2">
+            All Goals Completed!
+          </h3>
+          <p className="text-sm text-green-700 dark:text-green-300 mb-6">
+            Amazing work! You've completed all your goals. Ready to set new ones?
+          </p>
+          <Button 
+            onClick={() => setIsCreateOpen(true)}
+            className="bg-green-600 hover:bg-green-700 text-white"
+          >
+            Create New Goal
           </Button>
         </div>
       ) : (
@@ -1544,16 +2036,30 @@ function GoalsView() {
           {/* Active Goals */}
           {activeGoals.length > 0 && (
             <div className="space-y-4">
-              {activeGoals.map((goal: any) => (
+              {activeGoals.map((goal: any) => {
+                const { total, completed } = getTaskCountsForGoal(goal.id);
+                const progressPercent = total > 0 ? Math.round((completed / total) * 100) : 0;
+                const daysRemaining = goal.targetDate 
+                  ? Math.ceil((new Date(goal.targetDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+                  : null;
+                
+                return (
                 <div
                   key={goal.id}
-                  className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900 sm:p-6"
+                  className={`rounded-xl border-l-4 p-4 shadow-sm transition-all hover:shadow-md dark:bg-zinc-900 sm:p-6 ${
+                    // Priority left border
+                    goal.priority === 'high' 
+                      ? 'border-l-red-500' 
+                      : goal.priority === 'medium' 
+                      ? 'border-l-yellow-500' 
+                      : 'border-l-green-500'
+                  } border-r border-t border-b border-zinc-200 bg-white dark:border-r-zinc-800 dark:border-t-zinc-800 dark:border-b-zinc-800`}
                 >
                   <div className="flex flex-col gap-3">
                     {/* Header with badges and actions */}
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1 min-w-0">
-                        <h3 className="text-base font-semibold text-zinc-900 dark:text-zinc-50 sm:text-lg truncate">
+                        <h3 className="text-base font-semibold text-zinc-900 dark:text-zinc-50 sm:text-lg">
                           {goal.title}
                         </h3>
                         <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
@@ -1566,11 +2072,61 @@ function GoalsView() {
                           <Badge className={`${getStatusColor(goal.status)} text-xs`}>
                             {goal.status}
                           </Badge>
+                          {goal.timeHorizon && (
+                            <Badge className="bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-300 text-xs">
+                              {goal.timeHorizon}
+                            </Badge>
+                          )}
+                          {daysRemaining !== null && (
+                            <Badge className={`text-xs ${
+                              daysRemaining < 0 
+                                ? 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-300'
+                                : daysRemaining <= 7
+                                ? 'bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-300'
+                                : 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-300'
+                            }`}>
+                              {daysRemaining < 0 
+                                ? `${Math.abs(daysRemaining)}d overdue` 
+                                : daysRemaining === 0
+                                ? 'Due today'
+                                : `${daysRemaining}d left`}
+                            </Badge>
+                          )}
                         </div>
                       </div>
 
                       {/* Icon buttons for mobile, text buttons for desktop */}
-                      <div className="flex gap-1 sm:gap-2 shrink-0">
+                      <div className="flex gap-1 shrink-0 flex-wrap justify-end">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedGoal(goal);
+                            setIsCreateTaskOpen(true);
+                          }}
+                          className="h-8 w-8 p-0 text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20 sm:h-9 sm:w-auto sm:px-3"
+                          aria-label="Add task"
+                          title="Add task to goal"
+                        >
+                          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                          </svg>
+                          <span className="ml-1.5 hidden lg:inline">Task</span>
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleMarkAsComplete(goal)}
+                          disabled={markAsCompleteMutation.isPending}
+                          className="h-8 w-8 p-0 text-green-600 hover:bg-green-50 dark:text-green-400 dark:hover:bg-green-900/20 sm:h-9 sm:w-auto sm:px-3"
+                          aria-label="Mark as complete"
+                          title="Mark as complete"
+                        >
+                          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                          <span className="ml-1.5 hidden lg:inline">Done</span>
+                        </Button>
                         <Button
                           variant="outline"
                           size="sm"
@@ -1581,7 +2137,7 @@ function GoalsView() {
                           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                           </svg>
-                          <span className="ml-1.5 hidden sm:inline">Edit</span>
+                          <span className="ml-1.5 hidden lg:inline">Edit</span>
                         </Button>
                         <Button
                           variant="outline"
@@ -1593,7 +2149,7 @@ function GoalsView() {
                           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                           </svg>
-                          <span className="ml-1.5 hidden sm:inline">Delete</span>
+                          <span className="ml-1.5 hidden lg:inline">Delete</span>
                         </Button>
                       </div>
                     </div>
@@ -1605,51 +2161,64 @@ function GoalsView() {
                       </p>
                     )}
 
-                    {/* Task Counts and Warning */}
-                    {(() => {
-                      const { total, completed } = getTaskCountsForGoal(goal.id);
-                      return (
-                        <div className="space-y-2">
+                    {/* Progress Bar */}
                           {total === 0 ? (
                             <div className="rounded-lg bg-amber-50 border border-amber-200 p-3 dark:bg-amber-900/20 dark:border-amber-900">
-                              <p className="text-xs text-amber-800 dark:text-amber-200">
-                                ⚠️ No tasks yet. Add tasks to start tracking progress!
-                              </p>
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs font-medium text-amber-800 dark:text-amber-200">
+                            ⚠️ No tasks yet
+                          </p>
+                          <button
+                            onClick={() => {
+                              setSelectedGoal(goal);
+                              setIsCreateTaskOpen(true);
+                            }}
+                            className="text-xs font-medium text-amber-700 hover:text-amber-900 dark:text-amber-300 dark:hover:text-amber-100 underline"
+                          >
+                            Add first task
+                          </button>
+                        </div>
                             </div>
                           ) : (
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
-                                Tasks: {completed}/{total} completed
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="font-medium text-zinc-700 dark:text-zinc-300">
+                            Progress
                               </span>
-                              <div className="flex-1 h-2 bg-zinc-200 dark:bg-zinc-800 rounded-full overflow-hidden max-w-[100px]">
-                                <div
-                                  className="h-full bg-green-600 transition-all"
-                                  style={{ width: `${total > 0 ? (completed / total) * 100 : 0}%` }}
+                          <span className="text-xs font-semibold text-zinc-600 dark:text-zinc-400">
+                            {completed}/{total} tasks · {progressPercent}%
+                          </span>
+                        </div>
+                        <div className="h-3 w-full bg-zinc-200 dark:bg-zinc-800 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full transition-all duration-500 ${
+                              progressPercent === 100 
+                                ? 'bg-green-600' 
+                                : progressPercent >= 50
+                                ? 'bg-blue-600'
+                                : 'bg-yellow-500'
+                            }`}
+                            style={{ width: `${progressPercent}%` }}
                                 />
                               </div>
                             </div>
                           )}
-                        </div>
-                      );
-                    })()}
 
                     {/* Metadata */}
                     <div className="flex flex-wrap items-center gap-3 text-xs text-zinc-500 dark:text-zinc-400">
-                      {goal.timeHorizon && (
-                        <span className="flex items-center gap-1">
-                          ⏱️ <span className="hidden sm:inline">{goal.timeHorizon}</span><span className="sm:hidden capitalize">{goal.timeHorizon.slice(0,1)}</span>
-                        </span>
-                      )}
                       {goal.targetDate && (
                         <span className="flex items-center gap-1">
-                          📅 {new Date(goal.targetDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                          📅 {new Date(goal.targetDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
                         </span>
                       )}
                       {goal.githubRepos && goal.githubRepos.length > 0 && (
                         <span className="flex items-center gap-1">
-                          🐙 {goal.githubRepos.length}
+                          🐙 {goal.githubRepos.length} {goal.githubRepos.length === 1 ? 'repo' : 'repos'}
                         </span>
                       )}
+                      <span className="flex items-center gap-1">
+                        📝 {total} {total === 1 ? 'task' : 'tasks'}
+                      </span>
                     </div>
 
                     {/* GitHub Repos */}
@@ -1672,7 +2241,8 @@ function GoalsView() {
                     )}
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
 
@@ -1732,6 +2302,21 @@ function GoalsView() {
                             </div>
                           </div>
 
+                          <div className="flex gap-1 sm:gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleMarkAsActive(goal)}
+                              disabled={markAsActiveMutation.isPending}
+                              className="h-8 w-8 p-0 text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20 sm:h-9 sm:w-auto sm:px-3"
+                              aria-label="Reopen goal"
+                              title="Mark as active"
+                            >
+                              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                              </svg>
+                              <span className="ml-1.5 hidden sm:inline">Reopen</span>
+                            </Button>
                           <Button
                             variant="outline"
                             size="sm"
@@ -1745,6 +2330,7 @@ function GoalsView() {
                             </svg>
                             <span className="ml-1.5 hidden sm:inline">View</span>
                           </Button>
+                          </div>
                         </div>
 
                         {/* Description */}

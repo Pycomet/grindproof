@@ -131,13 +131,13 @@ async function parseSSEResponse(response: Response): Promise<{ text: string }> {
   return await response.json();
 }
 
-describe('AI Chat API Route', () => {
+describe('Coach API Route', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
   describe('POST /api/ai/chat', () => {
-    it('should return AI response for valid conversation', async () => {
+    it('should return Coach response for valid conversation', async () => {
       const messages = [
         { role: 'user', content: 'Hello' },
       ];

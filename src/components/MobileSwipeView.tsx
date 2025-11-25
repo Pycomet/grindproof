@@ -20,9 +20,10 @@ export function MobileSwipeView({ views, initialView = 0 }: SwipeViewProps) {
 
   // Gradient backgrounds for each view
   const gradients = [
-    'from-blue-500/10 via-cyan-500/10 to-teal-500/10', // Today - Cool tech vibes
-    'from-purple-500/10 via-pink-500/10 to-rose-500/10', // Reality Check - Warm evening
-    'from-orange-500/10 via-red-500/10 to-pink-500/10', // Weekly Roast - Hot colors
+    'from-blue-500/10 via-cyan-500/10 to-teal-500/10', // Tasks - Cool tech vibes
+    'from-purple-500/10 via-pink-500/10 to-rose-500/10', // Goals - Warm colors
+    'from-orange-500/10 via-red-500/10 to-pink-500/10', // Reality Check - Evening colors
+    'from-pink-500/10 via-purple-500/10 to-indigo-500/10', // Weekly Roast - Gradient blend
     'from-indigo-500/10 via-purple-500/10 to-pink-500/10', // Integrations - Tech purple
   ];
 

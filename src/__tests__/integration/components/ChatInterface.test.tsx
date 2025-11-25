@@ -119,11 +119,11 @@ describe('ChatInterface', () => {
     expect(screen.getByText('My message')).toBeInTheDocument();
   });
 
-  it('should display AI response after successful API call', async () => {
+  it('should display Coach response after successful API call', async () => {
     render(<ChatInterface />);
 
     const input = screen.getByPlaceholderText('Type your message...');
-    fireEvent.change(input, { target: { value: 'Hello AI' } });
+    fireEvent.change(input, { target: { value: 'Hello Coach' } });
     fireEvent.click(screen.getByRole('button', { name: /send/i }));
 
     await waitFor(() => {
@@ -262,7 +262,7 @@ describe('ChatInterface', () => {
     (global.fetch as any).mockResolvedValueOnce({
       ok: false,
       json: async () => ({ 
-        error: 'Daily AI message limit exceeded', 
+        error: "We've hit our daily message limit. Your coach will be back tomorrow!", 
         retryable: false,
         errorType: 'quota_exceeded'
       }),
@@ -275,7 +275,7 @@ describe('ChatInterface', () => {
     fireEvent.click(screen.getByRole('button', { name: /send/i }));
 
     await waitFor(() => {
-      expect(screen.getByText(/Daily AI message limit/i)).toBeInTheDocument();
+      expect(screen.getByText(/daily message limit/i)).toBeInTheDocument();
     });
   });
 
@@ -310,6 +310,41 @@ describe('ChatInterface', () => {
 
     await waitFor(() => {
       expect(mockConversationUpdate).toHaveBeenCalled();
+    });
+  });
+
+  describe('Compact Mode', () => {
+    it('should render with full height when not in compact mode', () => {
+      const { container } = render(<ChatInterface compact={false} />);
+      
+      const chatContainer = container.querySelector('.flex.flex-col');
+      expect(chatContainer).toHaveClass('h-[calc(100vh-12rem)]');
+    });
+
+    it('should render with h-full when in compact mode', () => {
+      const { container } = render(<ChatInterface compact={true} />);
+      
+      const chatContainer = container.querySelector('.flex.flex-col');
+      expect(chatContainer).toHaveClass('h-full');
+    });
+
+    it('should show compact empty state in compact mode', () => {
+      render(<ChatInterface compact={true} mode="general" />);
+      
+      // Should show the compact empty state text
+      expect(screen.getByText(/Create tasks, analyze patterns, get roasted/i)).toBeInTheDocument();
+    });
+
+    it('should work with different modes in compact mode', () => {
+      const { rerender } = render(<ChatInterface compact={true} mode="planning" />);
+      
+      expect(screen.getByText(/Describe your priorities naturally/i)).toBeInTheDocument();
+      
+      rerender(<ChatInterface compact={true} mode="reflection" />);
+      expect(screen.getByText(/Be honest about what happened/i)).toBeInTheDocument();
+      
+      rerender(<ChatInterface compact={true} mode="general" />);
+      expect(screen.getByText(/Create tasks, analyze patterns/i)).toBeInTheDocument();
     });
   });
 });

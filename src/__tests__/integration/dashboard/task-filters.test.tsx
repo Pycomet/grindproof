@@ -165,26 +165,33 @@ describe('Task Filters - Next Week and This Month', () => {
   });
 
   describe('Next Week Filter', () => {
-    it('displays "Next Week" filter button', async () => {
+    it('displays "Next Week" filter option in dropdown', async () => {
       const today = new Date();
       const mockTasks = [createTask('Today Task', today)];
 
       vi.mocked(useApp).mockReturnValue({
         ...mockAppContext({ tasks: mockTasks }),
-        c: () => false,
+        isGoogleCalendarConnected: () => false,
       });
 
       render(<Dashboard />);
       await switchToTasksView();
 
+      // Open filter dropdown
       await waitFor(() => {
-        const nextWeekFilters = screen.getAllByRole('button', { name: /Next Week/i });
-        expect(nextWeekFilters.length).toBeGreaterThan(0);
-        expect(nextWeekFilters[0]).toBeInTheDocument();
+        const filterButton = screen.getByText(/Filters:/);
+        expect(filterButton).toBeInTheDocument();
+      });
+
+      const filterButton = screen.getByText(/Filters:/);
+      fireEvent.click(filterButton);
+
+      await waitFor(() => {
+        expect(screen.getByLabelText(/Next Week/)).toBeInTheDocument();
       });
     });
 
-    it('shows correct count for next week tasks', async () => {
+    it('shows correct count for next week tasks in dropdown', async () => {
       const today = new Date();
       const nextWeekStart = new Date(today);
       nextWeekStart.setDate(nextWeekStart.getDate() + 7);
@@ -205,14 +212,20 @@ describe('Task Filters - Next Week and This Month', () => {
       render(<Dashboard />);
       await switchToTasksView();
 
+      // Open filter dropdown
+      const filterButton = screen.getByText(/Filters:/);
+      fireEvent.click(filterButton);
+
       await waitFor(() => {
-        const nextWeekFilters = screen.getAllByRole('button', { name: /Next Week/i });
-        expect(nextWeekFilters.length).toBeGreaterThan(0);
-        expect(nextWeekFilters[0]).toHaveTextContent('2');
+        const nextWeekLabel = screen.getByLabelText(/Next Week/);
+        expect(nextWeekLabel).toBeInTheDocument();
+        // Check that the count "2" appears in the label's parent element
+        const labelParent = nextWeekLabel.closest('label');
+        expect(labelParent?.textContent).toContain('2');
       });
     });
 
-    it('filters tasks for next week when clicked', async () => {
+    it('filters tasks for next week when selected in dropdown', async () => {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       
@@ -235,22 +248,32 @@ describe('Task Filters - Next Week and This Month', () => {
       render(<Dashboard />);
       await switchToTasksView();
 
+      // Open filter dropdown
+      const filterButton = screen.getByText(/Filters:/);
+      fireEvent.click(filterButton);
+
       await waitFor(() => {
-        const nextWeekFilters = screen.getAllByRole('button', { name: /Next Week/i });
-        expect(nextWeekFilters.length).toBeGreaterThan(0);
+        expect(screen.getByLabelText(/Next Week/)).toBeInTheDocument();
       });
 
-      const nextWeekFilters = screen.getAllByRole('button', { name: /Next Week/i });
-      fireEvent.click(nextWeekFilters[0]);
+      // Uncheck "All Tasks" first
+      const allTasksCheckbox = screen.getByLabelText(/All Tasks/);
+      fireEvent.click(allTasksCheckbox);
+
+      // Check "Next Week"
+      const nextWeekCheckbox = screen.getByLabelText(/Next Week/);
+      fireEvent.click(nextWeekCheckbox);
+
+      // Close dropdown
+      fireEvent.click(document.body);
 
       // Wait for the filter to apply and verify Next Week tasks are shown
       await waitFor(() => {
-        expect(screen.getAllByText('Next Week Task').length).toBeGreaterThan(0);
+        expect(screen.getByText('Next Week Task')).toBeInTheDocument();
       });
       
-      // Today task should not be shown in the active filter (though may exist in DOM for other views)
-      // Just verify the Next Week filter is showing the correct tasks
-      expect(screen.getAllByText('Next Week Task')[0]).toBeInTheDocument();
+      // Today task should not be visible
+      expect(screen.queryByText('Today Task')).not.toBeInTheDocument();
     });
 
     it('excludes skipped tasks from next week count', async () => {
@@ -271,16 +294,20 @@ describe('Task Filters - Next Week and This Month', () => {
       render(<Dashboard />);
       await switchToTasksView();
 
+      // Open filter dropdown
+      const filterButton = screen.getByText(/Filters:/);
+      fireEvent.click(filterButton);
+
       await waitFor(() => {
-        const nextWeekFilters = screen.getAllByRole('button', { name: /Next Week/i });
-        expect(nextWeekFilters.length).toBeGreaterThan(0);
-        expect(nextWeekFilters[0]).toHaveTextContent('1');
+        const nextWeekLabel = screen.getByLabelText(/Next Week/);
+        const labelParent = nextWeekLabel.closest('label');
+        expect(labelParent?.textContent).toContain('1');
       });
     });
   });
 
   describe('This Month Filter', () => {
-    it('displays "This Month" filter button', async () => {
+    it('displays "This Month" filter option in dropdown', async () => {
       vi.mocked(useApp).mockReturnValue({
         ...mockAppContext({ tasks: [] }),
         isGoogleCalendarConnected: () => false,
@@ -289,9 +316,12 @@ describe('Task Filters - Next Week and This Month', () => {
       render(<Dashboard />);
       await switchToTasksView();
 
+      // Open filter dropdown
+      const filterButton = screen.getByText(/Filters:/);
+      fireEvent.click(filterButton);
+
       await waitFor(() => {
-        const monthFilters = screen.getAllByRole('button', { name: /This Month/i });
-        expect(monthFilters.length).toBeGreaterThan(0);
+        expect(screen.getByLabelText(/This Month/)).toBeInTheDocument();
       });
     });
 
@@ -313,15 +343,19 @@ describe('Task Filters - Next Week and This Month', () => {
       render(<Dashboard />);
       await switchToTasksView();
 
+      // Open filter dropdown
+      const filterButton = screen.getByText(/Filters:/);
+      fireEvent.click(filterButton);
+
       await waitFor(() => {
-        const monthFilters = screen.getAllByRole('button', { name: /This Month/i });
-        expect(monthFilters.length).toBeGreaterThan(0);
+        const monthLabel = screen.getByLabelText(/This Month/);
+        const labelParent = monthLabel.closest('label');
         // Should count tasks from today until end of month (2 tasks)
-        expect(monthFilters[0]).toHaveTextContent('2');
+        expect(labelParent?.textContent).toContain('2');
       });
     });
 
-    it('filters tasks for this month when clicked', async () => {
+    it('filters tasks for this month when selected in dropdown', async () => {
       const today = new Date();
       const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
       const nextMonth = new Date(today.getFullYear(), today.getMonth() + 1, 5);
@@ -339,18 +373,29 @@ describe('Task Filters - Next Week and This Month', () => {
       render(<Dashboard />);
       await switchToTasksView();
 
-      await waitFor(() => {
-        const monthFilters = screen.getAllByRole('button', { name: /This Month/i });
-        expect(monthFilters.length).toBeGreaterThan(0);
-      });
-
-      const monthFilters = screen.getAllByRole('button', { name: /This Month/i });
-      fireEvent.click(monthFilters[0]);
+      // Open filter dropdown
+      const filterButton = screen.getByText(/Filters:/);
+      fireEvent.click(filterButton);
 
       await waitFor(() => {
-        expect(screen.getAllByText('This Month Task')[0]).toBeInTheDocument();
+        expect(screen.getByLabelText(/This Month/)).toBeInTheDocument();
       });
-      expect(screen.queryByText('Next Month Task')).toBeNull();
+
+      // Uncheck "All Tasks"
+      const allTasksCheckbox = screen.getByLabelText(/All Tasks/);
+      fireEvent.click(allTasksCheckbox);
+
+      // Check "This Month"
+      const monthCheckbox = screen.getByLabelText(/This Month/);
+      fireEvent.click(monthCheckbox);
+
+      // Close dropdown
+      fireEvent.click(document.body);
+
+      await waitFor(() => {
+        expect(screen.getByText('This Month Task')).toBeInTheDocument();
+      });
+      expect(screen.queryByText('Next Month Task')).not.toBeInTheDocument();
     });
 
     it('includes all remaining days of current month', async () => {
@@ -388,15 +433,16 @@ describe('Task Filters - Next Week and This Month', () => {
       render(<Dashboard />);
       await switchToTasksView();
 
-      await waitFor(() => {
-        const monthFilters = screen.getAllByRole('button', { name: /This Month/i });
-        expect(monthFilters.length).toBeGreaterThan(0);
-      });
+      // Open filter dropdown
+      const filterButton = screen.getByText(/Filters:/);
+      fireEvent.click(filterButton);
 
-      const monthFilters = screen.getAllByRole('button', { name: /This Month/i });
-      
-      // Should count only January tasks (2)
-      expect(monthFilters[0]).toHaveTextContent('2');
+      await waitFor(() => {
+        const monthLabel = screen.getByLabelText(/This Month/);
+        const labelParent = monthLabel.closest('label');
+        // Should count only January tasks (2)
+        expect(labelParent?.textContent).toContain('2');
+      });
 
       global.Date = originalDate;
     });
@@ -418,16 +464,20 @@ describe('Task Filters - Next Week and This Month', () => {
       render(<Dashboard />);
       await switchToTasksView();
 
+      // Open filter dropdown
+      const filterButton = screen.getByText(/Filters:/);
+      fireEvent.click(filterButton);
+
       await waitFor(() => {
-        const monthFilters = screen.getAllByRole('button', { name: /This Month/i });
-        expect(monthFilters.length).toBeGreaterThan(0);
-        expect(monthFilters[0]).toHaveTextContent('1');
+        const monthLabel = screen.getByLabelText(/This Month/);
+        const labelParent = monthLabel.closest('label');
+        expect(labelParent?.textContent).toContain('1');
       });
     });
   });
 
   describe('Filter Combination', () => {
-    it('shows all filters in correct order', async () => {
+    it('shows all filters in correct order in dropdown', async () => {
       vi.mocked(useApp).mockReturnValue({
         ...mockAppContext({ tasks: [] }),
         isGoogleCalendarConnected: () => false,
@@ -436,31 +486,22 @@ describe('Task Filters - Next Week and This Month', () => {
       render(<Dashboard />);
       await switchToTasksView();
 
+      // Open filter dropdown
+      const filterButton = screen.getByText(/Filters:/);
+      fireEvent.click(filterButton);
+
       await waitFor(() => {
-        const filters = screen.getAllByRole('button').filter(btn => 
-          ['Today', 'This Week', 'Next Week', 'This Month', 'Overdue', 'All', 'Skipped'].some(
-            filter => btn.textContent?.includes(filter)
-          )
-        );
-        expect(filters.length).toBeGreaterThanOrEqual(7);
+        expect(screen.getByLabelText(/All Tasks/)).toBeInTheDocument();
+        expect(screen.getByLabelText(/^Today/)).toBeInTheDocument();
+        expect(screen.getByLabelText(/This Week/)).toBeInTheDocument();
+        expect(screen.getByLabelText(/Next Week/)).toBeInTheDocument();
+        expect(screen.getByLabelText(/This Month/)).toBeInTheDocument();
+        expect(screen.getByLabelText(/Overdue/)).toBeInTheDocument();
+        expect(screen.getByLabelText(/Skipped/)).toBeInTheDocument();
       });
-
-      const filters = screen.getAllByRole('button').filter(btn => 
-        ['Today', 'This Week', 'Next Week', 'This Month', 'Overdue', 'All', 'Skipped'].some(
-          filter => btn.textContent?.includes(filter)
-        )
-      );
-
-      expect(filters[0]).toHaveTextContent('Today');
-      expect(filters[1]).toHaveTextContent('This Week');
-      expect(filters[2]).toHaveTextContent('Next Week');
-      expect(filters[3]).toHaveTextContent('This Month');
-      expect(filters[4]).toHaveTextContent('Overdue');
-      expect(filters[5]).toHaveTextContent('All');
-      expect(filters[6]).toHaveTextContent('Skipped');
     });
 
-    it('switches between filters correctly', async () => {
+    it('switches between filters correctly using dropdown', async () => {
       const today = new Date();
       const nextWeek = new Date(today);
       nextWeek.setDate(nextWeek.getDate() + 9);
@@ -478,28 +519,38 @@ describe('Task Filters - Next Week and This Month', () => {
       render(<Dashboard />);
       await switchToTasksView();
 
-      // Initially should show Today filter
+      // Initially should show all tasks (default "All" filter)
       await waitFor(() => {
-        expect(screen.getAllByText('Today Task').length).toBeGreaterThan(0);
+        expect(screen.getByText('Today Task')).toBeInTheDocument();
+        expect(screen.getByText('Next Week Task')).toBeInTheDocument();
       });
 
-      // Click Next Week
+      // Open dropdown and switch to Next Week only
+      const filterButton = screen.getByText(/Filters:/);
+      fireEvent.click(filterButton);
+
       await waitFor(() => {
-        const nextWeekFilters = screen.getAllByRole('button', { name: /Next Week/i });
-        expect(nextWeekFilters.length).toBeGreaterThan(0);
+        expect(screen.getByLabelText(/Next Week/)).toBeInTheDocument();
       });
 
-      const nextWeekFilters = screen.getAllByRole('button', { name: /Next Week/i });
-      fireEvent.click(nextWeekFilters[0]);
+      // Uncheck "All Tasks"
+      const allTasksCheckbox = screen.getByLabelText(/All Tasks/);
+      fireEvent.click(allTasksCheckbox);
+
+      // Check "Next Week"
+      const nextWeekCheckbox = screen.getByLabelText(/Next Week/);
+      fireEvent.click(nextWeekCheckbox);
+
+      // Close dropdown
+      fireEvent.click(document.body);
 
       // Wait for the filter to apply and verify Next Week tasks are shown
       await waitFor(() => {
-        expect(screen.getAllByText('Next Week Task').length).toBeGreaterThan(0);
+        expect(screen.getByText('Next Week Task')).toBeInTheDocument();
       });
       
-      // Today task should not be shown in the active filter (though may exist in DOM for other views)
-      // Just verify the Next Week filter is showing the correct tasks
-      expect(screen.getAllByText('Next Week Task')[0]).toBeInTheDocument();
+      // Today task should not be visible
+      expect(screen.queryByText('Today Task')).not.toBeInTheDocument();
     });
   });
 });
