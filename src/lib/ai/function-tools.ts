@@ -7,6 +7,7 @@
  */
 
 import type { FunctionDeclaration } from '@google/generative-ai';
+import { SchemaType } from '@google/generative-ai';
 
 // ============================================================================
 // TYPE DEFINITIONS
@@ -69,19 +70,19 @@ Examples of when to use:
 - "new task workout at 6am"`,
 
   parameters: {
-    type: 'OBJECT' as const,
+    type: SchemaType.OBJECT,
     properties: {
       title: {
-        type: 'STRING' as const,
+        type: SchemaType.STRING,
         description: 'Clear, specific task title (required). Should be concise and actionable.',
       },
       description: {
-        type: 'STRING' as const,
+        type: SchemaType.STRING,
         description: 'Optional detailed description of the task. Include any additional context or notes.',
         nullable: true,
       },
       dueDate: {
-        type: 'STRING' as const,
+        type: SchemaType.STRING,
         description: `Due date in YYYY-MM-DD format. Parse relative dates:
 - "tomorrow" = ${getTomorrowDate()}
 - "today" = ${getTodayDate()}
@@ -90,28 +91,29 @@ Examples of when to use:
         nullable: true,
       },
       startTime: {
-        type: 'STRING' as const,
+        type: SchemaType.STRING,
         description: 'Start time in HH:MM format (24-hour). Example: "06:00" for 6am, "14:30" for 2:30pm. Only include if specifically mentioned.',
         nullable: true,
       },
       endTime: {
-        type: 'STRING' as const,
+        type: SchemaType.STRING,
         description: 'End time in HH:MM format (24-hour). Only include if specifically mentioned.',
         nullable: true,
       },
       priority: {
-        type: 'STRING' as const,
+        type: SchemaType.STRING,
         description: `Task priority level. Default to "medium" unless specified or implied.
 - "high": urgent, important, asap, critical, deadline
 - "medium": normal tasks (default)
 - "low": nice-to-have, someday, maybe`,
+        format: 'enum' as const,
         enum: ['high', 'medium', 'low'],
       },
       tags: {
-        type: 'ARRAY' as const,
+        type: SchemaType.ARRAY,
         description: 'Optional tags for categorization. Extract from context (e.g., "workout", "work", "personal")',
         items: {
-          type: 'STRING' as const,
+          type: SchemaType.STRING,
         },
         nullable: true,
       },
@@ -137,10 +139,10 @@ Examples of when to use:
 - "mark the report task as completed"`,
 
   parameters: {
-    type: 'OBJECT' as const,
+    type: SchemaType.OBJECT,
     properties: {
       searchQuery: {
-        type: 'STRING' as const,
+        type: SchemaType.STRING,
         description: `Keywords to find the task. Extract the task identifier from user message.
 
 Examples:
@@ -149,21 +151,21 @@ Examples:
 - "reschedule the meeting" → searchQuery: "meeting"`,
       },
       updates: {
-        type: 'OBJECT' as const,
+        type: SchemaType.OBJECT,
         description: 'Object containing fields to update. Only include fields that should be changed.',
         properties: {
           title: {
-            type: 'STRING' as const,
+            type: SchemaType.STRING,
             description: 'New task title',
             nullable: true,
           },
           description: {
-            type: 'STRING' as const,
+            type: SchemaType.STRING,
             description: 'New task description',
             nullable: true,
           },
           dueDate: {
-            type: 'STRING' as const,
+            type: SchemaType.STRING,
             description: `New due date in YYYY-MM-DD format. Parse relative dates:
 - "tomorrow" = ${getTomorrowDate()}
 - "today" = ${getTodayDate()}
@@ -171,14 +173,16 @@ Examples:
             nullable: true,
           },
           priority: {
-            type: 'STRING' as const,
+            type: SchemaType.STRING,
             description: 'New priority level',
+            format: 'enum' as const,
             enum: ['high', 'medium', 'low'],
             nullable: true,
           },
           status: {
-            type: 'STRING' as const,
+            type: SchemaType.STRING,
             description: 'New task status',
+            format: 'enum' as const,
             enum: ['pending', 'completed', 'skipped'],
             nullable: true,
           },
@@ -204,10 +208,10 @@ Examples:
 - "cancel gym task"`,
 
   parameters: {
-    type: 'OBJECT' as const,
+    type: SchemaType.OBJECT,
     properties: {
       searchQuery: {
-        type: 'STRING' as const,
+        type: SchemaType.STRING,
         description: `Keywords to find the task to delete.
 
 Examples:
@@ -236,21 +240,23 @@ Examples:
 - "show overdue tasks"`,
 
   parameters: {
-    type: 'OBJECT' as const,
+    type: SchemaType.OBJECT,
     properties: {
       query: {
-        type: 'STRING' as const,
+        type: SchemaType.STRING,
         description: 'Search keywords. Can be empty string for broad searches.',
       },
       status: {
-        type: 'STRING' as const,
+        type: SchemaType.STRING,
         description: 'Filter by task status',
+        format: 'enum' as const,
         enum: ['pending', 'completed', 'skipped', 'all'],
         nullable: true,
       },
       dateFilter: {
-        type: 'STRING' as const,
+        type: SchemaType.STRING,
         description: 'Filter by date range',
+        format: 'enum' as const,
         enum: ['today', 'tomorrow', 'this_week', 'overdue'],
         nullable: true,
       },
@@ -274,15 +280,16 @@ Examples:
 - "what are my goals"`,
 
   parameters: {
-    type: 'OBJECT' as const,
+    type: SchemaType.OBJECT,
     properties: {
       query: {
-        type: 'STRING' as const,
+        type: SchemaType.STRING,
         description: 'Search keywords for finding goals',
       },
       status: {
-        type: 'STRING' as const,
+        type: SchemaType.STRING,
         description: 'Filter by goal status',
+        format: 'enum' as const,
         enum: ['active', 'completed', 'archived'],
         nullable: true,
       },
@@ -307,7 +314,7 @@ Examples:
 - "weekly report"`,
 
   parameters: {
-    type: 'OBJECT' as const,
+    type: SchemaType.OBJECT,
     properties: {},
   },
 };
@@ -327,7 +334,7 @@ Examples:
 - "show my behavioral patterns"`,
 
   parameters: {
-    type: 'OBJECT' as const,
+    type: SchemaType.OBJECT,
     properties: {},
   },
 };
