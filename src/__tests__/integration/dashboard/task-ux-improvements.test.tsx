@@ -4,6 +4,7 @@ import Dashboard from '@/app/dashboard/page';
 import { mockAppContext } from '../../helpers/app-context-mock';
 import type { AppTask } from '@/contexts/AppContext';
 import { useApp } from '@/contexts/AppContext';
+import { useNotificationsMock, useOfflineSyncMock } from '../../helpers/dashboard-mocks';
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
@@ -29,14 +30,13 @@ vi.mock('@/contexts/AppContext', () => ({
   AppProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
+// Use shared dashboard mocks
 vi.mock('@/hooks/useOfflineSync', () => ({
-  useOfflineSync: () => ({
-    isOnline: true,
-    isSyncing: false,
-    pendingCount: 0,
-    queueMutation: vi.fn(),
-    syncPendingMutations: vi.fn(),
-  }),
+  useOfflineSync: () => useOfflineSyncMock,
+}));
+
+vi.mock('@/hooks/useNotifications', () => ({
+  useNotifications: () => useNotificationsMock,
 }));
 
 vi.mock('@/lib/trpc/client', () => ({

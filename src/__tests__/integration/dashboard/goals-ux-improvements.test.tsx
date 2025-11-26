@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import Dashboard from "@/app/dashboard/page";
 import { useApp } from "@/contexts/AppContext";
+import { useNotificationsMock, useOfflineSyncMock } from "../../helpers/dashboard-mocks";
 
 // Mock dependencies
 vi.mock("next/navigation", () => ({
@@ -28,14 +29,13 @@ vi.mock("@/contexts/AppContext", () => ({
   AppProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
+// Use shared dashboard mocks
 vi.mock("@/hooks/useOfflineSync", () => ({
-  useOfflineSync: () => ({
-    isOnline: true,
-    isSyncing: false,
-    pendingCount: 0,
-    queueMutation: vi.fn(),
-    syncPendingMutations: vi.fn(),
-  }),
+  useOfflineSync: () => useOfflineSyncMock,
+}));
+
+vi.mock("@/hooks/useNotifications", () => ({
+  useNotifications: () => useNotificationsMock,
 }));
 
 vi.mock("@/lib/trpc/client", () => ({

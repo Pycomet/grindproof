@@ -2,6 +2,17 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { createTestCaller } from "@/__tests__/utils/trpc-test-utils";
 import type { Context } from "@/server/trpc/context";
 
+vi.mock("@/lib/notifications/push-service", () => ({
+  sendPushNotification: vi.fn(),
+  sendToUser: vi.fn().mockResolvedValue({ successful: 0, failed: 0, expired: [] }),
+  NotificationTemplates: {
+    morningCheck: () => ({ title: "", body: "" }),
+    eveningCheck: () => ({ title: "", body: "" }),
+    taskReminder: () => ({ title: "", body: "" }),
+    test: () => ({ title: "", body: "" }),
+  },
+}));
+
 // Mock Supabase
 vi.mock("@/lib/supabase/server", () => ({
   supabaseAdmin: {

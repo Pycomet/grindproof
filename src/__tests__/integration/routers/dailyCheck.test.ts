@@ -1,5 +1,6 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { Context } from '@/server/trpc/context';
+import type { User } from '@supabase/supabase-js';
 
 // Mock env first before importing router
 vi.mock('@/lib/env', () => ({
@@ -8,33 +9,30 @@ vi.mock('@/lib/env', () => ({
   },
 }));
 
-// Mock Google Generative AI before importing router
-vi.mock('@google/generative-ai', () => {
-  const mockGenerateContent = vi.fn().mockResolvedValue({
-    response: {
-      text: () => JSON.stringify({
-        tasks: [
-          {
-            title: 'Go to gym',
-            startTime: '18:00',
-            priority: 'high',
-          },
-        ],
-      }),
-    },
-  });
+const { mockGenerateContent } = vi.hoisted(() => ({
+  mockGenerateContent: vi.fn(),
+}));
 
-  return {
-    GoogleGenerativeAI: vi.fn().mockImplementation(() => ({
-      getGenerativeModel: vi.fn().mockReturnValue({
-        generateContent: mockGenerateContent,
-      }),
-    })),
-  };
-});
+// Mock Google Generative AI before importing router
+vi.mock('@google/generative-ai', () => ({
+  GoogleGenerativeAI: vi.fn().mockImplementation(() => ({
+    getGenerativeModel: vi.fn().mockReturnValue({
+      generateContent: mockGenerateContent,
+    }),
+  })),
+}));
 
 // Import router AFTER mocks are set up
 import { dailyCheckRouter } from '@/server/trpc/routers/dailyCheck';
+
+const mockUser: User = {
+  id: 'test-user-id',
+  email: 'test@example.com',
+  aud: 'authenticated',
+  app_metadata: {},
+  user_metadata: {},
+  created_at: new Date().toISOString(),
+};
 
 // Helper to create mock context
 const createMockContext = (overrides?: Partial<Context>): Context => {
@@ -52,9 +50,8 @@ const createMockContext = (overrides?: Partial<Context>): Context => {
   };
 
   return {
-    user: { id: 'test-user-id', email: 'test@example.com' },
+    user: mockUser,
     db: mockDb as any,
-    supabase: {} as any,
     ...overrides,
   };
 };
@@ -65,10 +62,19 @@ describe('dailyCheck router', () => {
   beforeEach(() => {
     mockContext = createMockContext();
     vi.clearAllMocks();
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
+    mockGenerateContent.mockResolvedValue({
+      response: {
+        text: () => JSON.stringify({
+          tasks: [
+            {
+              title: 'Go to gym',
+              startTime: '18:00',
+              priority: 'high',
+            },
+          ],
+        }),
+      },
+    });
   });
 
   describe('getMorningSchedule', () => {
@@ -428,12 +434,7 @@ describe('dailyCheck router', () => {
 
     it('should fallback to locally parsed tasks on LLM error', async () => {
       // Mock LLM to throw error
-      const { GoogleGenerativeAI } = await import('@google/generative-ai');
-      vi.mocked(GoogleGenerativeAI).mockImplementationOnce(() => ({
-        getGenerativeModel: vi.fn().mockReturnValue({
-          generateContent: vi.fn().mockRejectedValue(new Error('API rate limit')),
-        }),
-      }) as any);
+      mockGenerateContent.mockRejectedValueOnce(new Error('API rate limit'));
 
       const locallyParsed = [
         {
@@ -461,16 +462,11 @@ describe('dailyCheck router', () => {
     });
 
     it('should handle malformed JSON from LLM', async () => {
-      const { GoogleGenerativeAI } = await import('@google/generative-ai');
-      vi.mocked(GoogleGenerativeAI).mockImplementationOnce(() => ({
-        getGenerativeModel: vi.fn().mockReturnValue({
-          generateContent: vi.fn().mockResolvedValue({
-            response: {
-              text: () => 'Not valid JSON',
-            },
-          }),
-        }),
-      }) as any);
+      mockGenerateContent.mockResolvedValueOnce({
+        response: {
+          text: () => 'Not valid JSON',
+        },
+      });
 
       const locallyParsed = [{ title: 'Backup', priority: 'low' as const }];
 
