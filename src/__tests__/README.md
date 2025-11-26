@@ -97,6 +97,34 @@ The Supabase client is automatically mocked in router tests. Use `createMockSupa
 ### tRPC Context
 Use `createTestCaller()` with a custom context to inject mocked dependencies.
 
+### Dashboard Component Mocks
+For tests that render the Dashboard component, use the shared dashboard mocks to avoid duplication:
+
+```typescript
+import { useNotificationsMock, useOfflineSyncMock } from '@/__tests__/helpers/dashboard-mocks';
+
+// At the top level of your test file
+vi.mock('@/hooks/useNotifications', () => ({
+  useNotifications: () => useNotificationsMock,
+}));
+
+vi.mock('@/hooks/useOfflineSync', () => ({
+  useOfflineSync: () => useOfflineSyncMock,
+}));
+```
+
+For tests that need isolated mock instances (to avoid state leakage), use the factory functions:
+
+```typescript
+import { createUseNotificationsMock, createUseOfflineSyncMock } from '@/__tests__/helpers/dashboard-mocks';
+
+vi.mock('@/hooks/useNotifications', () => ({
+  useNotifications: () => createUseNotificationsMock(),
+}));
+```
+
+See `src/__tests__/helpers/dashboard-mocks.ts` for more details.
+
 ## Best Practices
 
 1. **Isolate tests**: Each test should be independent

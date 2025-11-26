@@ -164,19 +164,26 @@ export function ChatInterface({
           onTasksParsed(accumulatedText);
         }
       } else {
-        // Handle non-streaming response (fallback for commands)
+        // Handle non-streaming JSON response (for function calls)
         const data = await response.json();
-        setMessages(prev => 
-          prev.map(msg => 
-            msg.id === aiMessageId 
+
+        // Update AI message with response text
+        setMessages(prev =>
+          prev.map(msg =>
+            msg.id === aiMessageId
               ? { ...msg, content: data.text }
               : msg
           )
         );
-        
+
         const finalMessages = [...updatedMessages, { ...aiMessage, content: data.text }];
         await saveConversation(finalMessages);
-        
+
+        // Log function execution for debugging
+        if (data.functionExecuted) {
+          console.log(`[Function Executed]: ${data.functionExecuted}`, data.data);
+        }
+
         // Call onTasksParsed if in planning mode
         if (mode === 'planning' && onTasksParsed && data.text) {
           onTasksParsed(data.text);

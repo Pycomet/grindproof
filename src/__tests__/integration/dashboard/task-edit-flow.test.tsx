@@ -5,6 +5,7 @@ import { trpc } from '@/lib/trpc/client';
 import { supabase } from '@/lib/supabase/client';
 import { useApp } from '@/contexts/AppContext';
 import { mockAppContext } from '../../helpers/app-context-mock';
+import { useNotificationsMock, useOfflineSyncMock } from '../../helpers/dashboard-mocks';
 
 const mockPush = vi.fn();
 
@@ -85,6 +86,9 @@ vi.mock('@/lib/trpc/client', () => ({
     pattern: {
       getAll: { useQuery: vi.fn(() => ({ data: [] })) },
     },
+    evidence: {
+      getByTaskId: { useQuery: vi.fn(() => ({ data: [] })) },
+    },
     dailyCheck: {
       getMorningSchedule: {
         useQuery: vi.fn(() => ({
@@ -138,14 +142,13 @@ vi.mock('@/contexts/AppContext', () => ({
   AppProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
+// Use shared dashboard mocks
 vi.mock('@/hooks/useOfflineSync', () => ({
-  useOfflineSync: () => ({
-    isOnline: true,
-    isSyncing: false,
-    pendingCount: 0,
-    queueMutation: vi.fn(),
-    forceSync: vi.fn(),
-  }),
+  useOfflineSync: () => useOfflineSyncMock,
+}));
+
+vi.mock('@/hooks/useNotifications', () => ({
+  useNotifications: () => useNotificationsMock,
 }));
 
 describe('Task Edit Flow', () => {
@@ -293,6 +296,15 @@ describe('Task Edit Flow', () => {
     vi.mocked(trpc.task.create.useMutation).mockReturnValue({
       mutate: vi.fn(),
       isPending: false,
+    } as any);
+
+    vi.mocked(trpc.evidence.getByTaskId.useQuery).mockReturnValue({
+      data: [],
+      isLoading: false,
+      isError: false,
+      isSuccess: true,
+      error: null,
+      refetch: vi.fn(),
     } as any);
   });
 
@@ -607,6 +619,15 @@ describe('Task Edit Flow', () => {
         isError: false,
         refetch: vi.fn().mockResolvedValue({ data: mockTasksWithSkipped }),
       } as any);
+
+      vi.mocked(trpc.evidence.getByTaskId.useQuery).mockReturnValue({
+        data: [],
+        isLoading: false,
+        isError: false,
+        isSuccess: true,
+        error: null,
+        refetch: vi.fn(),
+      } as any);
     });
 
     it('hides skipped tasks by default on Today filter', async () => {
@@ -627,13 +648,17 @@ describe('Task Edit Flow', () => {
       render(<Dashboard />);
       await switchToTasksView();
 
+      // Open filter dropdown
+      const filterButton = screen.getByText(/Filters:/);
+      fireEvent.click(filterButton);
+
       await waitFor(() => {
-        const skippedFilters = screen.getAllByText('Skipped');
-        expect(skippedFilters.length).toBeGreaterThan(0);
+        const skippedLabel = screen.getByLabelText(/Skipped/);
+        expect(skippedLabel).toBeInTheDocument();
         
         // Should show count of 1 (one skipped task)
-        const countElements = screen.getAllByText('1');
-        expect(countElements.length).toBeGreaterThan(0);
+        const labelParent = skippedLabel.closest('label');
+        expect(labelParent?.textContent).toContain('1');
       });
     });
 
@@ -641,18 +666,28 @@ describe('Task Edit Flow', () => {
       render(<Dashboard />);
       await switchToTasksView();
 
+      // Open filter dropdown
+      const filterButton = screen.getByText(/Filters:/);
+      fireEvent.click(filterButton);
+
       await waitFor(() => {
-        const skippedFilters = screen.getAllByText('Skipped');
-        fireEvent.click(skippedFilters[0]);
+        expect(screen.getByLabelText(/Skipped/)).toBeInTheDocument();
       });
+
+      // Uncheck "All Tasks" first
+      const allTasksCheckbox = screen.getByLabelText(/All Tasks/);
+      fireEvent.click(allTasksCheckbox);
+
+      // Check "Skipped"
+      const skippedCheckbox = screen.getByLabelText(/Skipped/);
+      fireEvent.click(skippedCheckbox);
+
+      // Close dropdown
+      fireEvent.click(document.body);
 
       await waitFor(() => {
         // Now skipped task SHOULD be visible
         expect(screen.getAllByText('Test Task 3 Skipped').length).toBeGreaterThan(0);
-        
-        // Skipped filter should be active now
-        const skippedFilterButtons = screen.getAllByText('Skipped');
-        expect(skippedFilterButtons.length).toBeGreaterThan(0);
       });
     });
 
@@ -660,18 +695,33 @@ describe('Task Edit Flow', () => {
       render(<Dashboard />);
       await switchToTasksView();
 
+      // Open filter dropdown
+      const filterButton = screen.getByText(/Filters:/);
+      fireEvent.click(filterButton);
+
       await waitFor(() => {
-        const skippedFilters = screen.getAllByText('Skipped');
-        fireEvent.click(skippedFilters[0]);
+        expect(screen.getByLabelText(/Skipped/)).toBeInTheDocument();
       });
+
+      // Uncheck "All Tasks" first
+      const allTasksCheckbox = screen.getByLabelText(/All Tasks/);
+      fireEvent.click(allTasksCheckbox);
+
+      // Check "Skipped"
+      const skippedCheckbox = screen.getByLabelText(/Skipped/);
+      fireEvent.click(skippedCheckbox);
+
+      // Close dropdown
+      fireEvent.click(document.body);
 
       await waitFor(() => {
         const skippedTask = screen.getAllByText('Test Task 3 Skipped')[0];
         expect(skippedTask).toBeInTheDocument();
         
-        // Check for red text styling
-        expect(skippedTask.className).toContain('text-red-500');
-        expect(skippedTask.className).toContain('line-through');
+        // Check for red text styling - the h3 element should have the styling
+        const taskHeading = skippedTask.closest('h3') || skippedTask;
+        expect(taskHeading.className).toContain('text-red-500');
+        expect(taskHeading.className).toContain('line-through');
       });
     });
 
@@ -679,10 +729,24 @@ describe('Task Edit Flow', () => {
       render(<Dashboard />);
       await switchToTasksView();
 
+      // Open filter dropdown
+      const filterButton = screen.getByText(/Filters:/);
+      fireEvent.click(filterButton);
+
       await waitFor(() => {
-        const skippedFilters = screen.getAllByText('Skipped');
-        fireEvent.click(skippedFilters[0]);
+        expect(screen.getByLabelText(/Skipped/)).toBeInTheDocument();
       });
+
+      // Uncheck "All Tasks" first
+      const allTasksCheckbox = screen.getByLabelText(/All Tasks/);
+      fireEvent.click(allTasksCheckbox);
+
+      // Check "Skipped"
+      const skippedCheckbox = screen.getByLabelText(/Skipped/);
+      fireEvent.click(skippedCheckbox);
+
+      // Close dropdown
+      fireEvent.click(document.body);
 
       await waitFor(() => {
         // Verify skipped task is shown
@@ -691,6 +755,17 @@ describe('Task Edit Flow', () => {
         // Only Delete button should be present (no Edit, Complete, or Skip)
         const deleteButtons = screen.getAllByText(/Delete|🗑️/);
         expect(deleteButtons.length).toBeGreaterThan(0);
+        
+        // Verify Edit button is NOT present for skipped task
+        const editButtons = screen.queryAllByText('Edit');
+        // Edit buttons should only be for pending tasks, not skipped
+        editButtons.forEach(btn => {
+          // The skipped task should not have an Edit button
+          const taskCard = btn.closest('[class*="rounded-lg"]');
+          if (taskCard?.textContent?.includes('Test Task 3 Skipped')) {
+            throw new Error('Skipped task should not have Edit button');
+          }
+        });
       });
     });
 
@@ -698,13 +773,17 @@ describe('Task Edit Flow', () => {
       render(<Dashboard />);
       await switchToTasksView();
 
+      // Open filter dropdown
+      const filterButton = screen.getByText(/Filters:/);
+      fireEvent.click(filterButton);
+
       await waitFor(() => {
-        const allFilters = screen.getAllByText('All');
-        expect(allFilters.length).toBeGreaterThan(0);
+        const allTasksLabel = screen.getByLabelText(/All Tasks/);
+        expect(allTasksLabel).toBeInTheDocument();
         
         // Count should be 2 (pending + completed, excluding skipped)
-        const countElements = screen.getAllByText('2');
-        expect(countElements.length).toBeGreaterThan(0);
+        const labelParent = allTasksLabel.closest('label');
+        expect(labelParent?.textContent).toContain('2');
       });
     });
   });

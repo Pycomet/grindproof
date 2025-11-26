@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { createTestCaller } from "@/__tests__/utils/trpc-test-utils";
 import type { Context } from "@/server/trpc/context";
 
@@ -7,6 +7,13 @@ vi.mock("@/lib/supabase/server", () => ({
   supabaseAdmin: {
     from: vi.fn(),
   },
+}));
+
+// Mock push notification service to avoid VAPID configuration errors
+vi.mock("@/lib/notifications/push-service", () => ({
+  sendPushNotification: vi.fn(),
+  sendToUser: vi.fn(),
+  NotificationTemplates: {},
 }));
 
 describe("Integration Router", () => {
@@ -50,6 +57,10 @@ describe("Integration Router", () => {
       db: mockDb as any,
       user: mockUser,
     } as Partial<Context>);
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
   });
 
   describe("getAll", () => {
@@ -397,6 +408,14 @@ describe("Integration Router", () => {
             return { update: mockUpdate };
           }
         }
+        // Return a default mock for other tables
+        return {
+          select: vi.fn().mockReturnThis(),
+          insert: vi.fn().mockReturnThis(),
+          update: vi.fn().mockReturnThis(),
+          delete: vi.fn().mockReturnThis(),
+          eq: vi.fn().mockReturnThis(),
+        };
       });
 
       const result = await caller.integration.update(input);
@@ -457,6 +476,14 @@ describe("Integration Router", () => {
             return { update: mockUpdate };
           }
         }
+        // Return a default mock for other tables
+        return {
+          select: vi.fn().mockReturnThis(),
+          insert: vi.fn().mockReturnThis(),
+          update: vi.fn().mockReturnThis(),
+          delete: vi.fn().mockReturnThis(),
+          eq: vi.fn().mockReturnThis(),
+        };
       });
 
       const result = await caller.integration.update(input);
@@ -518,6 +545,14 @@ describe("Integration Router", () => {
             return { update: mockUpdate };
           }
         }
+        // Return a default mock for other tables
+        return {
+          select: vi.fn().mockReturnThis(),
+          insert: vi.fn().mockReturnThis(),
+          update: vi.fn().mockReturnThis(),
+          delete: vi.fn().mockReturnThis(),
+          eq: vi.fn().mockReturnThis(),
+        };
       });
 
       await expect(caller.integration.update(input)).rejects.toThrow("Failed to update integration");
@@ -544,6 +579,7 @@ describe("Integration Router", () => {
       const mockSelectFirst = vi.fn().mockReturnValue({ eq: mockEqIdFirst });
 
       // Second call: delete integration
+      // The chain is: delete().eq(id).eq(user_id) where the final eq() returns a promise
       const mockEqUserSecond = vi.fn().mockResolvedValue({ error: null });
       const mockEqIdSecond = vi.fn().mockReturnValue({ eq: mockEqUserSecond });
       const mockDelete = vi.fn().mockReturnValue({ eq: mockEqIdSecond });
@@ -558,6 +594,14 @@ describe("Integration Router", () => {
             return { delete: mockDelete };
           }
         }
+        // Return a default mock for other tables
+        return {
+          select: vi.fn().mockReturnThis(),
+          insert: vi.fn().mockReturnThis(),
+          update: vi.fn().mockReturnThis(),
+          delete: vi.fn().mockReturnThis(),
+          eq: vi.fn().mockReturnThis(),
+        };
       });
 
       const result = await caller.integration.delete({ id: "int-1" });
@@ -611,6 +655,14 @@ describe("Integration Router", () => {
             return { delete: mockDelete };
           }
         }
+        // Return a default mock for other tables
+        return {
+          select: vi.fn().mockReturnThis(),
+          insert: vi.fn().mockReturnThis(),
+          update: vi.fn().mockReturnThis(),
+          delete: vi.fn().mockReturnThis(),
+          eq: vi.fn().mockReturnThis(),
+        };
       });
 
       await expect(caller.integration.delete({ id: "int-1" })).rejects.toThrow(

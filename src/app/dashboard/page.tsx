@@ -1053,21 +1053,23 @@ function TodayView() {
               
               {/* Mobile Actions */}
               <div className="mt-2 flex gap-1.5 pt-2 border-t border-zinc-100 dark:border-zinc-800">
-                <button
-                  onClick={() => {
-                    console.log('Opening edit dialog with task:', task);
-                    setSelectedTask(task);
-                    // Check if task is recurring
-                    if (task.recurringEventId) {
-                      setIsRecurringEditOpen(true);
-                    } else {
-                      setIsEditOpen(true);
-                    }
-                  }}
-                  className="flex-1 rounded-md px-2 py-1.5 text-xs font-medium text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-950/20 transition-colors"
-                >
-                  Edit
-                </button>
+                {task.status === 'pending' && (
+                  <button
+                    onClick={() => {
+                      console.log('Opening edit dialog with task:', task);
+                      setSelectedTask(task);
+                      // Check if task is recurring
+                      if (task.recurringEventId) {
+                        setIsRecurringEditOpen(true);
+                      } else {
+                        setIsEditOpen(true);
+                      }
+                    }}
+                    className="flex-1 rounded-md px-2 py-1.5 text-xs font-medium text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-950/20 transition-colors"
+                  >
+                    Edit
+                  </button>
+                )}
                 {task.status !== 'completed' && task.status !== 'skipped' && (
                   <button
                     onClick={() => {
@@ -1218,21 +1220,23 @@ function TodayView() {
 
               {/* Desktop Actions */}
               <div className="flex gap-2">
-                <button
-                  onClick={() => {
-                    setSelectedTask(task);
-                    // Check if task is recurring
-                    if (task.recurringEventId) {
-                      setIsRecurringEditOpen(true);
-                    } else {
-                      setIsEditOpen(true);
-                    }
-                  }}
-                  className="rounded-md px-3 py-1.5 text-xs font-medium text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-950/20 transition-colors"
-                  title="Edit task"
-                >
-                  Edit
-                </button>
+                {task.status === 'pending' && (
+                  <button
+                    onClick={() => {
+                      setSelectedTask(task);
+                      // Check if task is recurring
+                      if (task.recurringEventId) {
+                        setIsRecurringEditOpen(true);
+                      } else {
+                        setIsEditOpen(true);
+                      }
+                    }}
+                    className="rounded-md px-3 py-1.5 text-xs font-medium text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-950/20 transition-colors"
+                    title="Edit task"
+                  >
+                    Edit
+                  </button>
+                )}
                 {task.status !== 'completed' && task.status !== 'skipped' && (
                   <button
                     onClick={() => {
