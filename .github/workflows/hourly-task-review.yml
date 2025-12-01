@@ -1,0 +1,17 @@
+name: Hourly Task Review
+
+on:
+  schedule:
+    # Run every hour on the hour
+    - cron: '0 * * * *'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  send-notifications:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send hourly task review notifications
+        run: |
+          curl -X POST "${{ secrets.VERCEL_DEPLOYMENT_URL }}/api/notifications/send-scheduled?type=hourly" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json"
