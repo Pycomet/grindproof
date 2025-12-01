@@ -1,0 +1,18 @@
+name: Morning Notifications
+
+on:
+  schedule:
+    # Run every hour to catch all timezones
+    # Users' morning times are checked in their local timezone
+    - cron: '0 * * * *'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  send-notifications:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send morning notifications
+        run: |
+          curl -X POST "${{ secrets.VERCEL_DEPLOYMENT_URL }}/api/notifications/send-scheduled?type=morning" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json"

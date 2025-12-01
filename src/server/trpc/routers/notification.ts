@@ -93,6 +93,9 @@ export const notificationRouter = router({
         morningCheckTime: NOTIFICATION_CONFIG.DEFAULT_TIMES.MORNING,
         eveningCheckEnabled: true,
         eveningCheckTime: NOTIFICATION_CONFIG.DEFAULT_TIMES.EVENING,
+        hourlyReviewEnabled: false,
+        hourlyReviewStartTime: '09:00',
+        hourlyReviewEndTime: '21:00',
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       };
     }
@@ -102,6 +105,9 @@ export const notificationRouter = router({
       morningCheckTime: data.morning_check_time,
       eveningCheckEnabled: data.evening_check_enabled,
       eveningCheckTime: data.evening_check_time,
+      hourlyReviewEnabled: data.hourly_review_enabled,
+      hourlyReviewStartTime: data.hourly_review_start_time,
+      hourlyReviewEndTime: data.hourly_review_end_time,
       timezone: data.timezone,
     };
   }),
@@ -116,6 +122,9 @@ export const notificationRouter = router({
         morningCheckTime: z.string().regex(/^\d{2}:\d{2}$/).optional(),
         eveningCheckEnabled: z.boolean().optional(),
         eveningCheckTime: z.string().regex(/^\d{2}:\d{2}$/).optional(),
+        hourlyReviewEnabled: z.boolean().optional(),
+        hourlyReviewStartTime: z.string().regex(/^\d{2}:\d{2}$/).optional(),
+        hourlyReviewEndTime: z.string().regex(/^\d{2}:\d{2}$/).optional(),
         timezone: z.string().optional(),
       })
     )
@@ -137,6 +146,15 @@ export const notificationRouter = router({
       }
       if (input.eveningCheckTime !== undefined) {
         updateData.evening_check_time = input.eveningCheckTime;
+      }
+      if (input.hourlyReviewEnabled !== undefined) {
+        updateData.hourly_review_enabled = input.hourlyReviewEnabled;
+      }
+      if (input.hourlyReviewStartTime !== undefined) {
+        updateData.hourly_review_start_time = input.hourlyReviewStartTime;
+      }
+      if (input.hourlyReviewEndTime !== undefined) {
+        updateData.hourly_review_end_time = input.hourlyReviewEndTime;
       }
       if (input.timezone !== undefined) {
         updateData.timezone = input.timezone;
@@ -161,6 +179,9 @@ export const notificationRouter = router({
           morningCheckTime: data.morning_check_time,
           eveningCheckEnabled: data.evening_check_enabled,
           eveningCheckTime: data.evening_check_time,
+          hourlyReviewEnabled: data.hourly_review_enabled,
+          hourlyReviewStartTime: data.hourly_review_start_time,
+          hourlyReviewEndTime: data.hourly_review_end_time,
           timezone: data.timezone,
         },
       };
@@ -191,7 +212,7 @@ export const notificationRouter = router({
   sendTest: protectedProcedure
     .input(
       z.object({
-        type: z.enum(['test', 'morning', 'evening']).default('test'),
+        type: z.enum(['test', 'morning', 'evening', 'hourly']).default('test'),
       }).optional()
     )
     .mutation(async ({ ctx, input }) => {
@@ -221,6 +242,9 @@ export const notificationRouter = router({
         break;
       case 'evening':
         notificationPayload = NotificationTemplates.eveningCheck();
+        break;
+      case 'hourly':
+        notificationPayload = NotificationTemplates.hourlyTaskReview('You have 3 pending tasks today');
         break;
       default:
         notificationPayload = NotificationTemplates.test();

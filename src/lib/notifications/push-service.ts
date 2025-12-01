@@ -132,6 +132,16 @@ export const NotificationTemplates = {
     },
   }),
 
+  hourlyTaskReview: (summary: string): NotificationPayload => ({
+    title: '📋 Task Update',
+    body: summary,
+    tag: 'hourly-review',
+    data: {
+      url: '/dashboard?view=today',
+      type: 'hourly-review',
+    },
+  }),
+
   test: (): NotificationPayload => ({
     title: '✅ Notifications Working!',
     body: 'You will receive reminders for your morning and evening checks.',
