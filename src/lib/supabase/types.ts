@@ -293,6 +293,9 @@ export type Database = {
           morning_check_time: string;
           evening_check_enabled: boolean;
           evening_check_time: string;
+          hourly_review_enabled: boolean;
+          hourly_review_start_time: string;
+          hourly_review_end_time: string;
           timezone: string;
           created_at: string;
           updated_at: string;
@@ -304,6 +307,9 @@ export type Database = {
           morning_check_time?: string;
           evening_check_enabled?: boolean;
           evening_check_time?: string;
+          hourly_review_enabled?: boolean;
+          hourly_review_start_time?: string;
+          hourly_review_end_time?: string;
           timezone?: string;
           created_at?: string;
           updated_at?: string;
@@ -315,6 +321,9 @@ export type Database = {
           morning_check_time?: string;
           evening_check_enabled?: boolean;
           evening_check_time?: string;
+          hourly_review_enabled?: boolean;
+          hourly_review_start_time?: string;
+          hourly_review_end_time?: string;
           timezone?: string;
           created_at?: string;
           updated_at?: string;
