@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChatInterface } from '@/components/ChatInterface';
 import { CreateTaskDialog } from '@/components/TaskDialogs';
+import { useFeedbackContext } from '@/contexts/FeedbackContext';
 
 interface ChatWidgetProps {
   goals?: Array<{ id: string; title: string }>;
@@ -22,7 +23,9 @@ export function ChatWidget({
 }: ChatWidgetProps) {
   const [widgetState, setWidgetState] = useState<WidgetState>('collapsed');
   const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
+  const [chatMessageCount, setChatMessageCount] = useState(0);
   const widgetRef = useRef<HTMLDivElement>(null);
+  const { triggerFeedback } = useFeedbackContext();
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -71,6 +74,12 @@ export function ChatWidget({
 
   const handleCloseChat = () => {
     setWidgetState('collapsed');
+    
+    // Trigger feedback after closing chat (if user had meaningful engagement)
+    if (chatMessageCount > 0) {
+      triggerFeedback('chat', chatMessageCount);
+      setChatMessageCount(0); // Reset count
+    }
   };
 
   const handleTaskDialogClose = (open: boolean) => {
@@ -131,7 +140,10 @@ export function ChatWidget({
 
                 {/* Chat Content */}
                 <div className="flex-1 overflow-hidden">
-                  <ChatInterface compact={true} />
+                  <ChatInterface 
+                    compact={true}
+                    onMessageSent={() => setChatMessageCount((prev) => prev + 1)}
+                  />
                 </div>
               </motion.div>
             </>

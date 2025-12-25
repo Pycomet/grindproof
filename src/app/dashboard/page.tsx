@@ -9,6 +9,7 @@ import { MobileSwipeView } from '@/components/MobileSwipeView';
 import { Logo } from '@/components/Logo';
 import { trpc } from '@/lib/trpc/client';
 import { useApp } from '@/contexts/AppContext';
+import { useFeedbackContext } from '@/contexts/FeedbackContext';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -424,6 +425,7 @@ function FilterDropdown({ activeFilters, onFilterChange, counts }: FilterDropdow
 
 // Today View Component
 function TodayView() {
+  const { incrementTaskCount, triggerFeedback } = useFeedbackContext();
   const [activeFilters, setActiveFilters] = useState<Set<string>>(new Set(['all']));
   const [isSyncing, setIsSyncing] = useState(false);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -524,6 +526,10 @@ function TodayView() {
       await refreshTasks();
       setIsCompleteOpen(false);
       setSelectedTask(null);
+      
+      // Increment task count and trigger milestone feedback if applicable
+      incrementTaskCount();
+      triggerFeedback('taskMilestone');
     },
   });
 

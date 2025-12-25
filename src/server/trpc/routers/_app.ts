@@ -11,6 +11,7 @@ import { accountabilityScoreRouter } from "./accountabilityScore";
 import { uploadRouter } from "./upload";
 import { notificationRouter } from "./notification";
 import { dailyCheckRouter } from "./dailyCheck";
+import { feedbackRouter } from "./feedback";
 
 /**
  * Main application router
@@ -29,6 +30,7 @@ export const appRouter = router({
   upload: uploadRouter,
   notification: notificationRouter,
   dailyCheck: dailyCheckRouter,
+  feedback: feedbackRouter,
 });
 
 export type AppRouter = typeof appRouter;

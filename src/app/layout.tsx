@@ -3,8 +3,10 @@ import { Geist, Geist_Mono, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 import { TRPCProvider } from "@/lib/trpc/provider";
 import { AppProvider } from "@/contexts/AppContext";
+import { FeedbackProvider } from "@/contexts/FeedbackContext";
 import { InstallPWA } from "@/components/InstallPWA";
 import { UpdateNotification } from "@/components/UpdateNotification";
+import { FeedbackPopup } from "@/components/FeedbackPopup";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -77,9 +79,12 @@ export default function RootLayout({
       >
         <TRPCProvider>
           <AppProvider>
-            {children}
-            <InstallPWA />
-            <UpdateNotification />
+            <FeedbackProvider>
+              {children}
+              <InstallPWA />
+              <UpdateNotification />
+              <FeedbackPopup />
+            </FeedbackProvider>
           </AppProvider>
         </TRPCProvider>
       </body>

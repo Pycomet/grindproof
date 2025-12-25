@@ -382,6 +382,50 @@ export type Database = {
           }
         ];
       };
+      user_feedback: {
+        Row: {
+          id: string;
+          user_id: string;
+          trigger_type: "chat" | "eveningCheck" | "taskMilestone";
+          feedback_type: "star" | "emoji" | "thumbs";
+          rating: number | null;
+          emoji: string | null;
+          thumb: "up" | "down" | null;
+          comment: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          trigger_type: "chat" | "eveningCheck" | "taskMilestone";
+          feedback_type: "star" | "emoji" | "thumbs";
+          rating?: number | null;
+          emoji?: string | null;
+          thumb?: "up" | "down" | null;
+          comment?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          trigger_type?: "chat" | "eveningCheck" | "taskMilestone";
+          feedback_type?: "star" | "emoji" | "thumbs";
+          rating?: number | null;
+          emoji?: string | null;
+          thumb?: "up" | "down" | null;
+          comment?: string | null;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "user_feedback_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
     };
     Views: {
       [_ in never]: never;

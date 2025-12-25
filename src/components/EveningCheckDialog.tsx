@@ -9,6 +9,7 @@ import { CheckCircle2, XCircle, Clock, Loader2, Upload } from 'lucide-react';
 import { trpc } from '@/lib/trpc/client';
 import { FileUpload } from '@/components/FileUpload';
 import { useApp } from '@/contexts/AppContext';
+import { useFeedbackContext } from '@/contexts/FeedbackContext';
 import { STORAGE_BUCKETS } from '@/lib/config';
 
 interface EveningCheckDialogProps {
@@ -19,6 +20,7 @@ interface EveningCheckDialogProps {
 
 export function EveningCheckDialog({ open, onClose, onComplete }: EveningCheckDialogProps) {
   const { user } = useApp();
+  const { triggerFeedback } = useFeedbackContext();
   const [reflections, setReflections] = useState<Record<string, string>>({});
   const [evidenceUrls, setEvidenceUrls] = useState<Record<string, string[]>>({});
   const [step, setStep] = useState<'overview' | 'reflect' | 'review'>('overview');
@@ -31,6 +33,9 @@ export function EveningCheckDialog({ open, onClose, onComplete }: EveningCheckDi
     onSuccess: () => {
       onComplete();
       onClose();
+      
+      // Trigger feedback after successful evening check-in
+      triggerFeedback('eveningCheck');
     },
   });
 

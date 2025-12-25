@@ -19,6 +19,7 @@ interface ChatInterfaceProps {
   autoSubmit?: boolean;
   compact?: boolean;
   contextMessage?: string;
+  onMessageSent?: () => void;
 }
 
 export function ChatInterface({ 
@@ -28,6 +29,7 @@ export function ChatInterface({
   autoSubmit = false,
   compact = false,
   contextMessage,
+  onMessageSent,
 }: ChatInterfaceProps = {}) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState(initialPrompt || '');
@@ -82,6 +84,9 @@ export function ChatInterface({
     setInput('');
     setIsLoading(true);
     setError(null);
+    
+    // Notify parent that a message was sent
+    onMessageSent?.();
 
     // Create a placeholder for the AI message
     const aiMessageId = `assistant-${Date.now()}-${Math.random()}`;
