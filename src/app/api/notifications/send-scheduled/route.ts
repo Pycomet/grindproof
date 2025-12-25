@@ -3,10 +3,6 @@ import { createClient } from '@supabase/supabase-js';
 import { sendToUser, NotificationTemplates, PushSubscription } from '@/lib/notifications/push-service';
 import { env } from '@/lib/env';
 
-// This endpoint should be called by a cron job
-// For Vercel: Configure in vercel.json
-// For other platforms: Use external cron service
-
 export async function POST(request: NextRequest) {
   try {
     // Verify the request is authorized (cron secret)

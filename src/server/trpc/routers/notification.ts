@@ -93,7 +93,7 @@ export const notificationRouter = router({
         morningCheckTime: NOTIFICATION_CONFIG.DEFAULT_TIMES.MORNING,
         eveningCheckEnabled: true,
         eveningCheckTime: NOTIFICATION_CONFIG.DEFAULT_TIMES.EVENING,
-        hourlyReviewEnabled: false,
+        hourlyReviewEnabled: true,
         hourlyReviewStartTime: '09:00',
         hourlyReviewEndTime: '21:00',
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,

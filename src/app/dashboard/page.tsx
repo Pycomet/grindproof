@@ -3871,22 +3871,35 @@ function Integrations() {
     },
   });
   
-  const [notifMorningEnabled, setNotifMorningEnabled] = useState(true);
-  const [notifMorningTime, setNotifMorningTime] = useState('09:00');
-  const [notifEveningEnabled, setNotifEveningEnabled] = useState(true);
-  const [notifEveningTime, setNotifEveningTime] = useState('18:00');
+
   const [userTimezone, setUserTimezone] = useState('');
-  
-  // Initialize notification settings
+
+  const[notificationConfig, setNotificationConfig] = useState({
+    morningCheckEnabled: true,
+    morningCheckTime: '09:00',
+    eveningCheckEnabled: true,
+    eveningCheckTime: '18:00',
+    hourlyReviewEnabled: true,
+    hourlyReviewStartTime: '09:00',
+    hourlyReviewEndTime: '21:00',
+    userTimezone: ""
+  });
+
   useEffect(() => {
     if (notificationSettings) {
-      setNotifMorningEnabled(notificationSettings.morningCheckEnabled);
-      setNotifMorningTime(notificationSettings.morningCheckTime);
-      setNotifEveningEnabled(notificationSettings.eveningCheckEnabled);
-      setNotifEveningTime(notificationSettings.eveningCheckTime);
-      setUserTimezone(notificationSettings.timezone);
+      setNotificationConfig({
+        morningCheckEnabled: notificationSettings?.morningCheckEnabled ?? true,
+        morningCheckTime: notificationSettings?.morningCheckTime ?? '09:00',
+        eveningCheckEnabled: notificationSettings?.eveningCheckEnabled ?? true,
+        eveningCheckTime: notificationSettings?.eveningCheckTime ?? '18:00',
+        hourlyReviewEnabled: notificationSettings?.hourlyReviewEnabled ?? true,
+        hourlyReviewStartTime: notificationSettings?.hourlyReviewStartTime ?? '09:00',
+        hourlyReviewEndTime: notificationSettings?.hourlyReviewEndTime ?? '21:00',
+        userTimezone: notificationSettings?.timezone ?? ''
+      });
     }
   }, [notificationSettings]);
+
   
   // Detect timezone on mount
   useEffect(() => {
@@ -4057,11 +4070,14 @@ function Integrations() {
   const handleSaveNotificationSettings = async () => {
     try {
       await updateSettings.mutateAsync({
-        morningCheckEnabled: notifMorningEnabled,
-        morningCheckTime: notifMorningTime,
-        eveningCheckEnabled: notifEveningEnabled,
-        eveningCheckTime: notifEveningTime,
-        timezone: userTimezone,
+        morningCheckEnabled: notificationConfig.morningCheckEnabled,
+        morningCheckTime: notificationConfig.morningCheckTime,
+        eveningCheckEnabled: notificationConfig.eveningCheckEnabled,
+        eveningCheckTime: notificationConfig.eveningCheckTime,
+        hourlyReviewEnabled: notificationConfig.hourlyReviewEnabled,
+        hourlyReviewStartTime: notificationConfig.hourlyReviewStartTime,
+        hourlyReviewEndTime: notificationConfig.hourlyReviewEndTime,
+        timezone: notificationConfig.userTimezone
       });
       alert('Notification settings saved!');
     } catch (error) {
@@ -4421,8 +4437,8 @@ function Integrations() {
                       <div className="flex items-center gap-3">
                         <input
                           type="checkbox"
-                          checked={notifMorningEnabled}
-                          onChange={(e) => setNotifMorningEnabled(e.target.checked)}
+                          checked={notificationConfig.morningCheckEnabled}
+                          onChange={(e) => setNotificationConfig({ ...notificationConfig, morningCheckEnabled: e.target.checked })}
                           className="w-4 h-4 rounded border-zinc-300 dark:border-zinc-700"
                         />
                         <div>
@@ -4438,9 +4454,9 @@ function Integrations() {
                     <div className="flex items-center gap-2">
                       <input
                         type="time"
-                        value={notifMorningTime}
-                        onChange={(e) => setNotifMorningTime(e.target.value)}
-                        disabled={!notifMorningEnabled}
+                        value={notificationConfig.morningCheckTime}
+                        onChange={(e) => setNotificationConfig({ ...notificationConfig, morningCheckTime: e.target.value })}
+                        disabled={!notificationConfig.morningCheckEnabled}
                         className="px-3 py-2 text-sm border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-50 disabled:opacity-50 disabled:cursor-not-allowed"
                       />
                       <button
@@ -4460,8 +4476,8 @@ function Integrations() {
                       <div className="flex items-center gap-3">
                         <input
                           type="checkbox"
-                          checked={notifEveningEnabled}
-                          onChange={(e) => setNotifEveningEnabled(e.target.checked)}
+                          checked={notificationConfig.eveningCheckEnabled}
+                          onChange={(e) => setNotificationConfig({ ...notificationConfig, eveningCheckEnabled: e.target.checked })}
                           className="w-4 h-4 rounded border-zinc-300 dark:border-zinc-700"
                         />
                         <div>
@@ -4477,9 +4493,9 @@ function Integrations() {
                     <div className="flex items-center gap-2">
                       <input
                         type="time"
-                        value={notifEveningTime}
-                        onChange={(e) => setNotifEveningTime(e.target.value)}
-                        disabled={!notifEveningEnabled}
+                        value={notificationConfig.eveningCheckTime}
+                        onChange={(e) => setNotificationConfig({ ...notificationConfig, eveningCheckTime: e.target.value })}
+                        disabled={!notificationConfig.eveningCheckEnabled}
                         className="px-3 py-2 text-sm border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-50 disabled:opacity-50 disabled:cursor-not-allowed"
                       />
                       <button
@@ -4490,6 +4506,47 @@ function Integrations() {
                       >
                         Test
                       </button>
+                    </div>
+                  </div>
+
+                  {/* Hourly Review */}
+                  <div className="flex items-center justify-between p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/50">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="checkbox"
+                          checked={notificationConfig.hourlyReviewEnabled}
+                          onChange={(e) => setNotificationConfig({ ...notificationConfig, hourlyReviewEnabled: e.target.checked })}
+                          className="w-4 h-4 rounded border-zinc-300 dark:border-zinc-700"
+                        />
+                        <div>
+                          <p className="font-medium text-zinc-900 dark:text-zinc-50">
+                            ⏰ Hourly Task Review
+                          </p>
+                          <p className="text-xs text-zinc-600 dark:text-zinc-400">
+                            Periodic task status updates throughout the day
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="time"
+                        value={notificationConfig.hourlyReviewStartTime}
+                        onChange={(e) => setNotificationConfig({ ...notificationConfig, hourlyReviewStartTime: e.target.value })}
+                        disabled={!notificationConfig.hourlyReviewEnabled}
+                        className="px-3 py-2 text-sm border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="Start time"
+                      />
+                      <span className="text-zinc-500 dark:text-zinc-400">-</span>
+                      <input
+                        type="time"
+                        value={notificationConfig.hourlyReviewEndTime}
+                        onChange={(e) => setNotificationConfig({ ...notificationConfig, hourlyReviewEndTime: e.target.value })}
+                        disabled={!notificationConfig.hourlyReviewEnabled}
+                        className="px-3 py-2 text-sm border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="End time"
+                      />
                     </div>
                   </div>
 
