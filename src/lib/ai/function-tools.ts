@@ -39,6 +39,7 @@ export interface DeleteTaskParams {
 }
 
 export interface SearchTasksParams {
+  goalId?: string;
   query: string;
   status?: 'pending' | 'completed' | 'skipped' | 'all';
   dateFilter?: 'today' | 'tomorrow' | 'this_week' | 'overdue';
@@ -225,26 +226,33 @@ Examples:
 
 export const searchTasksFunction: FunctionDeclaration = {
   name: 'search_tasks',
-  description: `Search for tasks by keywords, status, or date filters.
+  description: `Search for tasks by goals, keywords, status, or date filters.
 
 Use this when the user wants to:
-- Find specific tasks
+- Find specific tasks related to a goal or not related to a goal
 - See tasks for a time period
 - View tasks by status
 - Check their schedule
 
 Examples:
-- "show me my tasks today"
-- "what do I have tomorrow"
+- "show me my tasks related to goal A today"
+- "show me my tasks not related to goal A today"
+- "show me my tasks related to goal B tomorrow"
+- "show me my tasks not related to goal B tomorrow"
 - "find workout tasks"
 - "show overdue tasks"`,
 
   parameters: {
     type: SchemaType.OBJECT,
     properties: {
+      goalId: {
+        type: SchemaType.STRING,
+        description: 'Goal ID to filter tasks by. Can be empty string for broad searches.',
+        nullable: true,
+      },
       query: {
         type: SchemaType.STRING,
-        description: 'Search keywords. Can be empty string for broad searches.',
+        description: 'Search keywords. Can be empty string for broad searches. Only used if goalId is not provided.',
       },
       status: {
         type: SchemaType.STRING,
