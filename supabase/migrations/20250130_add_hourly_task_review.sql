@@ -2,7 +2,7 @@
 -- This allows users to receive periodic task status updates throughout the day
 
 ALTER TABLE notification_settings
-ADD COLUMN IF NOT EXISTS hourly_review_enabled BOOLEAN NOT NULL DEFAULT false,
+ADD COLUMN IF NOT EXISTS hourly_review_enabled BOOLEAN NOT NULL DEFAULT true,
 ADD COLUMN IF NOT EXISTS hourly_review_start_time TEXT NOT NULL DEFAULT '09:00',
 ADD COLUMN IF NOT EXISTS hourly_review_end_time TEXT NOT NULL DEFAULT '21:00';
 
