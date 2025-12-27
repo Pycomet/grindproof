@@ -13,6 +13,9 @@ jobs:
     steps:
       - name: Send evening notifications
         run: |
-          curl -X POST "${{ secrets.VERCEL_DEPLOYMENT_URL }}/api/notifications/send-scheduled?type=evening" \
+          response=$(curl -X POST "${{ secrets.VERCEL_DEPLOYMENT_URL }}/api/notifications/send-scheduled?type=evening" \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            -H "Content-Type: application/json"
+            -H "Content-Type: application/json" \
+            -w "\nHTTP Status: %{http_code}" \
+            -s)
+          echo "$response"

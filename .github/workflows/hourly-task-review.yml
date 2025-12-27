@@ -12,6 +12,9 @@ jobs:
     steps:
       - name: Send hourly task review notifications
         run: |
-          curl -X POST "${{ secrets.VERCEL_DEPLOYMENT_URL }}/api/notifications/send-scheduled?type=hourly" \
+          response=$(curl -X POST "${{ secrets.VERCEL_DEPLOYMENT_URL }}/api/notifications/send-scheduled?type=hourly" \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            -H "Content-Type: application/json"
+            -H "Content-Type: application/json" \
+            -w "\nHTTP Status: %{http_code}" \
+            -s)
+          echo "$response"
