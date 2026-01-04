@@ -27,7 +27,7 @@ export function FeedbackPopup() {
   const [feedbackType, setFeedbackType] = useState<FeedbackType>('star');
   const [rating, setRating] = useState(0);
   const [emoji, setEmoji] = useState('');
-  const [thumb, setThumb] = useState<'up' | 'down' | ''>('');
+  const [thumb, setThumb] = useState<'up' | 'down' | undefined>(undefined);
   const [comment, setComment] = useState('');
   const [submitted, setSubmitted] = useState(false);
 
@@ -65,7 +65,7 @@ export function FeedbackPopup() {
     setFeedbackType('star');
     setRating(0);
     setEmoji('');
-    setThumb('');
+    setThumb(undefined);
     setComment('');
     setSubmitted(false);
   };
