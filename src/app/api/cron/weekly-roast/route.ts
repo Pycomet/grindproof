@@ -6,6 +6,7 @@ import { z } from "zod";
 import { env } from "@/lib/env";
 import { WEEKLY_ROAST_PROMPT } from "@/lib/prompts/weekly-roast-prompt";
 import { sendWeeklyRoastEmail } from "@/lib/notifications/email-service";
+import { verifyCronSecret } from "@/lib/cron-auth";
 
 const roastSchema = z.object({
   insights: z.array(
@@ -20,10 +21,8 @@ const roastSchema = z.object({
 });
 
 export async function GET(request: NextRequest) {
-  const authHeader = request.headers.get("authorization");
-  if (authHeader !== `Bearer ${env.CRON_SECRET}`) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const authError = verifyCronSecret(request.headers.get("authorization"));
+  if (authError) return authError;
 
   const supabase = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
     auth: { autoRefreshToken: false, persistSession: false },
