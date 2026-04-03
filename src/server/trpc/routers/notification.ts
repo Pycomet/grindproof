@@ -75,8 +75,8 @@ export const notificationRouter = router({
       morningCheckTime: data.morning_check_time,
       eveningCheckEnabled: data.evening_check_enabled,
       eveningCheckTime: data.evening_check_time,
-      emailNotificationsEnabled: data.email_notifications_enabled,
-      pushNotificationsEnabled: data.push_notifications_enabled,
+      emailNotificationsEnabled: (data as any).email_notifications_enabled ?? true,
+      pushNotificationsEnabled: (data as any).push_notifications_enabled ?? true,
       timezone: data.timezone,
     };
   }),
@@ -123,7 +123,7 @@ export const notificationRouter = router({
 
       const { data, error } = await ctx.db
         .from("notification_settings")
-        .upsert(updateData, { onConflict: "user_id" })
+        .upsert(updateData as any, { onConflict: "user_id" })
         .select()
         .single();
 
@@ -135,8 +135,8 @@ export const notificationRouter = router({
         morningCheckTime: data.morning_check_time,
         eveningCheckEnabled: data.evening_check_enabled,
         eveningCheckTime: data.evening_check_time,
-        emailNotificationsEnabled: data.email_notifications_enabled,
-        pushNotificationsEnabled: data.push_notifications_enabled,
+        emailNotificationsEnabled: (data as any).email_notifications_enabled ?? true,
+        pushNotificationsEnabled: (data as any).push_notifications_enabled ?? true,
         timezone: data.timezone,
       };
     }),

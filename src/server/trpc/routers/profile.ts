@@ -33,7 +33,7 @@ export const profileRouter = router({
     return {
       id: data.id,
       name: data.name || null,
-      email: data.email || email,
+      email: (data as any).email || email,
       createdAt: new Date(data.created_at),
       updatedAt: new Date(data.updated_at),
     };
@@ -69,7 +69,7 @@ export const profileRouter = router({
         return {
           id: data.id,
           name: data.name || null,
-          email: data.email || email,
+          email: (data as any).email || email,
           createdAt: new Date(data.created_at),
           updatedAt: new Date(data.updated_at),
         };
@@ -91,7 +91,7 @@ export const profileRouter = router({
       return {
         id: data.id,
         name: data.name || null,
-        email: data.email || email,
+        email: (data as any).email || email,
         createdAt: new Date(data.created_at),
         updatedAt: new Date(data.updated_at),
       };

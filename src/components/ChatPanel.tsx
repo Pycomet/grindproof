@@ -1,18 +1,22 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { useChat } from "ai/react";
+import { useChat } from "@ai-sdk/react";
+import { DefaultChatTransport } from "ai";
 import { useAuth } from "@/contexts/AuthContext";
 import { AnimatePresence, motion } from "framer-motion";
+
+const chatTransport = new DefaultChatTransport({ api: "/api/ai/chat" });
 
 export function ChatPanel() {
   const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
+  const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const { messages, input, setInput, sendMessage, status } =
+  const { messages, sendMessage, status } =
     useChat({
-      api: "/api/ai/chat",
+      transport: chatTransport,
     });
 
   const isLoading = status === "streaming" || status === "submitted";

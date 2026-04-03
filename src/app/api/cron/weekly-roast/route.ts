@@ -88,7 +88,7 @@ Reflections on skipped tasks: ${reflections.length > 0 ? JSON.stringify(reflecti
       `.trim();
 
       // Generate roast with AI
-      const { object: roast } = await generateText({
+      const { output: roast } = await generateText({
         model: google(env.AI_MODEL),
         system: WEEKLY_ROAST_PROMPT,
         prompt: weekData,
