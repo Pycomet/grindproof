@@ -1,22 +1,17 @@
-// @ts-nocheck
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { tool } from "ai";
 import { z } from "zod";
-import { createClient } from "@supabase/supabase-js";
-import { env } from "@/lib/env";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/lib/supabase/types";
 
-const supabaseAdmin = createClient(
-  env.NEXT_PUBLIC_SUPABASE_URL,
-  env.SUPABASE_SERVICE_ROLE_KEY,
-  { auth: { autoRefreshToken: false, persistSession: false } }
-);
-
-export function createGrindproofTools(userId: string) {
+export function createGrindproofTools(
+  userId: string,
+  supabase: SupabaseClient<Database>
+) {
   return {
     create_task: tool({
       description:
         "Create a new task for the user. Use when they mention wanting to do something, add a task, or plan an activity.",
-      parameters: z.object({
+      inputSchema: z.object({
         title: z.string().describe("Task title"),
         description: z.string().optional().describe("Task description"),
         dueDate: z
@@ -32,32 +27,32 @@ export function createGrindproofTools(userId: string) {
           .optional()
           .describe("Tags for categorization"),
       }),
-      execute: async ({ title, description, dueDate, priority, tags }: any) => {
-        const { data, error } = await supabaseAdmin
+      execute: async ({ title, description, dueDate, priority, tags }) => {
+        const { data, error } = await supabase
           .from("tasks")
           .insert({
             user_id: userId,
             title,
-            description: description || null,
+            description: description ?? null,
             due_date: dueDate
               ? new Date(dueDate).toISOString()
               : new Date().toISOString(),
             priority,
-            tags: tags || null,
+            tags: tags ?? null,
             status: "pending",
           })
           .select()
           .single();
 
-        if (error) return { success: false, error: error.message };
-        return { success: true, task: { id: data.id, title: data.title } };
+        if (error) return { success: false as const, error: error.message };
+        return { success: true as const, task: { id: data.id, title: data.title } };
       },
     }),
 
     update_task: tool({
       description:
         "Update an existing task. Search by keywords in the title to find the task, then apply updates.",
-      parameters: z.object({
+      inputSchema: z.object({
         searchQuery: z
           .string()
           .describe("Keywords to find the task by title"),
@@ -68,16 +63,20 @@ export function createGrindproofTools(userId: string) {
           dueDate: z.string().optional().describe("YYYY-MM-DD format"),
         }),
       }),
-      execute: async ({ searchQuery, updates }: any) => {
-        const { data: tasks } = await supabaseAdmin
+      execute: async ({ searchQuery, updates }) => {
+        const { data: tasks } = await supabase
           .from("tasks")
           .select("*")
           .eq("user_id", userId)
           .ilike("title", `%${searchQuery}%`)
           .limit(1);
 
-        if (!tasks || tasks.length === 0)
-          return { success: false, error: `No task found matching "${searchQuery}"` };
+        if (!tasks || tasks.length === 0) {
+          return {
+            success: false as const,
+            error: `No task found matching "${searchQuery}"`,
+          };
+        }
 
         const task = tasks[0];
         const updateData: Record<string, unknown> = {};
@@ -87,49 +86,61 @@ export function createGrindproofTools(userId: string) {
         if (updates.dueDate)
           updateData.due_date = new Date(updates.dueDate).toISOString();
 
-        const { error } = await supabaseAdmin
+        const { error } = await supabase
           .from("tasks")
           .update(updateData)
-          .eq("id", task.id);
+          .eq("id", task.id)
+          .eq("user_id", userId);
 
-        if (error) return { success: false, error: error.message };
-        return { success: true, task: { id: task.id, title: task.title, ...updates } };
+        if (error) return { success: false as const, error: error.message };
+        return {
+          success: true as const,
+          task: { id: task.id, title: task.title, ...updates },
+        };
       },
     }),
 
     delete_task: tool({
       description: "Delete a task by searching for it by title keywords.",
-      parameters: z.object({
+      inputSchema: z.object({
         searchQuery: z
           .string()
           .describe("Keywords to find the task to delete"),
       }),
-      execute: async ({ searchQuery }: any) => {
-        const { data: tasks } = await supabaseAdmin
+      execute: async ({ searchQuery }) => {
+        const { data: tasks } = await supabase
           .from("tasks")
           .select("*")
           .eq("user_id", userId)
           .ilike("title", `%${searchQuery}%`)
           .limit(1);
 
-        if (!tasks || tasks.length === 0)
-          return { success: false, error: `No task found matching "${searchQuery}"` };
+        if (!tasks || tasks.length === 0) {
+          return {
+            success: false as const,
+            error: `No task found matching "${searchQuery}"`,
+          };
+        }
 
         const task = tasks[0];
-        const { error } = await supabaseAdmin
+        const { error } = await supabase
           .from("tasks")
           .delete()
-          .eq("id", task.id);
+          .eq("id", task.id)
+          .eq("user_id", userId);
 
-        if (error) return { success: false, error: error.message };
-        return { success: true, deleted: { id: task.id, title: task.title } };
+        if (error) return { success: false as const, error: error.message };
+        return {
+          success: true as const,
+          deleted: { id: task.id, title: task.title },
+        };
       },
     }),
 
     list_tasks: tool({
       description:
         "List the user's tasks, optionally filtered by status or date.",
-      parameters: z.object({
+      inputSchema: z.object({
         status: z
           .enum(["pending", "completed", "skipped", "all"])
           .default("all")
@@ -139,8 +150,8 @@ export function createGrindproofTools(userId: string) {
           .default("all")
           .describe("Filter by date range"),
       }),
-      execute: async ({ status, dateFilter }: any) => {
-        let query = supabaseAdmin
+      execute: async ({ status, dateFilter }) => {
+        let query = supabase
           .from("tasks")
           .select("id, title, status, priority, due_date, tags")
           .eq("user_id", userId)
@@ -158,46 +169,52 @@ export function createGrindproofTools(userId: string) {
             .gte("due_date", start.toISOString())
             .lte("due_date", end.toISOString());
         } else if (dateFilter === "overdue") {
-          query = query.lt("due_date", now.toISOString()).eq("status", "pending");
+          query = query
+            .lt("due_date", now.toISOString())
+            .eq("status", "pending");
         }
 
         const { data, error } = await query.limit(50);
-        if (error) return { success: false, error: error.message };
-        return { success: true, tasks: data || [], count: data?.length || 0 };
+        if (error) return { success: false as const, error: error.message };
+        return {
+          success: true as const,
+          tasks: data ?? [],
+          count: data?.length ?? 0,
+        };
       },
     }),
 
     list_goals: tool({
       description: "List the user's goals with task progress counts.",
-      parameters: z.object({}),
+      inputSchema: z.object({}),
       execute: async () => {
-        const { data: goals } = await supabaseAdmin
+        const { data: goals } = await supabase
           .from("goals")
           .select("id, title, status, priority")
           .eq("user_id", userId);
 
-        if (!goals) return { success: true, goals: [] };
+        if (!goals) return { success: true as const, goals: [] };
 
         const goalsWithProgress = await Promise.all(
           goals.map(async (goal) => {
-            const { count: total } = await supabaseAdmin
+            const { count: total } = await supabase
               .from("tasks")
               .select("*", { count: "exact", head: true })
               .eq("goal_id", goal.id);
-            const { count: completed } = await supabaseAdmin
+            const { count: completed } = await supabase
               .from("tasks")
               .select("*", { count: "exact", head: true })
               .eq("goal_id", goal.id)
               .eq("status", "completed");
             return {
               ...goal,
-              totalTasks: total || 0,
-              completedTasks: completed || 0,
+              totalTasks: total ?? 0,
+              completedTasks: completed ?? 0,
             };
           })
         );
 
-        return { success: true, goals: goalsWithProgress };
+        return { success: true as const, goals: goalsWithProgress };
       },
     }),
   };
