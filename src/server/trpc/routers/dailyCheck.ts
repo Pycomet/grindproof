@@ -59,7 +59,7 @@ export const dailyCheckRouter = router({
   carryOverTasks: protectedProcedure
     .input(
       z.object({
-        taskIds: z.array(z.string()),
+        taskIds: z.array(z.string()).max(100),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -93,6 +93,8 @@ export const dailyCheckRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      const failures: string[] = [];
+
       for (const item of input.reflections) {
         const updateData: Record<string, unknown> = {
           status: item.status,
@@ -100,11 +102,17 @@ export const dailyCheckRouter = router({
         if (item.reflection) {
           updateData.reflection = item.reflection;
         }
-        await ctx.db
+        const { error } = await ctx.db
           .from("tasks")
           .update(updateData)
           .eq("id", item.taskId)
           .eq("user_id", ctx.user.id);
+
+        if (error) failures.push(item.taskId);
+      }
+
+      if (failures.length > 0) {
+        throw new Error(`Failed to update tasks: ${failures.join(", ")}`);
       }
 
       return { success: true, count: input.reflections.length };

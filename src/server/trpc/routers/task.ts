@@ -74,7 +74,7 @@ export const taskRouter = router({
       if (input?.endDate)
         query = query.lte("due_date", input.endDate.toISOString());
 
-      const { data, error } = await query;
+      const { data, error } = await query.limit(200);
       if (error) throw new Error(`Failed to fetch tasks: ${error.message}`);
       return (data || []).map(mapTaskFromDb);
     }),
