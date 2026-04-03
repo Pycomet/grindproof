@@ -6,11 +6,19 @@ const resend = new Resend(env.RESEND_API_KEY);
 
 const FROM_EMAIL = "GrindProof <notifications@grindproof.co>";
 
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
 export async function sendMorningEmail(
   to: string,
   data: { name: string | null; carriedOverCount: number }
 ) {
-  const greeting = data.name ? `Hey ${data.name}` : "Hey";
+  const greeting = data.name ? `Hey ${escapeHtml(data.name)}` : "Hey";
   const carryLine =
     data.carriedOverCount > 0
       ? `You have ${data.carriedOverCount} task${data.carriedOverCount > 1 ? "s" : ""} carried over from yesterday.`
@@ -35,7 +43,7 @@ export async function sendEveningEmail(
   to: string,
   data: { name: string | null; pendingCount: number }
 ) {
-  const greeting = data.name ? `${data.name}` : "Hey";
+  const greeting = data.name ? `${escapeHtml(data.name)}` : "Hey";
 
   await resend.emails.send({
     from: FROM_EMAIL,
@@ -64,15 +72,15 @@ export async function sendWeeklyRoastEmail(
     tasksTotal: number;
   }
 ) {
-  const greeting = data.name ? `${data.name}` : "Hey";
+  const greeting = data.name ? `${escapeHtml(data.name)}` : "Hey";
   const insightsHtml = data.insights
     .map(
       (i) =>
-        `<li style="margin: 8px 0; color: ${i.severity === "high" ? "#dc2626" : i.severity === "positive" ? "#16a34a" : "#ca8a04"};">${i.emoji} ${i.text}</li>`
+        `<li style="margin: 8px 0; color: ${i.severity === "high" ? "#dc2626" : i.severity === "positive" ? "#16a34a" : "#ca8a04"};">${escapeHtml(i.emoji)} ${escapeHtml(i.text)}</li>`
     )
     .join("");
   const recsHtml = data.recommendations
-    .map((r) => `<li style="margin: 8px 0; color: #52525b;">${r}</li>`)
+    .map((r) => `<li style="margin: 8px 0; color: #52525b;">${escapeHtml(r)}</li>`)
     .join("");
 
   await resend.emails.send({
@@ -85,7 +93,7 @@ export async function sendWeeklyRoastEmail(
         <p style="color: #a1a1aa; margin: 0 0 24px; font-size: 14px;">${greeting}, here's how your week went.</p>
 
         <div style="background: #f4f4f5; border-radius: 12px; padding: 16px; margin-bottom: 24px;">
-          <p style="margin: 0; font-size: 14px; color: #52525b;">${data.weekSummary}</p>
+          <p style="margin: 0; font-size: 14px; color: #52525b;">${escapeHtml(data.weekSummary)}</p>
         </div>
 
         <div style="margin-bottom: 24px;">
