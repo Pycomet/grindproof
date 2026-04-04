@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { google } from "@ai-sdk/google";
+import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { generateText, Output } from "ai";
 import { z } from "zod";
 import { env } from "@/lib/env";
@@ -8,6 +8,8 @@ import { WEEKLY_ROAST_PROMPT } from "@/lib/prompts/weekly-roast-prompt";
 import { sendWeeklyRoastEmail } from "@/lib/notifications/email-service";
 import { verifyCronSecret } from "@/lib/cron-auth";
 import { getUserLocalTime } from "@/lib/timezone";
+
+const google = createGoogleGenerativeAI({ apiKey: env.NEXT_GOOGLE_GEMINI_API_KEY });
 
 const roastSchema = z.object({
   insights: z.array(

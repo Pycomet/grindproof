@@ -1,4 +1,4 @@
-import { google } from "@ai-sdk/google";
+import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { convertToModelMessages, streamText, stepCountIs, type UIMessage } from "ai";
 import { createServerClient } from "@supabase/ssr";
 import { z } from "zod";
@@ -8,6 +8,8 @@ import { createGrindproofTools } from "@/lib/ai/tools";
 import type { Database } from "@/lib/supabase/types";
 
 export const maxDuration = 60;
+
+const google = createGoogleGenerativeAI({ apiKey: env.NEXT_GOOGLE_GEMINI_API_KEY });
 
 export async function POST(req: Request) {
   // Authenticate user
