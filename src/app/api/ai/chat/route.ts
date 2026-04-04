@@ -1,5 +1,5 @@
 import { google } from "@ai-sdk/google";
-import { streamText, stepCountIs, type ModelMessage } from "ai";
+import { convertToModelMessages, streamText, stepCountIs, type UIMessage } from "ai";
 import { createServerClient } from "@supabase/ssr";
 import { z } from "zod";
 import { env } from "@/lib/env";
@@ -37,13 +37,13 @@ export async function POST(req: Request) {
     return new Response("Unauthorized", { status: 401 });
   }
 
-  let messages: ModelMessage[];
+  let messages: UIMessage[];
   try {
     const body = await req.json();
     if (!Array.isArray(body.messages) || body.messages.length > 50) {
       return new Response("Invalid request body", { status: 400 });
     }
-    messages = body.messages as ModelMessage[];
+    messages = body.messages;
   } catch {
     return new Response("Invalid request body", { status: 400 });
   }
@@ -51,7 +51,7 @@ export async function POST(req: Request) {
   const result = streamText({
     model: google(env.AI_MODEL),
     system: GRINDPROOF_SYSTEM_PROMPT,
-    messages,
+    messages: await convertToModelMessages(messages),
     tools: createGrindproofTools(user.id, supabase),
     stopWhen: stepCountIs(5),
   });
