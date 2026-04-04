@@ -44,8 +44,8 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     undefined,
     { enabled: !!user }
   );
-  const subscribeMutation = trpc.notification.subscribe.useMutation();
-  const unsubscribeMutation = trpc.notification.unsubscribe.useMutation();
+  const { mutateAsync: doSubscribe } = trpc.notification.subscribe.useMutation();
+  const { mutateAsync: doUnsubscribe } = trpc.notification.unsubscribe.useMutation();
 
   const subscribe = useCallback(async () => {
     if (!isSupported || !vapidData?.publicKey) return;
@@ -60,7 +60,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     });
 
     const json = subscription.toJSON();
-    await subscribeMutation.mutateAsync({
+    await doSubscribe({
       endpoint: subscription.endpoint,
       p256dhKey: json.keys?.p256dh || "",
       authKey: json.keys?.auth || "",
@@ -68,7 +68,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     });
 
     setIsSubscribed(true);
-  }, [isSupported, vapidData, subscribeMutation]);
+  }, [isSupported, vapidData, doSubscribe]);
 
   const unsubscribe = useCallback(async () => {
     if (!isSupported) return;
@@ -76,14 +76,14 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     const registration = await navigator.serviceWorker.ready;
     const subscription = await registration.pushManager.getSubscription();
     if (subscription) {
-      await unsubscribeMutation.mutateAsync({
+      await doUnsubscribe({
         endpoint: subscription.endpoint,
       });
       await subscription.unsubscribe();
     }
 
     setIsSubscribed(false);
-  }, [isSupported, unsubscribeMutation]);
+  }, [isSupported, doUnsubscribe]);
 
   return (
     <NotificationContext.Provider

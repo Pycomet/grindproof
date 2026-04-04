@@ -7,6 +7,7 @@ import { env } from "@/lib/env";
 import { WEEKLY_ROAST_PROMPT } from "@/lib/prompts/weekly-roast-prompt";
 import { sendWeeklyRoastEmail } from "@/lib/notifications/email-service";
 import { verifyCronSecret } from "@/lib/cron-auth";
+import { getUserLocalTime } from "@/lib/timezone";
 
 const roastSchema = z.object({
   insights: z.array(
@@ -45,11 +46,9 @@ export async function GET(request: NextRequest) {
     if (!setting.email_notifications_enabled) continue;
 
     try {
-      const userTime = new Date(
-        now.toLocaleString("en-US", { timeZone: setting.timezone })
-      );
-      const userHour = userTime.getHours();
-      const userDay = userTime.getDay(); // 0 = Sunday
+      const userLocal = getUserLocalTime(now, setting.timezone);
+      const userHour = userLocal.hour;
+      const userDay = userLocal.day; // 0 = Sunday
 
       // Only process users whose local time is ~9am on Sunday
       if (userDay !== 0 || userHour !== 9) continue;
@@ -93,6 +92,11 @@ Reflections on skipped tasks: ${reflections.length > 0 ? JSON.stringify(reflecti
         prompt: weekData,
         output: Output.object({ schema: roastSchema }),
       });
+
+      if (!roast) {
+        console.error(`Failed to generate roast for user ${setting.user_id}: AI returned no structured output`);
+        continue;
+      }
 
       // Store roast
       await supabase.from("weekly_roasts").insert({

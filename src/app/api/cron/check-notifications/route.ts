@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { env } from "@/lib/env";
 import { sendMorningEmail, sendEveningEmail } from "@/lib/notifications/email-service";
 import { verifyCronSecret } from "@/lib/cron-auth";
+import { getUserLocalTime, getUserDateBounds } from "@/lib/timezone";
 
 export async function GET(request: NextRequest) {
   const authError = verifyCronSecret(request.headers.get("authorization"));
@@ -28,18 +29,25 @@ export async function GET(request: NextRequest) {
     if (!setting.email_notifications_enabled) continue;
 
     try {
-      // Calculate user's local time
-      const userTime = new Date(
-        now.toLocaleString("en-US", { timeZone: setting.timezone })
-      );
-      const userHour = userTime.getHours();
-      const userMinute = userTime.getMinutes();
+      const userLocal = getUserLocalTime(now, setting.timezone);
+      const userHour = userLocal.hour;
+      const userMinute = userLocal.minute;
 
       // Check morning
       if (setting.morning_check_enabled && setting.morning_check_time) {
         const [targetHour, targetMinute] = setting.morning_check_time.split(":").map(Number);
         if (userHour === targetHour && Math.abs(userMinute - targetMinute) < 5) {
-          // Get user profile for email + name
+          // Dedup: skip if already sent today
+          const todayStr = `${userLocal.year}-${String(userLocal.month).padStart(2, "0")}-${String(userLocal.date).padStart(2, "0")}`;
+          const { data: existing } = await supabase
+            .from("notification_log")
+            .select("id")
+            .eq("user_id", setting.user_id)
+            .eq("type", "morning")
+            .eq("sent_date", todayStr)
+            .limit(1);
+          if (existing && existing.length > 0) continue;
+
           const { data: profile } = await supabase
             .from("profiles")
             .select("email, name")
@@ -47,25 +55,29 @@ export async function GET(request: NextRequest) {
             .single();
 
           if (profile?.email) {
-            // Count yesterday's incomplete tasks
-            const yesterday = new Date(now);
-            yesterday.setDate(yesterday.getDate() - 1);
-            yesterday.setHours(0, 0, 0, 0);
-            const today = new Date(now);
-            today.setHours(0, 0, 0, 0);
+            // Count yesterday's incomplete tasks in user's timezone
+            const yesterdayBounds = getUserDateBounds(now, setting.timezone, -1);
 
             const { count } = await supabase
               .from("tasks")
               .select("*", { count: "exact", head: true })
               .eq("user_id", setting.user_id)
               .eq("status", "pending")
-              .gte("due_date", yesterday.toISOString())
-              .lt("due_date", today.toISOString());
+              .gte("due_date", yesterdayBounds.start)
+              .lt("due_date", yesterdayBounds.end);
 
             await sendMorningEmail(profile.email, {
               name: profile.name,
               carriedOverCount: count || 0,
             });
+
+            // Log the send for dedup
+            await supabase.from("notification_log").insert({
+              user_id: setting.user_id,
+              type: "morning",
+              sent_date: todayStr,
+            });
+
             emailsSent++;
           }
         }
@@ -75,6 +87,17 @@ export async function GET(request: NextRequest) {
       if (setting.evening_check_enabled && setting.evening_check_time) {
         const [targetHour, targetMinute] = setting.evening_check_time.split(":").map(Number);
         if (userHour === targetHour && Math.abs(userMinute - targetMinute) < 5) {
+          // Dedup: skip if already sent today
+          const todayStr = `${userLocal.year}-${String(userLocal.month).padStart(2, "0")}-${String(userLocal.date).padStart(2, "0")}`;
+          const { data: existing } = await supabase
+            .from("notification_log")
+            .select("id")
+            .eq("user_id", setting.user_id)
+            .eq("type", "evening")
+            .eq("sent_date", todayStr)
+            .limit(1);
+          if (existing && existing.length > 0) continue;
+
           const { data: profile } = await supabase
             .from("profiles")
             .select("email, name")
@@ -82,23 +105,29 @@ export async function GET(request: NextRequest) {
             .single();
 
           if (profile?.email) {
-            const today = new Date(now);
-            today.setHours(0, 0, 0, 0);
-            const tomorrow = new Date(today);
-            tomorrow.setDate(tomorrow.getDate() + 1);
+            // Count today's pending tasks in user's timezone
+            const todayBounds = getUserDateBounds(now, setting.timezone, 0);
 
             const { count } = await supabase
               .from("tasks")
               .select("*", { count: "exact", head: true })
               .eq("user_id", setting.user_id)
               .eq("status", "pending")
-              .gte("due_date", today.toISOString())
-              .lt("due_date", tomorrow.toISOString());
+              .gte("due_date", todayBounds.start)
+              .lt("due_date", todayBounds.end);
 
             await sendEveningEmail(profile.email, {
               name: profile.name,
               pendingCount: count || 0,
             });
+
+            // Log the send for dedup
+            await supabase.from("notification_log").insert({
+              user_id: setting.user_id,
+              type: "evening",
+              sent_date: todayStr,
+            });
+
             emailsSent++;
           }
         }

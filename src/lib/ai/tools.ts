@@ -3,6 +3,11 @@ import { z } from "zod";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
 
+/** Escape Postgres LIKE/ILIKE wildcards so user input is treated literally. */
+function escapeLike(str: string): string {
+  return str.replace(/%/g, "\\%").replace(/_/g, "\\_");
+}
+
 export function createGrindproofTools(
   userId: string,
   supabase: SupabaseClient<Database>
@@ -68,7 +73,7 @@ export function createGrindproofTools(
           .from("tasks")
           .select("*")
           .eq("user_id", userId)
-          .ilike("title", `%${searchQuery}%`)
+          .ilike("title", `%${escapeLike(searchQuery)}%`)
           .limit(1);
 
         if (!tasks || tasks.length === 0) {
@@ -80,9 +85,9 @@ export function createGrindproofTools(
 
         const task = tasks[0];
         const updateData: Record<string, unknown> = {};
-        if (updates.title) updateData.title = updates.title;
-        if (updates.priority) updateData.priority = updates.priority;
-        if (updates.status) updateData.status = updates.status;
+        if (updates.title !== undefined) updateData.title = updates.title;
+        if (updates.priority !== undefined) updateData.priority = updates.priority;
+        if (updates.status !== undefined) updateData.status = updates.status;
         if (updates.dueDate)
           updateData.due_date = new Date(updates.dueDate).toISOString();
 
@@ -112,7 +117,7 @@ export function createGrindproofTools(
           .from("tasks")
           .select("*")
           .eq("user_id", userId)
-          .ilike("title", `%${searchQuery}%`)
+          .ilike("title", `%${escapeLike(searchQuery)}%`)
           .limit(1);
 
         if (!tasks || tasks.length === 0) {

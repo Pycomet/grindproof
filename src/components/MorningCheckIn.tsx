@@ -3,9 +3,11 @@
 import { useState } from "react";
 import { trpc } from "@/lib/trpc/client";
 import { useTaskContext } from "@/contexts/TaskContext";
+import { useChatContext } from "@/contexts/ChatContext";
 
 export function MorningCheckIn() {
   const { refreshTasks } = useTaskContext();
+  const { sendMessage, setIsOpen } = useChatContext();
   const { data, isLoading } = trpc.dailyCheck.getMorningSchedule.useQuery();
   const carryOverMutation = trpc.dailyCheck.carryOverTasks.useMutation({
     onSuccess: () => refreshTasks(),
@@ -27,6 +29,23 @@ export function MorningCheckIn() {
       carryOverMutation.mutate({ taskIds: selectedIds });
     }
     setSubmitted(true);
+
+    // Send context to AI coach for commentary
+    const total = data.yesterdayIncomplete.length;
+    const carriedOver = selectedIds.length;
+    const skipped = total - carriedOver;
+    const taskNames = data.yesterdayIncomplete
+      .filter((t: any) => selectedIds.includes(t.id))
+      .map((t: any) => t.title)
+      .join(", ");
+
+    const prompt =
+      carriedOver > 0
+        ? `[Morning check-in] I had ${total} unfinished tasks from yesterday. I'm carrying over ${carriedOver}: ${taskNames}.${skipped > 0 ? ` Dropping ${skipped}.` : ""} React to my plan — am I overcommitting? Be brief and direct.`
+        : `[Morning check-in] I had ${total} unfinished tasks from yesterday and I'm starting fresh — dropping them all. React to this decision briefly.`;
+
+    sendMessage(prompt);
+    setIsOpen(true);
   };
 
   return (

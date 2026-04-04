@@ -3,9 +3,11 @@
 import { useState } from "react";
 import { trpc } from "@/lib/trpc/client";
 import { useTaskContext } from "@/contexts/TaskContext";
+import { useChatContext } from "@/contexts/ChatContext";
 
 export function EveningCheckIn() {
   const { refreshTasks } = useTaskContext();
+  const { sendMessage, setIsOpen } = useChatContext();
   const { data, isLoading } = trpc.dailyCheck.getEveningSchedule.useQuery();
   const submitMutation = trpc.dailyCheck.submitEveningReflections.useMutation({
     onSuccess: () => refreshTasks(),
@@ -50,6 +52,28 @@ export function EveningCheckIn() {
       submitMutation.mutate({ reflections: items });
     }
     setSubmitted(true);
+
+    // Send context to AI coach for commentary
+    const completedTasks = pendingTasks
+      .filter((t: any) => reflections[t.id]?.status === "completed")
+      .map((t: any) => t.title);
+    const skippedTasks = pendingTasks
+      .filter((t: any) => reflections[t.id]?.status === "skipped")
+      .map((t: any) => {
+        const r = reflections[t.id]?.reflection;
+        return r ? `${t.title} (reason: ${r})` : t.title;
+      });
+
+    const parts: string[] = [];
+    if (completedTasks.length > 0)
+      parts.push(`Completed: ${completedTasks.join(", ")}`);
+    if (skippedTasks.length > 0)
+      parts.push(`Skipped: ${skippedTasks.join(", ")}`);
+
+    const prompt = `[Evening reality check] ${parts.join(". ")}. Call out patterns, give credit where due, and be brief.`;
+
+    sendMessage(prompt);
+    setIsOpen(true);
   };
 
   const allReviewed = pendingTasks.every(

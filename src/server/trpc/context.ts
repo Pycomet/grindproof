@@ -1,22 +1,24 @@
 import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
-import { supabaseAdmin } from "@/lib/supabase/server";
 import { createServerClient } from "@supabase/ssr";
 import { env } from "@/lib/env";
-import type { User } from "@supabase/supabase-js";
+import type { SupabaseClient, User } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
 
 /**
  * Context for tRPC procedures
- * This is where you can add request-specific data like user sessions, database connections, etc.
+ * Creates a user-scoped Supabase client that respects RLS policies.
  */
 export async function createContext(opts?: { req?: Request }) {
   let user: User | null = null;
+  let db: SupabaseClient<Database> | null = null;
 
   // Extract user from request if available
   if (opts?.req) {
     try {
-      // Create a server client from the request cookies
+      // Create a server client from the request cookies — this client
+      // uses the anon key and carries the user's auth session, so all
+      // queries are subject to Row Level Security.
       const supabase = createServerClient<Database>(
         env.NEXT_PUBLIC_SUPABASE_URL,
         env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
@@ -25,17 +27,17 @@ export async function createContext(opts?: { req?: Request }) {
         getAll() {
           // Extract cookies from the request
           if (!opts.req) return [];
-          
+
           const cookieHeader = opts.req.headers.get("cookie") || "";
           const cookies: { name: string; value: string }[] = [];
-          
+
           cookieHeader.split(";").forEach((cookie) => {
             const [name, ...rest] = cookie.trim().split("=");
             if (name) {
               cookies.push({ name, value: rest.join("=") });
             }
           });
-          
+
           return cookies;
         },
         setAll() {
@@ -45,11 +47,12 @@ export async function createContext(opts?: { req?: Request }) {
       },
         }
       );
-      
+
       const {
         data: { user: authUser },
       } = await supabase.auth.getUser();
       user = authUser;
+      db = supabase;
     } catch (error) {
       // User not authenticated, user remains null
       user = null;
@@ -57,7 +60,7 @@ export async function createContext(opts?: { req?: Request }) {
   }
 
   return {
-    db: supabaseAdmin,
+    db: db!,
     user,
   };
 }

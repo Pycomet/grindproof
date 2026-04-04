@@ -65,6 +65,18 @@ CREATE TABLE IF NOT EXISTS weekly_roasts (
 CREATE INDEX IF NOT EXISTS idx_weekly_roasts_user_id ON weekly_roasts(user_id);
 CREATE INDEX IF NOT EXISTS idx_weekly_roasts_week_start ON weekly_roasts(week_start DESC);
 
+-- Create notification_log table for deduplication
+CREATE TABLE IF NOT EXISTS notification_log (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  type TEXT NOT NULL, -- 'morning' or 'evening'
+  sent_date DATE NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_notification_log_dedup
+  ON notification_log(user_id, type, sent_date);
+
 -- Drop unused indexes
 DROP INDEX IF EXISTS idx_routines_goal_id;
 DROP INDEX IF EXISTS idx_routines_is_active;
