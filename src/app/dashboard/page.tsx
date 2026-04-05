@@ -1,6 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { Settings } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { useAuth } from "@/contexts/AuthContext";
 import { TaskProvider } from "@/contexts/TaskContext";
@@ -49,7 +51,7 @@ function DashboardContent() {
 
 export default function Dashboard() {
   const router = useRouter();
-  const { user, isLoading, signOut } = useAuth();
+  const { user, isLoading } = useAuth();
 
   useEffect(() => {
     if (!isLoading && !user) {
@@ -77,12 +79,12 @@ export default function Dashboard() {
                 <Logo size="md" href="/" />
                 <div className="flex items-center gap-4">
                   <span className="text-sm text-zinc-500">{getGreeting()}</span>
-                  <button
-                    onClick={signOut}
-                    className="text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50"
+                  <Link
+                    href="/dashboard/settings"
+                    className="text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50 transition-colors"
                   >
-                    Sign Out
-                  </button>
+                    <Settings className="h-5 w-5" />
+                  </Link>
                 </div>
               </div>
             </header>
