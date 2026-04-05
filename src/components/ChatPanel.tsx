@@ -24,6 +24,7 @@ export function ChatPanel() {
       {/* Floating button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
+        aria-label={isOpen ? "Close chat" : "Open AI coach chat"}
         className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-zinc-900 text-white shadow-lg transition-transform hover:scale-105 dark:bg-zinc-50 dark:text-zinc-900"
       >
         {isOpen ? (
@@ -114,6 +115,7 @@ export function ChatPanel() {
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   placeholder="Talk to your coach..."
+                  aria-label="Message to coach"
                   className="flex-1 rounded-full border border-zinc-300 bg-zinc-50 px-4 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50"
                 />
                 <button

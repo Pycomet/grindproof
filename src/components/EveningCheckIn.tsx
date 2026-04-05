@@ -17,7 +17,12 @@ export function EveningCheckIn() {
   >({});
   const [submitted, setSubmitted] = useState(false);
 
-  if (isLoading || !data || submitted) return null;
+  if (isLoading) {
+    return (
+      <div className="h-28 animate-pulse rounded-lg border border-indigo-200 bg-indigo-50 p-4 dark:border-indigo-900/50 dark:bg-indigo-950/20" />
+    );
+  }
+  if (!data || submitted) return null;
 
   const pendingTasks = data.todayTasks.filter(
     (t: any) => t.status === "pending"

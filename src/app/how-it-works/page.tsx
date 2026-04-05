@@ -12,8 +12,8 @@ export default function HowItWorks() {
           <div className="flex items-center justify-between">
             <Logo size="md" href="/" />
             <Link
-              href="/dashboard"
-              className="rounded-full bg-zinc-900 px-6 py-2 text-sm font-semibold text-white transition-colors hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+              href="/auth/signup"
+              className="rounded-full bg-brand px-6 py-2 text-sm font-semibold text-brand-foreground transition-opacity hover:opacity-90"
             >
               Get Started
             </Link>
@@ -42,30 +42,51 @@ export default function HowItWorks() {
               </div>
               <div className="flex-1">
                 <h2 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
-                  Morning Planning (9am)
+                  Morning Planning
                 </h2>
                 <p className="mt-2 text-zinc-600 dark:text-zinc-400">
-                  We pull your tasks from Google Calendar and show you what you planned.
+                  Every morning, Grindproof surfaces the tasks you didn&apos;t finish
+                  yesterday and makes you decide — carry them forward or start fresh.
+                  No quietly forgetting them.
                 </p>
-                <div className="mt-6 rounded-lg bg-zinc-50 p-4 font-mono text-sm dark:bg-zinc-800">
-                  <div className="text-zinc-600 dark:text-zinc-400">
-                    Your calendar says: &apos;Work on AI Assistant 2-4pm&apos;
+                <div className="mt-6 rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-900/50 dark:bg-amber-950/20">
+                  <p className="mb-3 text-xs font-semibold text-zinc-900 dark:text-zinc-50">
+                    Morning Check-in
+                  </p>
+                  <p className="mb-3 text-xs text-zinc-600 dark:text-zinc-400">
+                    You left 3 tasks unfinished yesterday. Carry over?
+                  </p>
+                  <div className="mb-3 space-y-2">
+                    {[
+                      { label: 'Write project proposal', checked: true },
+                      { label: 'Review pull requests', checked: true },
+                      { label: 'Reply to client email', checked: false },
+                    ].map((item) => (
+                      <div key={item.label} className="flex items-center gap-2 text-sm">
+                        <div
+                          className={`h-4 w-4 rounded border-2 ${
+                            item.checked
+                              ? 'border-zinc-900 bg-zinc-900 dark:border-zinc-50 dark:bg-zinc-50'
+                              : 'border-zinc-300 dark:border-zinc-600'
+                          }`}
+                        />
+                        <span className="text-zinc-700 dark:text-zinc-300">{item.label}</span>
+                      </div>
+                    ))}
                   </div>
-                  <div className="mt-2 text-zinc-600 dark:text-zinc-400">
-                    Also planned: &apos;Gym at 6pm&apos;
-                  </div>
-                  <div className="mt-4 flex gap-2">
-                    <span className="rounded bg-green-100 px-3 py-1 text-green-800 dark:bg-green-900 dark:text-green-200">
-                      ✓ Commit
+                  <div className="flex gap-2">
+                    <span className="rounded-full bg-zinc-900 px-3 py-1 text-xs font-medium text-white dark:bg-zinc-50 dark:text-zinc-900">
+                      Carry over 2 tasks
                     </span>
-                    <span className="rounded bg-blue-100 px-3 py-1 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-                      ↻ Reschedule
-                    </span>
-                    <span className="rounded bg-zinc-100 px-3 py-1 text-zinc-800 dark:bg-zinc-700 dark:text-zinc-200">
-                      ✗ Skip
+                    <span className="rounded-full border border-zinc-300 px-3 py-1 text-xs font-medium text-zinc-600 dark:border-zinc-600 dark:text-zinc-400">
+                      Skip, fresh start
                     </span>
                   </div>
                 </div>
+                <p className="mt-4 text-sm text-zinc-500 dark:text-zinc-400">
+                  After you decide, your AI coach weighs in — calling out if you&apos;re
+                  overcommitting or making a smart call.
+                </p>
               </div>
             </div>
           </div>
@@ -78,32 +99,42 @@ export default function HowItWorks() {
               </div>
               <div className="flex-1">
                 <h2 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
-                  Task Validation System
+                  Task &amp; Goal Tracking
                 </h2>
                 <p className="mt-2 text-zinc-600 dark:text-zinc-400">
-                  We automatically verify what we can. For everything else, we ask for proof.
+                  Add tasks with due dates and priorities, link them to goals, and track
+                  progress through a today view or full-week view. You decide what matters.
+                  The app just holds you to it.
                 </p>
                 <div className="mt-6 space-y-4">
-                  <div className="rounded-lg border-l-4 border-green-500 bg-green-50 p-4 dark:bg-green-950/20">
-                    <h3 className="font-semibold text-green-900 dark:text-green-200">
-                      Auto-Validated via APIs
+                  <div className="rounded-lg border-l-4 border-purple-500 bg-purple-50 p-4 dark:bg-purple-950/20">
+                    <h3 className="font-semibold text-purple-900 dark:text-purple-200">
+                      Manual Task Management
                     </h3>
-                    <ul className="mt-2 space-y-1 text-sm text-green-800 dark:text-green-300">
-                      <li>• Dev work → GitHub commits</li>
-                      <li>• Meetings → Calendar attendance</li>
-                      <li>• Writing → Google Docs last modified</li>
+                    <ul className="mt-2 space-y-1 text-sm text-purple-800 dark:text-purple-300">
+                      <li>• Create tasks with due dates and priority levels</li>
+                      <li>• Link tasks to goals to see real progress</li>
+                      <li>• Switch between Today view and Week view</li>
                     </ul>
                   </div>
-                  <div className="rounded-lg border-l-4 border-orange-500 bg-orange-50 p-4 dark:bg-orange-950/20">
-                    <h3 className="font-semibold text-orange-900 dark:text-orange-200">
-                      Self-Reported with Evidence
+                  <div className="rounded-lg border-l-4 border-zinc-400 bg-zinc-50 p-4 dark:bg-zinc-800">
+                    <h3 className="font-semibold text-zinc-900 dark:text-zinc-100">
+                      Goal Progress
                     </h3>
-                    <ul className="mt-2 space-y-1 text-sm text-orange-800 dark:text-orange-300">
-                      <li>• Gym → Upload workout selfie or Strava screenshot</li>
-                      <li>• Video editing → Share project file screenshot</li>
-                      <li>• Reading → What&apos;s one key takeaway?</li>
-                      <li>• Studying → Summarize what you learned in 2 sentences</li>
+                    <ul className="mt-2 space-y-1 text-sm text-zinc-700 dark:text-zinc-300">
+                      <li>• Goals show a live progress bar based on completed tasks</li>
+                      <li>• Click any goal to see all its linked tasks</li>
+                      <li>• Active goals are always visible — no hiding from them</li>
                     </ul>
+                  </div>
+                </div>
+                <div className="mt-4 rounded-lg bg-zinc-50 p-4 font-mono text-xs dark:bg-zinc-800">
+                  <div className="mb-2 flex items-center justify-between text-zinc-500 dark:text-zinc-400">
+                    <span>Launch side project</span>
+                    <span>4/7 tasks</span>
+                  </div>
+                  <div className="h-2 w-full overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-700">
+                    <div className="h-full w-[57%] rounded-full bg-zinc-900 dark:bg-zinc-50" />
                   </div>
                 </div>
               </div>
@@ -118,35 +149,63 @@ export default function HowItWorks() {
               </div>
               <div className="flex-1">
                 <h2 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
-                  Evening Reality Check (6pm)
+                  Evening Reality Check
                 </h2>
                 <p className="mt-2 text-zinc-600 dark:text-zinc-400">
-                  We compare what you planned vs. what you actually did. No sugar-coating.
+                  At the end of the day, every pending task gets reviewed. Mark it done or
+                  mark it skipped — but if you skipped it, you have to say why. One line.
+                  That&apos;s it. No excuses, just honesty.
                 </p>
-                <div className="mt-6 space-y-4">
-                  <div className="rounded-lg bg-zinc-50 p-4 dark:bg-zinc-800">
-                    <div className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                      Planned: AI Assistant work
+                <div className="mt-6 rounded-lg border border-indigo-200 bg-indigo-50 p-4 dark:border-indigo-900/50 dark:bg-indigo-950/20">
+                  <p className="mb-3 text-xs font-semibold text-zinc-900 dark:text-zinc-50">
+                    Evening Reality Check
+                  </p>
+                  <p className="mb-3 text-xs text-zinc-600 dark:text-zinc-400">
+                    2 tasks still pending. What happened?
+                  </p>
+                  <div className="space-y-3">
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-zinc-700 dark:text-zinc-300">
+                          Write project proposal
+                        </span>
+                        <div className="flex gap-1">
+                          <span className="rounded bg-green-100 px-2 py-1 text-xs text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                            Done
+                          </span>
+                          <span className="rounded bg-zinc-100 px-2 py-1 text-xs text-zinc-500 dark:bg-zinc-800">
+                            Skipped
+                          </span>
+                        </div>
+                      </div>
                     </div>
-                    <div className="mt-2 text-sm text-red-600 dark:text-red-400">
-                      GitHub shows: 0 commits to ai-assistant, 6 commits to random-fork
-                    </div>
-                    <div className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">
-                      What happened?{' '}
-                      <span className="font-medium text-zinc-900 dark:text-zinc-50">
-                        [Got distracted]
-                      </span>
-                    </div>
-                  </div>
-                  <div className="rounded-lg bg-zinc-50 p-4 dark:bg-zinc-800">
-                    <div className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                      You said you went to gym. Upload proof:
-                    </div>
-                    <div className="mt-2 text-xs text-zinc-500">
-                      Skipped proof 3 times this week. Honesty score: 42%
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-zinc-700 dark:text-zinc-300">
+                          Review pull requests
+                        </span>
+                        <div className="flex gap-1">
+                          <span className="rounded bg-zinc-100 px-2 py-1 text-xs text-zinc-500 dark:bg-zinc-800">
+                            Done
+                          </span>
+                          <span className="rounded bg-red-100 px-2 py-1 text-xs text-red-700 dark:bg-red-900/30 dark:text-red-400">
+                            Skipped
+                          </span>
+                        </div>
+                      </div>
+                      <input
+                        readOnly
+                        value="ran out of time after the long meeting"
+                        className="w-full rounded border border-zinc-300 bg-white px-2 py-1 text-xs text-zinc-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400"
+                      />
                     </div>
                   </div>
                 </div>
+                <p className="mt-4 text-sm text-zinc-500 dark:text-zinc-400">
+                  Once you submit, your AI coach reads the whole picture and calls out
+                  patterns — consistently skipping the same task type, or giving credit
+                  when you actually delivered.
+                </p>
               </div>
             </div>
           </div>
@@ -159,24 +218,51 @@ export default function HowItWorks() {
               </div>
               <div className="flex-1">
                 <h2 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
-                  Weekly Roast Report (Sundays)
+                  Weekly Roast Report
                 </h2>
                 <p className="mt-2 text-zinc-600 dark:text-zinc-400">
-                  Every Sunday, we compile the most brutally honest summary of your week.
+                  Every week, the AI compiles your task stats, spots patterns you&apos;d
+                  rather ignore, and tells you exactly what to do differently. No fluff.
                 </p>
-                <div className="mt-6 rounded-lg bg-white p-6 font-mono text-sm dark:bg-zinc-900">
-                  <div className="text-2xl font-bold text-red-600">Alignment Score: 23%</div>
-                  <ul className="mt-4 space-y-2 text-zinc-700 dark:text-zinc-300">
-                    <li>• Planned AI work 5x → Did it 1x</li>
-                    <li>• &quot;Gym&quot; 4x → Proved it 1x</li>
-                    <li>• Started 2 new projects instead</li>
-                    <li className="text-green-600 dark:text-green-400">
-                      • Most honest day: Tuesday
-                    </li>
-                    <li className="text-red-600 dark:text-red-400">
-                      • Biggest bullshit day: Thursday
-                    </li>
-                  </ul>
+                <div className="mt-6 rounded-lg bg-zinc-900 p-5 text-sm dark:bg-zinc-950">
+                  <div className="mb-3 flex gap-3 text-xs">
+                    <span className="text-green-400">68% done</span>
+                    <span className="text-zinc-400">17/25 tasks</span>
+                    <span className="text-amber-400">4 skipped</span>
+                  </div>
+                  <p className="mb-3 text-zinc-300">
+                    Solid execution Monday through Wednesday, then you fell off a cliff.
+                    Thursday and Friday were a write-off. You know why.
+                  </p>
+                  <div className="mb-3 space-y-1.5">
+                    <div className="flex items-start gap-2 text-xs">
+                      <span>✅</span>
+                      <span className="text-green-400">
+                        5-day streak on deep work tasks — keep that up
+                      </span>
+                    </div>
+                    <div className="flex items-start gap-2 text-xs">
+                      <span>⚠️</span>
+                      <span className="text-amber-400">
+                        You skipped &quot;admin tasks&quot; every single day this week
+                      </span>
+                    </div>
+                    <div className="flex items-start gap-2 text-xs">
+                      <span>🔴</span>
+                      <span className="text-red-400">
+                        3 tasks carried over 4+ times — either do them or delete them
+                      </span>
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs font-medium text-zinc-400">Recommendations</p>
+                    <p className="text-xs text-zinc-300">
+                      Schedule admin tasks before 10am when your avoidance instincts are still asleep.
+                    </p>
+                    <p className="text-xs text-zinc-300">
+                      Cut your daily task count by 2 — you&apos;re consistently overplanning Thursday onward.
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -186,14 +272,43 @@ export default function HowItWorks() {
         {/* CTA */}
         <div className="mt-16 text-center">
           <Link
-            href="/dashboard"
-            className="inline-block rounded-full bg-zinc-900 px-8 py-4 text-base font-semibold text-white transition-all hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+            href="/auth/signup"
+            className="inline-block rounded-full bg-brand px-8 py-4 text-base font-semibold text-brand-foreground transition-opacity hover:opacity-90"
           >
             Ready to Stop Bullshitting? Let&apos;s Go
           </Link>
         </div>
       </main>
+
+      <footer className="border-t border-zinc-200 bg-white/50 backdrop-blur-sm dark:border-zinc-800 dark:bg-zinc-950/50">
+        <div className="container mx-auto px-4 py-8">
+          <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
+            <div className="text-sm text-zinc-600 dark:text-zinc-400">
+              &copy; {new Date().getFullYear()} GrindProof. All rights reserved.
+            </div>
+            <div className="flex items-center gap-4 text-sm">
+              <Link
+                href="/privacy"
+                className="text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+              >
+                Privacy
+              </Link>
+              <Link
+                href="/terms"
+                className="text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+              >
+                Terms
+              </Link>
+              <a
+                href="mailto:support@grindproof.co"
+                className="text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+              >
+                Contact
+              </a>
+            </div>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }
-

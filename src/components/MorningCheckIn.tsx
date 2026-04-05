@@ -15,7 +15,12 @@ export function MorningCheckIn() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [submitted, setSubmitted] = useState(false);
 
-  if (isLoading || !data || submitted) return null;
+  if (isLoading) {
+    return (
+      <div className="h-28 animate-pulse rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-900/50 dark:bg-amber-950/20" />
+    );
+  }
+  if (!data || submitted) return null;
   if (data.yesterdayIncomplete.length === 0) return null;
 
   const toggleTask = (id: string) => {
