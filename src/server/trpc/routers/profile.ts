@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { router, protectedProcedure } from "../context";
+import { supabaseAdmin } from "@/lib/supabase/server";
 
 export const updateProfileSchema = z.object({
   name: z.string().optional(),
@@ -129,13 +130,7 @@ export const profileRouter = router({
     }
 
     // Delete the auth user via admin API
-    const { createClient } = await import("@supabase/supabase-js");
-    const adminDb = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      { auth: { autoRefreshToken: false, persistSession: false } }
-    );
-    const { error: authError } = await adminDb.auth.admin.deleteUser(userId);
+    const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(userId);
     if (authError) {
       throw new Error(`Failed to delete auth user: ${authError.message}`);
     }
