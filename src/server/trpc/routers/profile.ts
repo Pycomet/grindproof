@@ -100,7 +100,6 @@ export const profileRouter = router({
   deleteAccount: protectedProcedure.mutation(async ({ ctx }) => {
     const userId = ctx.user.id;
 
-    // Delete user data from all tables (order matters for foreign keys)
     const tables = [
       "push_subscriptions",
       "notification_settings",
@@ -108,14 +107,25 @@ export const profileRouter = router({
       "accountability_scores",
       "tasks",
       "goals",
-      "profiles",
     ] as const;
+
+    const errors: string[] = [];
 
     for (const table of tables) {
       const { error } = await ctx.db.from(table).delete().eq("user_id", userId);
       if (error) {
-        console.error(`Failed to delete from ${table}:`, error.message);
+        errors.push(`${table}: ${error.message}`);
       }
+    }
+
+    // profiles uses 'id' not 'user_id'
+    const { error: profileError } = await ctx.db.from("profiles").delete().eq("id", userId);
+    if (profileError) {
+      errors.push(`profiles: ${profileError.message}`);
+    }
+
+    if (errors.length > 0) {
+      throw new Error(`Failed to delete user data: ${errors.join(", ")}`);
     }
 
     // Delete the auth user via admin API
