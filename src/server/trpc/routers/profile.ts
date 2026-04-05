@@ -96,4 +96,40 @@ export const profileRouter = router({
         updatedAt: new Date(data.updated_at),
       };
     }),
+
+  deleteAccount: protectedProcedure.mutation(async ({ ctx }) => {
+    const userId = ctx.user.id;
+
+    // Delete user data from all tables (order matters for foreign keys)
+    const tables = [
+      "push_subscriptions",
+      "notification_settings",
+      "user_feedback",
+      "accountability_scores",
+      "tasks",
+      "goals",
+      "profiles",
+    ] as const;
+
+    for (const table of tables) {
+      const { error } = await ctx.db.from(table).delete().eq("user_id", userId);
+      if (error) {
+        console.error(`Failed to delete from ${table}:`, error.message);
+      }
+    }
+
+    // Delete the auth user via admin API
+    const { createClient } = await import("@supabase/supabase-js");
+    const adminDb = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      { auth: { autoRefreshToken: false, persistSession: false } }
+    );
+    const { error: authError } = await adminDb.auth.admin.deleteUser(userId);
+    if (authError) {
+      throw new Error(`Failed to delete auth user: ${authError.message}`);
+    }
+
+    return { success: true };
+  }),
 });
