@@ -5,10 +5,7 @@ import { sendMorningEmail, sendEveningEmail } from "@/lib/notifications/email-se
 import { verifyCronSecret } from "@/lib/cron-auth";
 import { getUserLocalTime, getUserDateBounds } from "@/lib/timezone";
 
-export async function GET(request: NextRequest) {
-  const authError = verifyCronSecret(request.headers.get("authorization"));
-  if (authError) return authError;
-
+async function checkNotifications() {
   const supabase = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
@@ -37,7 +34,6 @@ export async function GET(request: NextRequest) {
       if (setting.morning_check_enabled && setting.morning_check_time) {
         const [targetHour, targetMinute] = setting.morning_check_time.split(":").map(Number);
         if (userHour === targetHour && Math.abs(userMinute - targetMinute) < 5) {
-          // Dedup: skip if already sent today
           const todayStr = `${userLocal.year}-${String(userLocal.month).padStart(2, "0")}-${String(userLocal.date).padStart(2, "0")}`;
           const { data: existing } = await supabase
             .from("notification_log")
@@ -55,7 +51,6 @@ export async function GET(request: NextRequest) {
             .single();
 
           if (profile?.email) {
-            // Count yesterday's incomplete tasks in user's timezone
             const yesterdayBounds = getUserDateBounds(now, setting.timezone, -1);
 
             const { count } = await supabase
@@ -71,7 +66,6 @@ export async function GET(request: NextRequest) {
               carriedOverCount: count || 0,
             });
 
-            // Log the send for dedup
             await supabase.from("notification_log").insert({
               user_id: setting.user_id,
               type: "morning",
@@ -87,7 +81,6 @@ export async function GET(request: NextRequest) {
       if (setting.evening_check_enabled && setting.evening_check_time) {
         const [targetHour, targetMinute] = setting.evening_check_time.split(":").map(Number);
         if (userHour === targetHour && Math.abs(userMinute - targetMinute) < 5) {
-          // Dedup: skip if already sent today
           const todayStr = `${userLocal.year}-${String(userLocal.month).padStart(2, "0")}-${String(userLocal.date).padStart(2, "0")}`;
           const { data: existing } = await supabase
             .from("notification_log")
@@ -105,7 +98,6 @@ export async function GET(request: NextRequest) {
             .single();
 
           if (profile?.email) {
-            // Count today's pending tasks in user's timezone
             const todayBounds = getUserDateBounds(now, setting.timezone, 0);
 
             const { count } = await supabase
@@ -121,7 +113,6 @@ export async function GET(request: NextRequest) {
               pendingCount: count || 0,
             });
 
-            // Log the send for dedup
             await supabase.from("notification_log").insert({
               user_id: setting.user_id,
               type: "evening",
@@ -138,4 +129,36 @@ export async function GET(request: NextRequest) {
   }
 
   return NextResponse.json({ success: true, emailsSent });
+}
+
+// QStash sends POST — verify signature at runtime to avoid build-time key requirement
+export async function POST(request: NextRequest) {
+  const { Receiver } = await import("@upstash/qstash");
+
+  const receiver = new Receiver({
+    currentSigningKey: env.QSTASH_CURRENT_SIGNING_KEY!,
+    nextSigningKey: env.QSTASH_NEXT_SIGNING_KEY!,
+  });
+
+  const body = await request.text();
+  const signature = request.headers.get("upstash-signature");
+
+  if (!signature) {
+    return NextResponse.json({ error: "Missing signature" }, { status: 401 });
+  }
+
+  try {
+    await receiver.verify({ signature, body });
+  } catch {
+    return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
+  }
+
+  return checkNotifications();
+}
+
+// Keep GET for manual testing / fallback with CRON_SECRET
+export async function GET(request: NextRequest) {
+  const authError = verifyCronSecret(request.headers.get("authorization"));
+  if (authError) return authError;
+  return checkNotifications();
 }
