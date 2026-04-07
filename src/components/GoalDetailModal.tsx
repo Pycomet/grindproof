@@ -36,6 +36,7 @@ export function GoalDetailModal({ goalId, open, onOpenChange, initialEditMode = 
   const [editPriority, setEditPriority] = useState<"high" | "medium" | "low">(goal?.priority || "medium");
   const [editStatus, setEditStatus] = useState<"active" | "completed">(goal?.status || "active");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [newTaskTitle, setNewTaskTitle] = useState("");
 
   const updateMutation = trpc.goal.update.useMutation({
     onSuccess: (data) => {
@@ -47,6 +48,13 @@ export function GoalDetailModal({ goalId, open, onOpenChange, initialEditMode = 
         setEditStatus(data.status);
       }
       setIsEditing(false);
+    },
+  });
+
+  const createTaskMutation = trpc.task.create.useMutation({
+    onSuccess: () => {
+      setNewTaskTitle("");
+      refreshTasks();
     },
   });
 
@@ -75,11 +83,15 @@ export function GoalDetailModal({ goalId, open, onOpenChange, initialEditMode = 
   };
 
   const handleCancelEdit = () => {
-    setEditTitle(goal.title);
-    setEditDescription(goal.description || "");
-    setEditPriority(goal.priority);
-    setEditStatus(goal.status);
-    setIsEditing(false);
+    if (initialEditMode) {
+      onOpenChange(false);
+    } else {
+      setEditTitle(goal.title);
+      setEditDescription(goal.description || "");
+      setEditPriority(goal.priority);
+      setEditStatus(goal.status);
+      setIsEditing(false);
+    }
   };
 
   const handleDelete = () => {
@@ -184,6 +196,29 @@ export function GoalDetailModal({ goalId, open, onOpenChange, initialEditMode = 
                   ))}
                 </div>
               )}
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (!newTaskTitle.trim()) return;
+                  createTaskMutation.mutate({
+                    title: newTaskTitle.trim(),
+                    dueDate: new Date(),
+                    priority: "medium",
+                    goalId,
+                  });
+                }}
+                className="mt-2 flex gap-2"
+              >
+                <input
+                  value={newTaskTitle}
+                  onChange={(e) => setNewTaskTitle(e.target.value)}
+                  placeholder="Add a task to this goal..."
+                  className="flex-1 rounded-md border border-zinc-300 bg-white px-2 py-1 text-xs outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+                />
+                <Button type="submit" size="sm" className="h-7 text-xs" disabled={!newTaskTitle.trim() || createTaskMutation.isPending}>
+                  Add
+                </Button>
+              </form>
             </div>
           </div>
         )}
@@ -199,16 +234,19 @@ export function GoalDetailModal({ goalId, open, onOpenChange, initialEditMode = 
                 </div>
               </div>
             ) : (
-              <>
-                <Button variant="outline" size="sm" onClick={() => {
-                  setEditTitle(goal.title);
-                  setEditDescription(goal.description || "");
-                  setEditPriority(goal.priority);
-                  setEditStatus(goal.status);
-                  setIsEditing(true);
-                }}>Edit</Button>
-                <Button variant="destructive" size="sm" onClick={() => setShowDeleteConfirm(true)}>Delete</Button>
-              </>
+              <div className="flex w-full items-center justify-between">
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={() => {
+                    setEditTitle(goal.title);
+                    setEditDescription(goal.description || "");
+                    setEditPriority(goal.priority);
+                    setEditStatus(goal.status);
+                    setIsEditing(true);
+                  }}>Go back</Button>
+                  <Button variant="destructive" size="sm" onClick={() => setShowDeleteConfirm(true)}>Delete</Button>
+                </div>
+                <Button size="sm" onClick={() => onOpenChange(false)}>Done</Button>
+              </div>
             )}
           </DialogFooter>
         )}
