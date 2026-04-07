@@ -6,5 +6,5 @@
     }
   ],
   "installCommand": "npm install --force",
-  "buildCommand": "next build --webpack"
+  "buildCommand": "npm run build"
 }
