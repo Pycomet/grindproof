@@ -11,6 +11,7 @@ import { GoalList } from "@/components/GoalList";
 import { MorningCheckIn } from "@/components/MorningCheckIn";
 import { EveningCheckIn } from "@/components/EveningCheckIn";
 import { WeeklyRoastCard } from "@/components/WeeklyRoastCard";
+import { StoicQuote } from "@/components/StoicQuote";
 import { ChatPanel } from "@/components/ChatPanel";
 import { useEffect } from "react";
 
@@ -34,6 +35,7 @@ function shouldShowEvening(): boolean {
 function DashboardContent() {
   return (
     <div className="mx-auto max-w-xl space-y-6 px-4 py-6">
+      <StoicQuote />
       <WeeklyRoastCard />
 
       {shouldShowMorning() && <MorningCheckIn />}
