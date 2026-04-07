@@ -5,5 +5,5 @@
       "schedule": "0 9 * * 0"
     }
   ],
-  "installCommand": "yarn install --ignore-engines"
+  "installCommand": "npm install --legacy-peer-deps"
 }
