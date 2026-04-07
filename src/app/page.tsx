@@ -4,7 +4,34 @@ import { Logo } from "@/components/Logo";
 export default function Home() {
   return (
     <div className="min-h-screen bg-linear-to-br from-zinc-50 to-zinc-100 dark:from-zinc-950 dark:to-black">
-      <div className="flex min-h-screen flex-col items-center justify-center px-4">
+      {/* Nav */}
+      <nav className="border-b border-zinc-200 bg-white/80 backdrop-blur-sm dark:border-zinc-800 dark:bg-zinc-950/80">
+        <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
+          <Logo size="md" href="/" />
+          <div className="flex items-center gap-4">
+            <Link
+              href="/how-it-works"
+              className="text-sm text-zinc-600 transition-colors hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+            >
+              How It Works
+            </Link>
+            <Link
+              href="/auth/login"
+              className="text-sm text-zinc-600 transition-colors hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+            >
+              Sign In
+            </Link>
+            <Link
+              href="/auth/signup"
+              className="rounded-full bg-brand px-5 py-2 text-sm font-semibold text-brand-foreground transition-opacity hover:opacity-90"
+            >
+              Get Started
+            </Link>
+          </div>
+        </div>
+      </nav>
+
+      <div className="flex flex-col items-center justify-center px-4 py-24">
         <div className="max-w-3xl text-center">
           <div className="mb-8 flex justify-center">
             <Logo size="xl" href="/" />
@@ -20,8 +47,8 @@ export default function Home() {
 
           <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
             <Link
-              href="/auth/login"
-              className="w-full rounded-full bg-zinc-900 px-8 py-4 text-base font-semibold text-white transition-all hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200 sm:w-auto"
+              href="/auth/signup"
+              className="w-full rounded-full bg-brand px-8 py-4 text-base font-semibold text-brand-foreground transition-opacity hover:opacity-90 sm:w-auto"
             >
               Get Started
             </Link>

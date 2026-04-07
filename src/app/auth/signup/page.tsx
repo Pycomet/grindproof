@@ -156,7 +156,7 @@ export default function SignupPage() {
           </div>
 
           {error && (
-            <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600 dark:bg-red-950/20">
+            <div role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-600 dark:bg-red-950/20">
               {error}
             </div>
           )}

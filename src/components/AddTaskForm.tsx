@@ -9,9 +9,13 @@ import { Calendar } from "@/components/ui/calendar";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 
-export function AddTaskForm() {
+interface AddTaskFormProps {
+  defaultOpen?: boolean;
+}
+
+export function AddTaskForm({ defaultOpen = false }: AddTaskFormProps) {
   const [title, setTitle] = useState("");
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(defaultOpen);
   const { refreshTasks, goals } = useTaskContext();
 
   const [expanded, setExpanded] = useState(false);

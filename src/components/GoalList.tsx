@@ -30,7 +30,18 @@ export function GoalList() {
 
   const activeGoals = goals.filter((g) => g.status === "active");
 
-  if (isLoading) return null;
+  if (isLoading) {
+    return (
+      <div className="space-y-2">
+        {[1, 2].map((i) => (
+          <div
+            key={i}
+            className="h-12 animate-pulse rounded-lg bg-zinc-100 dark:bg-zinc-800"
+          />
+        ))}
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -59,7 +70,7 @@ export function GoalList() {
 
           {activeGoals.length === 0 && !showAddForm && (
             <div className="rounded-lg border border-dashed border-zinc-300 py-6 text-center text-sm text-zinc-500 dark:border-zinc-700">
-              No goals yet. Create one to organize your tasks.
+              No goals yet — set one to stay focused.
             </div>
           )}
 

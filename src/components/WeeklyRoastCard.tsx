@@ -12,7 +12,12 @@ export function WeeklyRoastCard() {
     { enabled: !!user }
   );
 
-  if (!user || dismissed || isLoading) return null;
+  if (isLoading) {
+    return (
+      <div className="h-32 animate-pulse rounded-lg border border-zinc-800 bg-zinc-900 p-4" />
+    );
+  }
+  if (!user || dismissed) return null;
   if (!roast) return null;
 
   // Only show if the roast is from the current week (within last 7 days)

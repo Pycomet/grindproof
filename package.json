@@ -4,16 +4,14 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build --webpack && node scripts/merge-sw.js",
-    "build:base": "next build --webpack",
+    "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint",
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage",
     "test:run": "vitest run",
-    "generate:icons": "node scripts/generate-icons.js",
-    "merge-sw": "node scripts/merge-sw.js"
+    "generate:icons": "node scripts/generate-icons.js"
   },
   "dependencies": {
     "@ai-sdk/google": "^3.0.56",

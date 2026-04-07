@@ -123,7 +123,7 @@ export function TaskList() {
         <>
           {todayTasks.length === 0 ? (
             <div className="rounded-lg border border-dashed border-zinc-300 py-8 text-center text-sm text-zinc-500 dark:border-zinc-700">
-              No tasks for today. Add one below.
+              No tasks yet — add your first one below.
             </div>
           ) : (
             <>
@@ -143,7 +143,7 @@ export function TaskList() {
             </>
           )}
           <div className="mt-2">
-            <AddTaskForm />
+            <AddTaskForm defaultOpen={todayTasks.length === 0} />
           </div>
         </>
       )}

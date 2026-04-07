@@ -191,6 +191,9 @@ export function TaskItem({ task }: TaskItemProps) {
     <div className="flex items-center gap-3 rounded-lg border border-zinc-200 bg-white px-4 py-3 dark:border-zinc-800 dark:bg-zinc-900">
       <button
         onClick={handleToggle}
+        role="checkbox"
+        aria-checked={isCompleted}
+        aria-label={`Mark "${task.title}" as ${isCompleted ? "incomplete" : "complete"}`}
         className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 transition-colors ${
           isCompleted
             ? "border-zinc-900 bg-zinc-900 text-white dark:border-zinc-50 dark:bg-zinc-50 dark:text-zinc-900"

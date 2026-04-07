@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { router, protectedProcedure } from "../context";
+import { supabaseAdmin } from "@/lib/supabase/server";
 
 export const updateProfileSchema = z.object({
   name: z.string().optional(),
@@ -96,4 +97,44 @@ export const profileRouter = router({
         updatedAt: new Date(data.updated_at),
       };
     }),
+
+  deleteAccount: protectedProcedure.mutation(async ({ ctx }) => {
+    const userId = ctx.user.id;
+
+    const tables = [
+      "push_subscriptions",
+      "notification_settings",
+      "user_feedback",
+      "accountability_scores",
+      "tasks",
+      "goals",
+    ] as const;
+
+    const errors: string[] = [];
+
+    for (const table of tables) {
+      const { error } = await ctx.db.from(table).delete().eq("user_id", userId);
+      if (error) {
+        errors.push(`${table}: ${error.message}`);
+      }
+    }
+
+    // profiles uses 'id' not 'user_id'
+    const { error: profileError } = await ctx.db.from("profiles").delete().eq("id", userId);
+    if (profileError) {
+      errors.push(`profiles: ${profileError.message}`);
+    }
+
+    if (errors.length > 0) {
+      throw new Error(`Failed to delete user data: ${errors.join(", ")}`);
+    }
+
+    // Delete the auth user via admin API
+    const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(userId);
+    if (authError) {
+      throw new Error(`Failed to delete auth user: ${authError.message}`);
+    }
+
+    return { success: true };
+  }),
 });

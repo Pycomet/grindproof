@@ -23,19 +23,15 @@ export default function LoginPage() {
       password,
     });
 
-    console.log('Login response:', { data, error });
-
     if (error) {
       setError(error.message);
       setLoading(false);
     } else if (data.session) {
-      console.log('Session created, redirecting...');
       // Wait a bit for cookies to be set, then redirect
       setTimeout(() => {
         window.location.href = '/dashboard';
       }, 100);
     } else {
-      console.log('No session in response');
       setError('Login failed - no session created');
       setLoading(false);
     }
@@ -99,7 +95,7 @@ export default function LoginPage() {
           </div>
 
           {error && (
-            <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600 dark:bg-red-950/20">
+            <div role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-600 dark:bg-red-950/20">
               {error}
             </div>
           )}
