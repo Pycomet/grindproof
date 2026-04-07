@@ -4,5 +4,6 @@
       "path": "/api/cron/weekly-roast",
       "schedule": "0 9 * * 0"
     }
-  ]
+  ],
+  "installCommand": "yarn install --ignore-engines"
 }
