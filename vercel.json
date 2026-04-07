@@ -5,5 +5,5 @@
       "schedule": "0 9 * * 0"
     }
   ],
-  "installCommand": "npm install --legacy-peer-deps"
+  "installCommand": "npm install"
 }
