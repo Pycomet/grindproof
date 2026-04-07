@@ -55,7 +55,7 @@ export function TaskItem({ task }: TaskItemProps) {
   const [editTitle, setEditTitle] = useState(task.title);
   const [editPriority, setEditPriority] = useState(task.priority);
   const [editDueDate, setEditDueDate] = useState<Date | null>(task.dueDate ? new Date(task.dueDate) : null);
-  const [editGoalId, setEditGoalId] = useState(task.goalId || "");
+  const [editGoalId, setEditGoalId] = useState(task.goalId || "none");
   const [editDescription, setEditDescription] = useState(task.description || "");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
@@ -81,7 +81,7 @@ export function TaskItem({ task }: TaskItemProps) {
     setEditTitle(task.title);
     setEditPriority(task.priority);
     setEditDueDate(task.dueDate ? new Date(task.dueDate) : null);
-    setEditGoalId(task.goalId || "");
+    setEditGoalId(task.goalId || "none");
     setEditDescription(task.description || "");
     setIsEditing(true);
   };
@@ -93,7 +93,7 @@ export function TaskItem({ task }: TaskItemProps) {
       title: editTitle.trim(),
       priority: editPriority,
       dueDate: editDueDate,
-      goalId: editGoalId || null,
+      goalId: editGoalId === "none" ? null : editGoalId,
       description: editDescription.trim() || null,
     });
     setIsEditing(false);
@@ -103,7 +103,7 @@ export function TaskItem({ task }: TaskItemProps) {
     setEditTitle(task.title);
     setEditPriority(task.priority);
     setEditDueDate(task.dueDate ? new Date(task.dueDate) : null);
-    setEditGoalId(task.goalId || "");
+    setEditGoalId(task.goalId || "none");
     setEditDescription(task.description || "");
     setIsEditing(false);
   };
@@ -163,7 +163,7 @@ export function TaskItem({ task }: TaskItemProps) {
               <SelectValue placeholder="No goal" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">No goal</SelectItem>
+              <SelectItem value="none">No goal</SelectItem>
               {goals.filter((g) => g.status === "active").map((g) => (
                 <SelectItem key={g.id} value={g.id}>{g.title}</SelectItem>
               ))}
@@ -214,6 +214,13 @@ export function TaskItem({ task }: TaskItemProps) {
       <Badge variant="outline" className={`text-xs ${priorityColors[task.priority]}`}>
         {task.priority}
       </Badge>
+      {task.goalId && (
+        <span title="Linked to a goal" className="text-amber-400 dark:text-amber-500">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-3 w-3">
+            <path fillRule="evenodd" d="M10.868 2.884c-.321-.772-1.415-.772-1.736 0l-1.83 4.401-4.753.381c-.833.067-1.171 1.107-.536 1.651l3.62 3.102-1.106 4.637c-.194.813.691 1.456 1.405 1.02L10 15.591l4.069 2.485c.713.436 1.598-.207 1.404-1.02l-1.106-4.637 3.62-3.102c.635-.544.297-1.584-.536-1.65l-4.752-.382-1.831-4.401Z" clipRule="evenodd" />
+          </svg>
+        </span>
+      )}
       {task.dueDate && (
         <span className="text-xs text-zinc-500">{formatDate(task.dueDate)}</span>
       )}
@@ -261,12 +268,12 @@ export function TaskItem({ task }: TaskItemProps) {
               <DropdownMenuSubTrigger>Move to Goal</DropdownMenuSubTrigger>
               <DropdownMenuSubContent>
                 <DropdownMenuItem onClick={() => updateMutation.mutate({ id: task.id, goalId: null })}>
-                  Remove from goal
+                  No goal{!task.goalId && " (current)"}
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 {goals.filter((g) => g.status === "active").map((g) => (
                   <DropdownMenuItem key={g.id} onClick={() => updateMutation.mutate({ id: task.id, goalId: g.id })}>
-                    {g.title}
+                    {g.title}{task.goalId === g.id && " (current)"}
                   </DropdownMenuItem>
                 ))}
               </DropdownMenuSubContent>

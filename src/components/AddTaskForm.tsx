@@ -21,7 +21,7 @@ export function AddTaskForm({ defaultOpen = false }: AddTaskFormProps) {
   const [expanded, setExpanded] = useState(false);
   const [priority, setPriority] = useState<"high" | "medium" | "low">("medium");
   const [dueDate, setDueDate] = useState<Date>(new Date());
-  const [goalId, setGoalId] = useState<string>("");
+  const [goalId, setGoalId] = useState<string>("none");
   const [description, setDescription] = useState("");
 
   const createMutation = trpc.task.create.useMutation({
@@ -29,7 +29,7 @@ export function AddTaskForm({ defaultOpen = false }: AddTaskFormProps) {
       setTitle("");
       setPriority("medium");
       setDueDate(new Date());
-      setGoalId("");
+      setGoalId("none");
       setDescription("");
       setExpanded(false);
       setIsOpen(false);
@@ -44,7 +44,7 @@ export function AddTaskForm({ defaultOpen = false }: AddTaskFormProps) {
       title: title.trim(),
       dueDate,
       priority,
-      ...(goalId ? { goalId } : {}),
+      ...(goalId && goalId !== "none" ? { goalId } : {}),
       ...(description.trim() ? { description: description.trim() } : {}),
     });
   };
@@ -139,7 +139,7 @@ export function AddTaskForm({ defaultOpen = false }: AddTaskFormProps) {
                 <SelectValue placeholder="No goal" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">No goal</SelectItem>
+                <SelectItem value="none">No goal</SelectItem>
                 {goals.filter((g) => g.status === "active").map((g) => (
                   <SelectItem key={g.id} value={g.id}>{g.title}</SelectItem>
                 ))}
