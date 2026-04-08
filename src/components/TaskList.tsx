@@ -21,6 +21,7 @@ export function TaskList() {
   });
 
   const pendingTasks = todayTasks.filter((t) => t.status === "pending");
+  const skippedTasks = todayTasks.filter((t) => t.status === "skipped");
   const completedTasks = todayTasks.filter((t) => t.status === "completed");
 
   // Current week: Monday to Sunday
@@ -130,6 +131,16 @@ export function TaskList() {
               {pendingTasks.map((task) => (
                 <TaskItem key={task.id} task={task} />
               ))}
+              {skippedTasks.length > 0 && (
+                <>
+                  <div className="pt-2 text-xs font-medium text-zinc-400">
+                    Skipped ({skippedTasks.length})
+                  </div>
+                  {skippedTasks.map((task) => (
+                    <TaskItem key={task.id} task={task} />
+                  ))}
+                </>
+              )}
               {completedTasks.length > 0 && (
                 <>
                   <div className="pt-2 text-xs font-medium text-zinc-400">
