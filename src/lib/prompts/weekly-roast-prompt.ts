@@ -22,6 +22,11 @@ Focus on:
    - Call out if the same excuses appear multiple times
    - Identify if excuses are valid or self-sabotage patterns
    - Compare their stated reasons with actual behavior patterns
+7. Accountability Score analysis:
+   - Reference their current score and tier
+   - Comment on score trend (improving, declining, stagnant)
+   - If streak is long, acknowledge it; if broken recently, call it out
+   - Tie the score into your overall assessment
 
 Reflection Guidelines:
 - If you see "distracted" more than once, call it out as a focus problem
@@ -48,4 +53,3 @@ Return ONLY valid JSON in this format:
   "weekSummary": "Mixed week: good intentions, but execution didn't match the plan."
 }
 `;
-
