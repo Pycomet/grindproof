@@ -193,7 +193,7 @@ export default function StatsPage() {
                 <div className="text-xs text-zinc-400">Day Streak</div>
                 {trendData && (
                   <div className="text-[10px] text-zinc-500">
-                    Best: {trendData.currentStreak}
+                    Current: {trendData.currentStreak}
                   </div>
                 )}
               </div>

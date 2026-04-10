@@ -21,39 +21,48 @@ function endOfDay(date: Date): string {
   return d.toISOString();
 }
 
+/** Bulk-fetch active dates, then count consecutive days backwards from today. 2 queries total. */
 async function computeStreak(
   db: any,
   userId: string,
   today: Date
 ): Promise<number> {
-  let streak = 0;
-  const checkDate = new Date(today);
+  const yearAgo = new Date(today);
+  yearAgo.setDate(yearAgo.getDate() - 365);
 
-  for (let i = 0; i < 365; i++) {
-    const dayStart = startOfDay(checkDate);
-    const dayEnd = endOfDay(checkDate);
-
-    const { count: taskCount } = await db
+  const [{ data: tasks }, { data: checkIns }] = await Promise.all([
+    db
       .from("tasks")
-      .select("*", { count: "exact", head: true })
+      .select("due_date")
       .eq("user_id", userId)
       .eq("status", "completed")
-      .gte("due_date", dayStart)
-      .lte("due_date", dayEnd);
-
-    const { count: checkInCount } = await db
+      .gte("due_date", startOfDay(yearAgo))
+      .lte("due_date", endOfDay(today)),
+    db
       .from("daily_checks")
-      .select("*", { count: "exact", head: true })
+      .select("created_at")
       .eq("user_id", userId)
-      .gte("created_at", dayStart)
-      .lte("created_at", dayEnd);
+      .gte("created_at", startOfDay(yearAgo))
+      .lte("created_at", endOfDay(today)),
+  ]);
 
-    if ((taskCount ?? 0) > 0 || (checkInCount ?? 0) > 0) {
+  const activeDates = new Set<string>();
+  for (const t of tasks || []) {
+    activeDates.add(new Date(t.due_date).toISOString().split("T")[0]);
+  }
+  for (const c of checkIns || []) {
+    activeDates.add(new Date(c.created_at).toISOString().split("T")[0]);
+  }
+
+  let streak = 0;
+  const checkDate = new Date(today);
+  for (let i = 0; i < 365; i++) {
+    const dateStr = checkDate.toISOString().split("T")[0];
+    if (activeDates.has(dateStr)) {
       streak++;
     } else {
       break;
     }
-
     checkDate.setDate(checkDate.getDate() - 1);
   }
 
@@ -185,50 +194,78 @@ export const accountabilityScoreRouter = router({
       const today = new Date();
       const numDays = input.days === "all" ? 90 : parseInt(input.days);
 
-      const trend: {
-        date: string;
-        score: number;
-        completed: number;
-        total: number;
-      }[] = [];
+      // Fetch all data in the full window (numDays + 14 for rolling score) in 2 queries
+      const fullWindowStart = new Date(today);
+      fullWindowStart.setDate(fullWindowStart.getDate() - (numDays + WINDOW_DAYS - 2));
+
+      const [{ data: allTasks }, { data: allCheckIns }] = await Promise.all([
+        ctx.db
+          .from("tasks")
+          .select("status, due_date")
+          .eq("user_id", userId)
+          .gte("due_date", startOfDay(fullWindowStart))
+          .lte("due_date", endOfDay(today)),
+        (ctx.db as any)
+          .from("daily_checks")
+          .select("created_at")
+          .eq("user_id", userId)
+          .gte("created_at", startOfDay(fullWindowStart))
+          .lte("created_at", endOfDay(today)),
+      ]);
+
+      const tasks = allTasks || [];
+      const checkIns = allCheckIns || [];
+
+      // Index tasks by date
+      const tasksByDate: Record<string, { total: number; completed: number }> = {};
+      for (const t of tasks) {
+        const dateStr = new Date(t.due_date as string).toISOString().split("T")[0];
+        if (!tasksByDate[dateStr]) tasksByDate[dateStr] = { total: 0, completed: 0 };
+        tasksByDate[dateStr].total++;
+        if (t.status === "completed") tasksByDate[dateStr].completed++;
+      }
+
+      // Index check-in dates
+      const checkInDates = new Set<string>();
+      for (const c of checkIns) {
+        checkInDates.add(new Date(c.created_at).toISOString().split("T")[0]);
+      }
+
+      // Compute trend in memory
+      const trend: { date: string; score: number; completed: number; total: number }[] = [];
 
       for (let i = numDays - 1; i >= 0; i--) {
         const date = new Date(today);
         date.setDate(date.getDate() - i);
         const dateStr = date.toISOString().split("T")[0];
-        const dayStart = startOfDay(date);
-        const dayEnd = endOfDay(date);
 
-        const { data: dayTasks } = await ctx.db
-          .from("tasks")
-          .select("status")
-          .eq("user_id", userId)
-          .gte("due_date", dayStart)
-          .lte("due_date", dayEnd);
+        const dayStats = tasksByDate[dateStr] || { total: 0, completed: 0 };
 
-        const tasks = dayTasks || [];
-        const total = tasks.length;
-        const completed = tasks.filter(
-          (t: any) => t.status === "completed"
-        ).length;
+        // Compute rolling 14-day window stats in memory
+        let windowTotal = 0;
+        let windowCompleted = 0;
+        const windowActiveDays = new Set<string>();
 
-        const windowStart = new Date(date);
-        windowStart.setDate(windowStart.getDate() - (WINDOW_DAYS - 1));
-        const stats = await getWindowStats(
-          ctx.db,
-          userId,
-          windowStart,
-          date
-        );
-        const cr = computeCompletionRate(stats.total, stats.completed);
-        const conr = computeConsistencyRate(stats.activeDays, WINDOW_DAYS);
-        const dayScore = computeScore({
-          completionRate: cr,
-          consistencyRate: conr,
-          currentStreak: 0,
-        });
+        for (let w = 0; w < WINDOW_DAYS; w++) {
+          const wDate = new Date(date);
+          wDate.setDate(wDate.getDate() - w);
+          const wDateStr = wDate.toISOString().split("T")[0];
+          const wStats = tasksByDate[wDateStr];
+          if (wStats) {
+            windowTotal += wStats.total;
+            windowCompleted += wStats.completed;
+            if (wStats.completed > 0) windowActiveDays.add(wDateStr);
+          }
+          if (checkInDates.has(wDateStr)) windowActiveDays.add(wDateStr);
+        }
 
-        trend.push({ date: dateStr, score: dayScore, completed, total });
+        const cr = computeCompletionRate(windowTotal, windowCompleted);
+        const conr = computeConsistencyRate(windowActiveDays.size, WINDOW_DAYS);
+        // Streak omitted from trend: computing per-day streaks is expensive and the
+        // bonus is small (+0-5). Trend shows base score without streak bonus.
+        const dayScore = computeScore({ completionRate: cr, consistencyRate: conr, currentStreak: 0 });
+
+        trend.push({ date: dateStr, score: dayScore, completed: dayStats.completed, total: dayStats.total });
       }
 
       const currentStreak = await computeStreak(ctx.db, userId, today);
