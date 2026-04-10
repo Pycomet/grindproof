@@ -2,6 +2,12 @@ import { tool } from "ai";
 import { z } from "zod";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
+import {
+  computeCompletionRate,
+  computeConsistencyRate,
+  computeScore,
+  getTier,
+} from "@/lib/accountability";
 
 /** Escape Postgres LIKE/ILIKE wildcards so user input is treated literally. */
 function escapeLike(str: string): string {
@@ -220,6 +226,52 @@ export function createGrindproofTools(
         );
 
         return { success: true as const, goals: goalsWithProgress };
+      },
+    }),
+
+    get_accountability_score: tool({
+      description:
+        "Get the user's current accountability score, tier, streak, and performance metrics. Use when the user asks about their progress, performance, or score.",
+      inputSchema: z.object({}),
+      execute: async () => {
+        const now = new Date();
+        const windowStart = new Date(now);
+        windowStart.setDate(windowStart.getDate() - 13);
+
+        const { data: tasks } = await supabase
+          .from("tasks")
+          .select("status, due_date")
+          .eq("user_id", userId)
+          .gte("due_date", windowStart.toISOString())
+          .lte("due_date", now.toISOString());
+
+        const allTasks = tasks || [];
+        const total = allTasks.length;
+        const completed = allTasks.filter((t) => t.status === "completed").length;
+        const activeDaysSet = new Set(
+          allTasks
+            .filter((t) => t.status === "completed" && t.due_date != null)
+            .map((t) => new Date(t.due_date!).toISOString().split("T")[0])
+        );
+
+        const completionRate = computeCompletionRate(total, completed);
+        const consistencyRate = computeConsistencyRate(activeDaysSet.size, 14);
+        const score = computeScore({
+          completionRate,
+          consistencyRate,
+          currentStreak: 0,
+        });
+        const tier = getTier(score);
+
+        return {
+          success: true as const,
+          score,
+          tier: tier.name,
+          completionRate,
+          consistencyRate: Math.round(consistencyRate),
+          activeDays: activeDaysSet.size,
+          windowDays: 14,
+        };
       },
     }),
   };

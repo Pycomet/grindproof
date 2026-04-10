@@ -8,6 +8,12 @@ import { WEEKLY_ROAST_PROMPT } from "@/lib/prompts/weekly-roast-prompt";
 import { sendWeeklyRoastEmail } from "@/lib/notifications/email-service";
 import { verifyCronSecret } from "@/lib/cron-auth";
 import { getUserLocalTime } from "@/lib/timezone";
+import {
+  computeCompletionRate,
+  computeConsistencyRate,
+  computeScore,
+  getTier,
+} from "@/lib/accountability";
 
 const google = createGoogleGenerativeAI({ apiKey: env.NEXT_GOOGLE_GEMINI_API_KEY });
 
@@ -87,11 +93,42 @@ Completion rate: ${completionRate}%.
 Reflections on skipped tasks: ${reflections.length > 0 ? JSON.stringify(reflections) : "None provided."}
       `.trim();
 
+      // Compute accountability score for context
+      const windowStart14 = new Date(now);
+      windowStart14.setDate(windowStart14.getDate() - 13);
+
+      const { data: recentTasks } = await supabase
+        .from("tasks")
+        .select("status, due_date")
+        .eq("user_id", setting.user_id)
+        .gte("due_date", windowStart14.toISOString())
+        .lte("due_date", now.toISOString());
+
+      const recentAll = recentTasks || [];
+      const recentCompleted = recentAll.filter((t) => t.status === "completed").length;
+      const activeDaysSet = new Set(
+        recentAll
+          .filter((t) => t.status === "completed")
+          .map((t) => new Date(t.due_date).toISOString().split("T")[0])
+      );
+
+      const cr = computeCompletionRate(recentAll.length, recentCompleted);
+      const conr = computeConsistencyRate(activeDaysSet.size, 14);
+      const accountScore = computeScore({ completionRate: cr, consistencyRate: conr, currentStreak: 0 });
+      const accountTier = getTier(accountScore);
+
+      const scoreContext = `
+Accountability Score: ${accountScore}/100 (Tier: ${accountTier.name})
+Completion Rate (14d): ${cr}%
+Consistency Rate (14d): ${Math.round(conr)}%
+Active Days (14d): ${activeDaysSet.size}/14
+      `.trim();
+
       // Generate roast with AI
       const { output: roast } = await generateText({
         model: google(env.AI_MODEL),
         system: WEEKLY_ROAST_PROMPT,
-        prompt: weekData,
+        prompt: weekData + "\n\n" + scoreContext,
         output: Output.object({ schema: roastSchema }),
       });
 
