@@ -6,6 +6,7 @@ import { conversationRouter } from "./conversation";
 import { notificationRouter } from "./notification";
 import { dailyCheckRouter } from "./dailyCheck";
 import { weeklyRoastRouter } from "./weeklyRoast";
+import { accountabilityScoreRouter } from "./accountabilityScore";
 
 export const appRouter = router({
   goal: goalRouter,
@@ -15,6 +16,7 @@ export const appRouter = router({
   notification: notificationRouter,
   dailyCheck: dailyCheckRouter,
   weeklyRoast: weeklyRoastRouter,
+  accountabilityScore: accountabilityScoreRouter,
 });
 
 export type AppRouter = typeof appRouter;
