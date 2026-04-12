@@ -47,6 +47,7 @@ export const dailyCheckRouter = router({
       .from("tasks")
       .select("*")
       .eq("user_id", userId)
+      .eq("status", "pending")
       .gte("due_date", today.toISOString())
       .lt("due_date", tomorrow.toISOString())
       .order("start_time", { ascending: true });
@@ -95,10 +96,20 @@ export const dailyCheckRouter = router({
     .mutation(async ({ ctx, input }) => {
       const failures: string[] = [];
 
+      const tomorrow = new Date();
+      tomorrow.setHours(0, 0, 0, 0);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      tomorrow.setHours(12, 0, 0, 0);
+
       for (const item of input.reflections) {
-        const updateData: Record<string, unknown> = {
-          status: item.status,
-        };
+        const updateData: Record<string, unknown> = {};
+        if (item.status === "skipped") {
+          // Roll skipped tasks forward to tomorrow as pending, keeping the reflection.
+          updateData.status = "pending";
+          updateData.due_date = tomorrow.toISOString();
+        } else {
+          updateData.status = item.status;
+        }
         if (item.reflection) {
           updateData.reflection = item.reflection;
         }

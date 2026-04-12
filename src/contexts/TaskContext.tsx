@@ -50,6 +50,7 @@ const TaskContext = createContext<TaskContextType | undefined>(undefined);
 
 export function TaskProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
+  const utils = trpc.useUtils();
 
   const {
     data: tasks,
@@ -68,8 +69,12 @@ export function TaskProvider({ children }: { children: ReactNode }) {
   });
 
   const refreshTasks = useCallback(async () => {
-    await refetchTasks();
-  }, [refetchTasks]);
+    await Promise.all([
+      refetchTasks(),
+      utils.accountabilityScore.invalidate(),
+      utils.dailyCheck.invalidate(),
+    ]);
+  }, [refetchTasks, utils]);
 
   const refreshGoals = useCallback(async () => {
     await refetchGoals();
