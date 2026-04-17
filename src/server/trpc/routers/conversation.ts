@@ -175,5 +175,75 @@ export const conversationRouter = router({
 
       return { success: true, id: input.id };
     }),
+
+  /**
+   * Get the most recent conversation within the last 24 hours
+   */
+  getLatest: protectedProcedure.query(async ({ ctx }) => {
+    const oneDayAgo = new Date();
+    oneDayAgo.setDate(oneDayAgo.getDate() - 1);
+
+    const { data, error } = await (ctx.db as any)
+      .from("conversations")
+      .select("*")
+      .eq("user_id", ctx.user.id)
+      .gte("updated_at", oneDayAgo.toISOString())
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(`Failed to fetch latest conversation: ${error.message}`);
+    }
+
+    return data ? mapConversationFromDb(data) : null;
+  }),
+
+  /**
+   * Create or update a conversation
+   */
+  upsert: protectedProcedure
+    .input(
+      z.object({
+        conversationId: z.string().optional(),
+        messages: z.array(z.any()),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (input.conversationId) {
+        const { data, error } = await (ctx.db as any)
+          .from("conversations")
+          .update({ messages: input.messages })
+          .eq("id", input.conversationId)
+          .eq("user_id", ctx.user.id)
+          .select()
+          .maybeSingle();
+
+        if (error) {
+          throw new Error(`Failed to update conversation: ${error.message}`);
+        }
+        if (!data) {
+          throw new Error("Conversation not found or access denied");
+        }
+        return mapConversationFromDb(data);
+      }
+
+      const { data, error } = await (ctx.db as any)
+        .from("conversations")
+        .insert({
+          user_id: ctx.user.id,
+          messages: input.messages,
+        })
+        .select()
+        .maybeSingle();
+
+      if (error) {
+        throw new Error(`Failed to create conversation: ${error.message}`);
+      }
+      if (!data) {
+        throw new Error("Failed to create conversation: No data returned");
+      }
+      return mapConversationFromDb(data);
+    }),
 });
 

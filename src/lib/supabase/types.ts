@@ -168,6 +168,8 @@ export type Database = {
           recurrence_rule: string | null;
           recurring_event_id: string | null;
           parent_task_id: string | null;
+          reflection: string | null;
+          carry_over_count: number;
           created_at: string;
           updated_at: string;
         };
@@ -191,6 +193,8 @@ export type Database = {
           recurrence_rule?: string | null;
           recurring_event_id?: string | null;
           parent_task_id?: string | null;
+          reflection?: string | null;
+          carry_over_count?: number;
           created_at?: string;
           updated_at?: string;
         };
@@ -214,6 +218,8 @@ export type Database = {
           recurrence_rule?: string | null;
           recurring_event_id?: string | null;
           parent_task_id?: string | null;
+          reflection?: string | null;
+          carry_over_count?: number;
           created_at?: string;
           updated_at?: string;
         };
@@ -237,6 +243,59 @@ export type Database = {
             columns: ["parent_task_id"];
             isOneToOne: false;
             referencedRelation: "tasks";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      coach_memory: {
+        Row: {
+          id: string;
+          user_id: string;
+          category: "commitment" | "recommendation" | "pattern" | "observation" | "excuse_flagged";
+          content: string;
+          source: "coach_inline" | "pattern_engine" | "weekly_roast";
+          severity: "info" | "warning" | "critical" | null;
+          related_to: Record<string, unknown> | null;
+          pattern_key: string | null;
+          status: "active" | "fulfilled" | "broken" | "expired" | "superseded";
+          expires_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          category: "commitment" | "recommendation" | "pattern" | "observation" | "excuse_flagged";
+          content: string;
+          source: "coach_inline" | "pattern_engine" | "weekly_roast";
+          severity?: "info" | "warning" | "critical" | null;
+          related_to?: Record<string, unknown> | null;
+          pattern_key?: string | null;
+          status?: "active" | "fulfilled" | "broken" | "expired" | "superseded";
+          expires_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          category?: "commitment" | "recommendation" | "pattern" | "observation" | "excuse_flagged";
+          content?: string;
+          source?: "coach_inline" | "pattern_engine" | "weekly_roast";
+          severity?: "info" | "warning" | "critical" | null;
+          related_to?: Record<string, unknown> | null;
+          pattern_key?: string | null;
+          status?: "active" | "fulfilled" | "broken" | "expired" | "superseded";
+          expires_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "coach_memory_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
             referencedColumns: ["id"];
           }
         ];

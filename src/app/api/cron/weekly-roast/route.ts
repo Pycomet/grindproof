@@ -9,8 +9,11 @@ import { sendWeeklyRoastEmail } from "@/lib/notifications/email-service";
 import { verifyCronSecret } from "@/lib/cron-auth";
 import { getUserLocalTime } from "@/lib/timezone";
 import {
+  computeWeightedCompletion,
   computeCompletionRate,
   computeConsistencyRate,
+  computeDisciplineScore,
+  computeVelocityBonus,
   computeScore,
   getTier,
 } from "@/lib/accountability";
@@ -99,22 +102,33 @@ Reflections on skipped tasks: ${reflections.length > 0 ? JSON.stringify(reflecti
 
       const { data: recentTasks } = await supabase
         .from("tasks")
-        .select("status, due_date")
+        .select("status, due_date, priority, carry_over_count")
         .eq("user_id", setting.user_id)
         .gte("due_date", windowStart14.toISOString())
         .lte("due_date", now.toISOString());
 
       const recentAll = recentTasks || [];
-      const recentCompleted = recentAll.filter((t) => t.status === "completed").length;
       const activeDaysSet = new Set(
         recentAll
           .filter((t) => t.status === "completed")
           .map((t) => new Date(t.due_date).toISOString().split("T")[0])
       );
 
-      const cr = computeCompletionRate(recentAll.length, recentCompleted);
+      const cr = computeWeightedCompletion(
+        recentAll.map((t: any) => ({ status: t.status, priority: t.priority ?? "medium" }))
+      );
       const conr = computeConsistencyRate(activeDaysSet.size, 14);
-      const accountScore = computeScore({ completionRate: cr, consistencyRate: conr, currentStreak: 0 });
+      const ds = computeDisciplineScore(
+        recentAll.map((t: any) => ({ carry_over_count: t.carry_over_count ?? 0, status: t.status })),
+        recentAll.length
+      );
+      const accountScore = computeScore({
+        weightedCompletion: cr,
+        consistencyRate: conr,
+        disciplineScore: ds,
+        currentStreak: 0,
+        velocityBonus: 0,
+      });
       const accountTier = getTier(accountScore);
 
       const scoreContext = `
@@ -124,11 +138,39 @@ Consistency Rate (14d): ${Math.round(conr)}%
 Active Days (14d): ${activeDaysSet.size}/14
       `.trim();
 
+      // Fetch coach memory for context
+      const { data: coachMemory } = await supabase
+        .from("coach_memory")
+        .select("category, content, severity, created_at")
+        .eq("user_id", setting.user_id)
+        .eq("status", "active")
+        .order("created_at", { ascending: false })
+        .limit(20);
+
+      const memoryContext = (coachMemory || []).length > 0
+        ? `\nCoach Memory:\n${(coachMemory || []).map(
+            (m: any) => `- [${m.category}] ${m.content}`
+          ).join("\n")}`
+        : "";
+
+      // Fetch previous roast for continuity
+      const { data: prevRoast } = await supabase
+        .from("weekly_roasts")
+        .select("roast_data")
+        .eq("user_id", setting.user_id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      const prevContext = prevRoast?.roast_data
+        ? `\nPrevious week's summary: "${(prevRoast.roast_data as any).weekSummary}"`
+        : "";
+
       // Generate roast with AI
       const { output: roast } = await generateText({
         model: google(env.AI_MODEL),
         system: WEEKLY_ROAST_PROMPT,
-        prompt: weekData + "\n\n" + scoreContext,
+        prompt: weekData + "\n\n" + scoreContext + memoryContext + prevContext,
         output: Output.object({ schema: roastSchema }),
       });
 
@@ -146,6 +188,25 @@ Active Days (14d): ${activeDaysSet.size}/14
         task_stats: { total, completed, skipped, pending, completionRate },
         delivered_via: ["email"],
       });
+
+      // Write high-severity insights back to coach_memory
+      if (roast.insights) {
+        for (const insight of roast.insights) {
+          if (insight.severity === "high") {
+            const expiresAt = new Date(now);
+            expiresAt.setDate(expiresAt.getDate() + 14);
+            await supabase.from("coach_memory").insert({
+              user_id: setting.user_id,
+              category: "observation",
+              content: insight.text,
+              source: "weekly_roast",
+              severity: "warning",
+              status: "active",
+              expires_at: expiresAt.toISOString(),
+            });
+          }
+        }
+      }
 
       // Send email
       const { data: profile } = await supabase

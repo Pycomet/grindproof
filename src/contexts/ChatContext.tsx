@@ -5,10 +5,13 @@ import {
   useContext,
   useState,
   useCallback,
+  useEffect,
+  useRef,
   type ReactNode,
 } from "react";
-import { useChat } from "@ai-sdk/react";
+import { useChat, type UIMessage } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
+import { trpc } from "@/lib/trpc/client";
 
 const chatTransport = new DefaultChatTransport({ api: "/api/ai/chat" });
 
@@ -24,13 +27,46 @@ interface ChatContextType {
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
 
-export function ChatProvider({ children }: { children: ReactNode }) {
+// Inner component that only mounts after seed messages are determined
+function ChatProviderInner({
+  children,
+  seedMessages,
+  initialConversationId,
+}: {
+  children: ReactNode;
+  seedMessages: UIMessage[] | undefined;
+  initialConversationId: string | null;
+}) {
   const [isOpen, setIsOpen] = useState(false);
   const [input, setInput] = useState("");
+  const [conversationId, setConversationId] = useState<string | null>(initialConversationId);
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const upsertMutation = trpc.conversation.upsert.useMutation({
+    onSuccess: (data) => {
+      if (!conversationId) setConversationId(data.id);
+    },
+  });
 
   const { messages, sendMessage: rawSendMessage, status } = useChat({
     transport: chatTransport,
+    messages: seedMessages,
   });
+
+  // Save messages when status transitions to "ready" (debounced)
+  const prevStatusRef = useRef(status);
+  useEffect(() => {
+    if (prevStatusRef.current !== "ready" && status === "ready" && messages.length > 0) {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = setTimeout(() => {
+        upsertMutation.mutate({
+          conversationId: conversationId ?? undefined,
+          messages,
+        });
+      }, 1000);
+    }
+    prevStatusRef.current = status;
+  }, [status, messages, conversationId, upsertMutation]);
 
   const sendMessage = useCallback(
     (text: string) => {
@@ -45,6 +81,42 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     >
       {children}
     </ChatContext.Provider>
+  );
+}
+
+export function ChatProvider({ children }: { children: ReactNode }) {
+  const [seedMessages, setSeedMessages] = useState<UIMessage[] | undefined>(undefined);
+  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [loaded, setLoaded] = useState(false);
+
+  const { data: latestConversation, isError } = trpc.conversation.getLatest.useQuery(
+    undefined,
+    { enabled: !loaded }
+  );
+
+  useEffect(() => {
+    if (loaded) return;
+    if (isError) {
+      setLoaded(true);
+      return;
+    }
+    if (latestConversation !== undefined) {
+      if (latestConversation) {
+        setSeedMessages(latestConversation.messages as UIMessage[]);
+        setConversationId(latestConversation.id);
+      }
+      setLoaded(true);
+    }
+  }, [latestConversation, isError, loaded]);
+
+  if (!loaded) {
+    return null;
+  }
+
+  return (
+    <ChatProviderInner seedMessages={seedMessages} initialConversationId={conversationId}>
+      {children}
+    </ChatProviderInner>
   );
 }
 

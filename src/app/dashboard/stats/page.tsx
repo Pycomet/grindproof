@@ -199,7 +199,7 @@ export default function StatsPage() {
               </div>
               <div className="rounded-lg border border-zinc-700 bg-zinc-900 p-3 text-center">
                 <div className="text-2xl font-bold text-green-400">
-                  {scoreData.completionRate}%
+                  {scoreData.weightedCompletion}%
                 </div>
                 <div className="text-xs text-zinc-400">Completion</div>
               </div>
