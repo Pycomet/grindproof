@@ -1,8 +1,11 @@
 import { z } from "zod";
 import { router, protectedProcedure } from "../context";
 import {
+  computeWeightedCompletion,
   computeCompletionRate,
   computeConsistencyRate,
+  computeDisciplineScore,
+  computeVelocityBonus,
   computeScore,
   getTier,
 } from "@/lib/accountability";
@@ -77,7 +80,7 @@ async function getWindowStats(
 ) {
   const { data: tasks } = await db
     .from("tasks")
-    .select("status, due_date")
+    .select("status, due_date, priority, carry_over_count")
     .eq("user_id", userId)
     .gte("due_date", startOfDay(windowStart))
     .lte("due_date", endOfDay(windowEnd));
@@ -107,12 +110,13 @@ async function getWindowStats(
     )
   );
 
-  const activeDays = new Set([
+  const activeDaysCompletionsOnly = activeDaysFromTasks.size;
+  const activeDaysAll = new Set([
     ...activeDaysFromTasks,
     ...activeDaysFromCheckIns,
   ]).size;
 
-  return { total, completed, activeDays };
+  return { total, completed, activeDaysCompletionsOnly, activeDaysAll, allTasks };
 }
 
 export const accountabilityScoreRouter = router({
@@ -126,15 +130,46 @@ export const accountabilityScoreRouter = router({
 
     const currentStreak = await computeStreak(ctx.db, userId, today);
 
-    const completionRate = computeCompletionRate(stats.total, stats.completed);
+    const weightedCompletion = computeWeightedCompletion(
+      stats.allTasks.map((t: any) => ({ status: t.status, priority: t.priority }))
+    );
     const consistencyRate = computeConsistencyRate(
-      stats.activeDays,
+      stats.activeDaysCompletionsOnly,
       WINDOW_DAYS
     );
+    const disciplineScore = computeDisciplineScore(
+      stats.allTasks.map((t: any) => ({
+        carry_over_count: t.carry_over_count,
+        status: t.status,
+      })),
+      stats.total
+    );
+
+    // Split tasks into this-week and last-week for velocity bonus
+    const midPoint = new Date(today);
+    midPoint.setDate(midPoint.getDate() - 7);
+    const thisWeekTasks = stats.allTasks.filter(
+      (t: any) => new Date(t.due_date) > midPoint
+    );
+    const lastWeekTasks = stats.allTasks.filter(
+      (t: any) => new Date(t.due_date) <= midPoint
+    );
+    const thisWeekRate = computeCompletionRate(
+      thisWeekTasks.length,
+      thisWeekTasks.filter((t: any) => t.status === "completed").length
+    );
+    const lastWeekRate = computeCompletionRate(
+      lastWeekTasks.length,
+      lastWeekTasks.filter((t: any) => t.status === "completed").length
+    );
+    const velocityBonus = computeVelocityBonus(thisWeekRate, lastWeekRate);
+
     const score = computeScore({
-      completionRate,
+      weightedCompletion,
       consistencyRate,
+      disciplineScore,
       currentStreak,
+      velocityBonus,
     });
     const tier = getTier(score);
 
@@ -143,18 +178,27 @@ export const accountabilityScoreRouter = router({
     const pastStart = new Date(pastEnd);
     pastStart.setDate(pastStart.getDate() - (WINDOW_DAYS - 1));
     const pastStats = await getWindowStats(ctx.db, userId, pastStart, pastEnd);
-    const pastCompletionRate = computeCompletionRate(
-      pastStats.total,
-      pastStats.completed
+
+    const pastWeightedCompletion = computeWeightedCompletion(
+      pastStats.allTasks.map((t: any) => ({ status: t.status, priority: t.priority }))
     );
     const pastConsistencyRate = computeConsistencyRate(
-      pastStats.activeDays,
+      pastStats.activeDaysCompletionsOnly,
       WINDOW_DAYS
     );
+    const pastDisciplineScore = computeDisciplineScore(
+      pastStats.allTasks.map((t: any) => ({
+        carry_over_count: t.carry_over_count,
+        status: t.status,
+      })),
+      pastStats.total
+    );
     const pastScore = computeScore({
-      completionRate: pastCompletionRate,
+      weightedCompletion: pastWeightedCompletion,
       consistencyRate: pastConsistencyRate,
+      disciplineScore: pastDisciplineScore,
       currentStreak: 0,
+      velocityBonus: 0,
     });
     const delta = score - pastScore;
 
@@ -176,7 +220,7 @@ export const accountabilityScoreRouter = router({
       score,
       tier,
       currentStreak,
-      completionRate,
+      weightedCompletion,
       consistencyRate,
       delta,
       today: { completed: todayCompleted, total: todayTotal },
@@ -259,11 +303,18 @@ export const accountabilityScoreRouter = router({
           if (checkInDates.has(wDateStr)) windowActiveDays.add(wDateStr);
         }
 
+        // Approximate using flat completion rate — per-task priority not available in aggregated index
         const cr = computeCompletionRate(windowTotal, windowCompleted);
         const conr = computeConsistencyRate(windowActiveDays.size, WINDOW_DAYS);
-        // Streak omitted from trend: computing per-day streaks is expensive and the
-        // bonus is small (+0-5). Trend shows base score without streak bonus.
-        const dayScore = computeScore({ completionRate: cr, consistencyRate: conr, currentStreak: 0 });
+        // Streak and velocity omitted from trend: expensive to compute per-day and bonus is small.
+        // disciplineScore approximated as 100 since carry_over_count not in the aggregated index.
+        const dayScore = computeScore({
+          weightedCompletion: cr,
+          consistencyRate: conr,
+          disciplineScore: 100,
+          currentStreak: 0,
+          velocityBonus: 0,
+        });
 
         trend.push({ date: dateStr, score: dayScore, completed: dayStats.completed, total: dayStats.total });
       }
