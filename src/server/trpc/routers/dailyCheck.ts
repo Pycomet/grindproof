@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { router, protectedProcedure } from "../context";
+import { computeUserPatterns } from "@/lib/ai/patterns";
 
 export const dailyCheckRouter = router({
   getMorningSchedule: protectedProcedure.query(async ({ ctx }) => {
@@ -65,19 +66,29 @@ export const dailyCheckRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       const today = new Date();
-      today.setHours(12, 0, 0, 0); // Set to noon today
+      today.setHours(12, 0, 0, 0);
 
-      const { error } = await ctx.db
+      const { data: currentTasks } = await ctx.db
         .from("tasks")
-        .update({
-          due_date: today.toISOString(),
-          status: "pending",
-        })
+        .select("id, carry_over_count")
         .in("id", input.taskIds)
         .eq("user_id", ctx.user.id);
 
-      if (error)
-        throw new Error(`Failed to carry over tasks: ${error.message}`);
+      for (const task of currentTasks || []) {
+        const { error } = await ctx.db
+          .from("tasks")
+          .update({
+            due_date: today.toISOString(),
+            status: "pending",
+            carry_over_count: (task.carry_over_count ?? 0) + 1,
+          })
+          .eq("id", task.id)
+          .eq("user_id", ctx.user.id);
+
+        if (error)
+          throw new Error(`Failed to carry over task ${task.id}: ${error.message}`);
+      }
+
       return { success: true, count: input.taskIds.length };
     }),
 
@@ -104,9 +115,16 @@ export const dailyCheckRouter = router({
       for (const item of input.reflections) {
         const updateData: Record<string, unknown> = {};
         if (item.status === "skipped") {
-          // Roll skipped tasks forward to tomorrow as pending, keeping the reflection.
+          const { data: current } = await ctx.db
+            .from("tasks")
+            .select("carry_over_count")
+            .eq("id", item.taskId)
+            .eq("user_id", ctx.user.id)
+            .single();
+
           updateData.status = "pending";
           updateData.due_date = tomorrow.toISOString();
+          updateData.carry_over_count = ((current?.carry_over_count as number) ?? 0) + 1;
         } else {
           updateData.status = item.status;
         }
@@ -125,6 +143,11 @@ export const dailyCheckRouter = router({
       if (failures.length > 0) {
         throw new Error(`Failed to update tasks: ${failures.join(", ")}`);
       }
+
+      // Fire pattern engine (non-blocking)
+      computeUserPatterns(ctx.db, ctx.user.id).catch((err) =>
+        console.error("Pattern engine error:", err)
+      );
 
       return { success: true, count: input.reflections.length };
     }),
