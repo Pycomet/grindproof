@@ -188,13 +188,15 @@ export async function buildCoachContext(
   pastWindowStart.setDate(pastWindowStart.getDate() - 13);
   const { data: pastTasks } = await supabase
     .from("tasks")
-    .select("status, priority, carry_over_count")
+    .select("status, priority, carry_over_count, due_date")
     .eq("user_id", userId)
     .gte("due_date", pastWindowStart.toISOString())
     .lte("due_date", pastWindowEnd.toISOString());
   const pastAll = pastTasks || [];
   const pastActiveDays = new Set(
-    pastAll.filter((t) => t.status === "completed").map(() => "day")
+    pastAll
+      .filter((t) => t.status === "completed" && t.due_date)
+      .map((t) => new Date(t.due_date!).toISOString().split("T")[0])
   ).size;
   const pastScore = computeScore({
     weightedCompletion: computeWeightedCompletion(pastAll.map((t) => ({ status: t.status, priority: t.priority }))),
@@ -215,11 +217,19 @@ export async function buildCoachContext(
 
   const overdueTasks = todayTasks.filter((t) => t.status === "pending" && t.due_date && new Date(t.due_date) < todayStart);
   const chronicCarryOvers = todayTasks.filter((t) => (t.carry_over_count ?? 0) >= 3).map((t) => ({ title: t.title, carryOverCount: t.carry_over_count ?? 0 }));
-  const activeCommitmentsPastDue = memory.filter((m) => m.category === "commitment");
+  const activeCommitmentsPastDue = memory.filter(
+    (m) => m.category === "commitment" && m.related_to &&
+      typeof (m.related_to as any).deadline === "string" &&
+      new Date((m.related_to as any).deadline) < now
+  );
   const goalsUnder50 = goalProgress.filter((g) => g.total > 0 && g.completed / g.total < 0.5).length;
 
   const alerts = generateAlerts({
-    score, delta, currentStreak: streak, previousStreak: streak,
+    score, delta, currentStreak: streak,
+    // Estimate previous streak: if current is 0, check if yesterday was active (implies broken)
+    previousStreak: streak === 0
+      ? (activeDaysSet.has(new Date(now.getTime() - 86400000).toISOString().split("T")[0]) ? 3 : 0)
+      : streak,
     overdueTasks: overdueTasks.map((t) => ({ title: t.title })),
     chronicCarryOvers,
     activeCommitmentsPastDue: activeCommitmentsPastDue.map((m) => ({ content: m.content })),

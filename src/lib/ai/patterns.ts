@@ -234,8 +234,9 @@ export async function computeUserPatterns(
   // Expire stale memories for this user only
   await db
     .from("coach_memory")
-    .update({ status: "expired" })
+    .update({ status: "expired", updated_at: new Date().toISOString() })
     .eq("user_id", userId)
+    .eq("status", "active")
     .lt("expires_at", new Date().toISOString());
 
   // Fetch tasks from the last 30 days
@@ -342,7 +343,7 @@ export async function computeUserPatterns(
     // Supersede old memory with same pattern_key
     await db
       .from("coach_memory")
-      .update({ status: "expired" })
+      .update({ status: "superseded", updated_at: new Date().toISOString() })
       .eq("user_id", userId)
       .eq("pattern_key", result.patternKey)
       .eq("status", "active");
