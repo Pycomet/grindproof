@@ -243,17 +243,14 @@ export async function computeUserPatterns(
 
   const { data: tasks } = await db
     .from("tasks")
-    .select("id, title, carry_over_count, status, due_date, completed_at, skipped_at, created_at, scheduled_date")
+    .select("id, title, carry_over_count, status, due_date, created_at, reflection")
     .eq("user_id", userId)
-    .gte("created_at", thirtyDaysAgo);
+    .gte("due_date", thirtyDaysAgo);
 
-  // Fetch reflections from the last 30 days
-  const { data: reflections } = await db
-    .from("check_ins")
-    .select("reflection")
-    .eq("user_id", userId)
-    .gte("created_at", thirtyDaysAgo)
-    .not("reflection", "is", null);
+  // Extract reflections from tasks (not a separate table)
+  const reflections = (tasks ?? [])
+    .filter((t) => t.reflection != null)
+    .map((t) => ({ reflection: t.reflection as string }));
 
   // Fetch active goals with last completion info
   const { data: goals } = await db
@@ -270,30 +267,29 @@ export async function computeUserPatterns(
   // Build day stats from tasks
   const dayStatsMap: Record<number, { completed: number; skipped: number }> = {};
   for (const task of tasks ?? []) {
-    const date = task.scheduled_date
-      ? new Date(task.scheduled_date)
-      : task.created_at
-      ? new Date(task.created_at)
-      : null;
-    if (!date) continue;
-    const day = date.getDay();
+    if (!task.due_date) continue;
+    const day = new Date(task.due_date).getDay();
     if (!dayStatsMap[day]) dayStatsMap[day] = { completed: 0, skipped: 0 };
     if (task.status === "completed") dayStatsMap[day].completed++;
-    else if (task.status === "skipped") dayStatsMap[day].skipped++;
+    else if (task.status === "skipped" || (task.carry_over_count ?? 0) >= 1)
+      dayStatsMap[day].skipped++;
   }
   const dayStats = Object.entries(dayStatsMap).map(([day, stats]) => ({
     day: Number(day),
     ...stats,
   }));
 
-  // Compute completion velocity (compare last 15 days vs prior 15 days)
-  const fifteenDaysAgo = new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString();
-  const currentTasks = tasks?.filter((t) => t.created_at >= fifteenDaysAgo) ?? [];
-  const previousTasks = tasks?.filter((t) => t.created_at < fifteenDaysAgo) ?? [];
+  // Compute completion velocity (compare last 7 days vs prior days)
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  const currentTasks = tasks?.filter((t) => t.due_date && t.due_date >= sevenDaysAgo) ?? [];
+  const previousTasks = tasks?.filter((t) => t.due_date && t.due_date < sevenDaysAgo) ?? [];
   const currentAvg =
-    currentTasks.filter((t) => t.status === "completed").length / 15;
+    currentTasks.filter((t) => t.status === "completed").length / 7;
+  const lastWeekDays = Math.max(1, Math.ceil(
+    (new Date(sevenDaysAgo).getTime() - new Date(thirtyDaysAgo).getTime()) / (1000 * 60 * 60 * 24)
+  ));
   const previousAvg =
-    previousTasks.filter((t) => t.status === "completed").length / 15;
+    previousTasks.filter((t) => t.status === "completed").length / lastWeekDays;
 
   // Build goal stagnation inputs using actual last completed task per goal
   const now = new Date();
@@ -333,10 +329,7 @@ export async function computeUserPatterns(
         due_date: t.due_date,
       }))
     ),
-    analyzeExcuseTrends(
-      (reflections ?? [])
-        .filter((r): r is { reflection: string } => typeof r.reflection === "string")
-    ),
+    analyzeExcuseTrends(reflections),
     analyzeGoalStagnation(goalInputs, newGoalsCreatedRecently),
     analyzeCompletionVelocity(currentAvg, previousAvg),
     analyzeTimePatterns(dayStats),
