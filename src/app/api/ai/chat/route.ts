@@ -5,6 +5,7 @@ import { z } from "zod";
 import { env } from "@/lib/env";
 import { GRINDPROOF_SYSTEM_PROMPT } from "@/lib/prompts/system-prompt";
 import { createGrindproofTools } from "@/lib/ai/tools";
+import { buildCoachContext } from "@/lib/ai/context";
 import type { Database } from "@/lib/supabase/types";
 
 export const maxDuration = 60;
@@ -50,12 +51,14 @@ export async function POST(req: Request) {
     return new Response("Invalid request body", { status: 400 });
   }
 
+  const coachContext = await buildCoachContext(user.id, supabase);
+
   const result = streamText({
     model: google(env.AI_MODEL),
-    system: GRINDPROOF_SYSTEM_PROMPT,
+    system: GRINDPROOF_SYSTEM_PROMPT + "\n\n" + coachContext,
     messages: await convertToModelMessages(messages),
     tools: createGrindproofTools(user.id, supabase),
-    stopWhen: stepCountIs(5),
+    stopWhen: stepCountIs(8),
   });
 
   return result.toUIMessageStreamResponse();
