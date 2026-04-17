@@ -59,7 +59,7 @@ export function analyzeCarryOverFrequency(tasks: TaskInput[]): PatternResult | n
     return {
       content: `"${criticalTask.title}" has been carried over ${criticalTask.carry_over_count} times and may need to be broken down, delegated, or removed.`,
       severity: "critical",
-      patternKey: "carry_over_frequency",
+      patternKey: "carry_over",
       relatedTo: { taskTitle: criticalTask.title, carryOverCount: criticalTask.carry_over_count },
     };
   }
@@ -70,7 +70,7 @@ export function analyzeCarryOverFrequency(tasks: TaskInput[]): PatternResult | n
     return {
       content: `${chronicTasks.length} of ${tasks.length} tasks (${Math.round(ratio * 100)}%) have been carried over 3+ times. Consider revisiting your task planning approach.`,
       severity: "warning",
-      patternKey: "carry_over_frequency",
+      patternKey: "carry_over",
       relatedTo: { chronicCount: chronicTasks.length, totalCount: tasks.length },
     };
   }
@@ -171,7 +171,7 @@ export function analyzeCompletionVelocity(
     return {
       content: `Your task completion rate has dropped by ${Math.round(absChange * 100)}% compared to the previous period. Try to identify what's changed and address it.`,
       severity: "warning",
-      patternKey: "completion_velocity",
+      patternKey: "velocity",
       relatedTo: { changePercent: Math.round(change * 100), currentAvgPerDay, previousAvgPerDay },
     };
   }
@@ -179,7 +179,7 @@ export function analyzeCompletionVelocity(
   return {
     content: `Great momentum! Your task completion rate has improved by ${Math.round(absChange * 100)}% compared to the previous period. Keep it up.`,
     severity: "info",
-    patternKey: "completion_velocity",
+    patternKey: "velocity",
     relatedTo: { changePercent: Math.round(change * 100), currentAvgPerDay, previousAvgPerDay },
   };
 }
@@ -231,10 +231,11 @@ export async function computeUserPatterns(
   db: SupabaseClient<Database>,
   userId: string
 ): Promise<void> {
-  // Expire stale memories
+  // Expire stale memories for this user only
   await db
     .from("coach_memory")
     .update({ status: "expired" })
+    .eq("user_id", userId)
     .lt("expires_at", new Date().toISOString());
 
   // Fetch tasks from the last 30 days
@@ -294,18 +295,33 @@ export async function computeUserPatterns(
   const previousAvg =
     previousTasks.filter((t) => t.status === "completed").length / 15;
 
-  // Build goal stagnation inputs (approximation: daysSinceLastCompletion from goal age if no tasks)
-  const goalInputs: GoalInput[] = (goals ?? []).map((g) => {
-    const daysSince = Math.floor(
-      (Date.now() - new Date(g.created_at).getTime()) / (1000 * 60 * 60 * 24)
-    );
-    return {
-      title: g.title,
-      daysSinceLastCompletion: daysSince,
-      pendingTasks: 0,
-      status: g.status,
-    };
-  });
+  // Build goal stagnation inputs using actual last completed task per goal
+  const now = new Date();
+  const goalInputs = await Promise.all(
+    (goals ?? []).map(async (g) => {
+      const { data: lastCompleted } = await db
+        .from("tasks")
+        .select("due_date")
+        .eq("goal_id", g.id)
+        .eq("status", "completed")
+        .order("due_date", { ascending: false })
+        .limit(1);
+      const lastDate = lastCompleted?.[0]?.due_date;
+      const { count: pending } = await db
+        .from("tasks")
+        .select("*", { count: "exact", head: true })
+        .eq("goal_id", g.id)
+        .eq("status", "pending");
+      return {
+        title: g.title,
+        daysSinceLastCompletion: lastDate
+          ? Math.floor((now.getTime() - new Date(lastDate).getTime()) / (1000 * 60 * 60 * 24))
+          : null,
+        pendingTasks: pending ?? 0,
+        status: g.status,
+      };
+    })
+  );
 
   // Run analyzers
   const results: PatternResult[] = [

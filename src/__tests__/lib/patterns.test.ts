@@ -134,7 +134,7 @@ describe("analyzeCarryOverFrequency", () => {
     const result = analyzeCarryOverFrequency(tasks);
     expect(result).not.toBeNull();
     expect(result!.severity).toBe("warning");
-    expect(result!.patternKey).toBe("carry_over_frequency");
+    expect(result!.patternKey).toBe("carry_over");
   });
 
   it("returns critical when any task has carry_over_count >= 5", () => {
@@ -146,7 +146,7 @@ describe("analyzeCarryOverFrequency", () => {
     expect(result).not.toBeNull();
     expect(result!.severity).toBe("critical");
     expect(result!.content).toContain("Fix the bug");
-    expect(result!.patternKey).toBe("carry_over_frequency");
+    expect(result!.patternKey).toBe("carry_over");
   });
 
   it("critical result names the most carried-over task", () => {
@@ -329,7 +329,7 @@ describe("analyzeCompletionVelocity", () => {
     const result = analyzeCompletionVelocity(0.7, 1.0);
     expect(result).not.toBeNull();
     expect(result!.severity).toBe("warning");
-    expect(result!.patternKey).toBe("completion_velocity");
+    expect(result!.patternKey).toBe("velocity");
   });
 
   it("returns warning for large drop", () => {
@@ -341,7 +341,7 @@ describe("analyzeCompletionVelocity", () => {
     const result = analyzeCompletionVelocity(1.3, 1.0);
     expect(result).not.toBeNull();
     expect(result!.severity).toBe("info");
-    expect(result!.patternKey).toBe("completion_velocity");
+    expect(result!.patternKey).toBe("velocity");
   });
 
   it("returns info for large improvement", () => {
