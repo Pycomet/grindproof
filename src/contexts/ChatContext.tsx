@@ -27,29 +27,20 @@ interface ChatContextType {
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
 
-export function ChatProvider({ children }: { children: ReactNode }) {
+// Inner component that only mounts after seed messages are determined
+function ChatProviderInner({
+  children,
+  seedMessages,
+  initialConversationId,
+}: {
+  children: ReactNode;
+  seedMessages: UIMessage[] | undefined;
+  initialConversationId: string | null;
+}) {
   const [isOpen, setIsOpen] = useState(false);
   const [input, setInput] = useState("");
-  const [seedMessages, setSeedMessages] = useState<UIMessage[] | undefined>(undefined);
-  const [conversationId, setConversationId] = useState<string | null>(null);
-  const [loaded, setLoaded] = useState(false);
+  const [conversationId, setConversationId] = useState<string | null>(initialConversationId);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // Load latest conversation on mount
-  const { data: latestConversation } = trpc.conversation.getLatest.useQuery(
-    undefined,
-    { enabled: !loaded }
-  );
-
-  useEffect(() => {
-    if (latestConversation && !loaded) {
-      setSeedMessages(latestConversation.messages as UIMessage[]);
-      setConversationId(latestConversation.id);
-      setLoaded(true);
-    } else if (latestConversation === null && !loaded) {
-      setLoaded(true);
-    }
-  }, [latestConversation, loaded]);
 
   const upsertMutation = trpc.conversation.upsert.useMutation({
     onSuccess: (data) => {
@@ -90,6 +81,42 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     >
       {children}
     </ChatContext.Provider>
+  );
+}
+
+export function ChatProvider({ children }: { children: ReactNode }) {
+  const [seedMessages, setSeedMessages] = useState<UIMessage[] | undefined>(undefined);
+  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [loaded, setLoaded] = useState(false);
+
+  const { data: latestConversation, isError } = trpc.conversation.getLatest.useQuery(
+    undefined,
+    { enabled: !loaded }
+  );
+
+  useEffect(() => {
+    if (loaded) return;
+    if (isError) {
+      setLoaded(true);
+      return;
+    }
+    if (latestConversation !== undefined) {
+      if (latestConversation) {
+        setSeedMessages(latestConversation.messages as UIMessage[]);
+        setConversationId(latestConversation.id);
+      }
+      setLoaded(true);
+    }
+  }, [latestConversation, isError, loaded]);
+
+  if (!loaded) {
+    return null;
+  }
+
+  return (
+    <ChatProviderInner seedMessages={seedMessages} initialConversationId={conversationId}>
+      {children}
+    </ChatProviderInner>
   );
 }
 
