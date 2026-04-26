@@ -39,6 +39,10 @@ yarn-error.log*
 # vercel
 .vercel
 
+# supabase
+supabase/.temp/
+supabase/.branches/
+
 # superpowers
 .superpowers/
 

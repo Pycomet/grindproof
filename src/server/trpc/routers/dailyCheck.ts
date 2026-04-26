@@ -89,6 +89,10 @@ export const dailyCheckRouter = router({
           throw new Error(`Failed to carry over task ${task.id}: ${error.message}`);
       }
 
+      await ctx.db
+        .from("daily_checks")
+        .insert({ user_id: ctx.user.id, type: "morning" });
+
       return { success: true, count: input.taskIds.length };
     }),
 
@@ -143,6 +147,10 @@ export const dailyCheckRouter = router({
       if (failures.length > 0) {
         throw new Error(`Failed to update tasks: ${failures.join(", ")}`);
       }
+
+      await ctx.db
+        .from("daily_checks")
+        .insert({ user_id: ctx.user.id, type: "evening" });
 
       // Fire pattern engine (non-blocking)
       computeUserPatterns(ctx.db, ctx.user.id).catch((err) =>

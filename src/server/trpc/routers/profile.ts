@@ -104,8 +104,11 @@ export const profileRouter = router({
     const tables = [
       "push_subscriptions",
       "notification_settings",
-      "user_feedback",
-      "accountability_scores",
+      "daily_checks",
+      "coach_memory",
+      "conversations",
+      "weekly_roasts",
+      "notification_log",
       "tasks",
       "goals",
     ] as const;
