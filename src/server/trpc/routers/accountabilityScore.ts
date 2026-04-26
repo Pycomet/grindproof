@@ -245,7 +245,7 @@ export const accountabilityScoreRouter = router({
       const [{ data: allTasks }, { data: allCheckIns }] = await Promise.all([
         ctx.db
           .from("tasks")
-          .select("status, due_date")
+          .select("status, due_date, carry_over_count")
           .eq("user_id", userId)
           .gte("due_date", startOfDay(fullWindowStart))
           .lte("due_date", endOfDay(today)),
@@ -260,13 +260,24 @@ export const accountabilityScoreRouter = router({
       const tasks = allTasks || [];
       const checkIns = allCheckIns || [];
 
-      // Index tasks by date
-      const tasksByDate: Record<string, { total: number; completed: number }> = {};
+      // Index tasks by due-date string. We keep the raw task rows so the
+      // per-day rolling discipline score can use carry_over_count + status,
+      // matching getScore exactly.
+      type DiscTask = { carry_over_count: number; status: string };
+      const tasksByDate: Record<
+        string,
+        { total: number; completed: number; tasks: DiscTask[] }
+      > = {};
       for (const t of tasks) {
         const dateStr = new Date(t.due_date as string).toISOString().split("T")[0];
-        if (!tasksByDate[dateStr]) tasksByDate[dateStr] = { total: 0, completed: 0 };
+        if (!tasksByDate[dateStr])
+          tasksByDate[dateStr] = { total: 0, completed: 0, tasks: [] };
         tasksByDate[dateStr].total++;
         if (t.status === "completed") tasksByDate[dateStr].completed++;
+        tasksByDate[dateStr].tasks.push({
+          carry_over_count: (t as any).carry_over_count ?? 0,
+          status: t.status as string,
+        });
       }
 
       // Index check-in dates
@@ -283,12 +294,13 @@ export const accountabilityScoreRouter = router({
         date.setDate(date.getDate() - i);
         const dateStr = date.toISOString().split("T")[0];
 
-        const dayStats = tasksByDate[dateStr] || { total: 0, completed: 0 };
+        const dayStats = tasksByDate[dateStr] || { total: 0, completed: 0, tasks: [] };
 
         // Compute rolling 14-day window stats in memory
         let windowTotal = 0;
         let windowCompleted = 0;
         const windowActiveDays = new Set<string>();
+        const windowTasks: DiscTask[] = [];
 
         for (let w = 0; w < WINDOW_DAYS; w++) {
           const wDate = new Date(date);
@@ -299,19 +311,23 @@ export const accountabilityScoreRouter = router({
             windowTotal += wStats.total;
             windowCompleted += wStats.completed;
             if (wStats.completed > 0) windowActiveDays.add(wDateStr);
+            windowTasks.push(...wStats.tasks);
           }
           if (checkInDates.has(wDateStr)) windowActiveDays.add(wDateStr);
         }
 
-        // Approximate using flat completion rate — per-task priority not available in aggregated index
+        // Flat completion rate is still an approximation here (we lack per-task
+        // priority in the aggregated query). Discipline now uses real
+        // carry_over_count + status, matching getScore.
         const cr = computeCompletionRate(windowTotal, windowCompleted);
         const conr = computeConsistencyRate(windowActiveDays.size, WINDOW_DAYS);
-        // Streak and velocity omitted from trend: expensive to compute per-day and bonus is small.
-        // disciplineScore approximated as 100 since carry_over_count not in the aggregated index.
+        const ds = computeDisciplineScore(windowTasks, windowTotal);
+        // Streak and velocity omitted from trend: expensive to compute per-day
+        // and the bonus is small (±5) compared to the chart's range.
         const dayScore = computeScore({
           weightedCompletion: cr,
           consistencyRate: conr,
-          disciplineScore: 100,
+          disciplineScore: ds,
           currentStreak: 0,
           velocityBonus: 0,
         });

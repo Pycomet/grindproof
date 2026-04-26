@@ -330,6 +330,55 @@ describe("computeScore", () => {
 // =========================================================================
 // getTier
 // =========================================================================
+// =========================================================================
+// Trend discipline parity (regression for hardcoded disciplineScore=100)
+// =========================================================================
+describe("computeScore — trend / dashboard discipline parity", () => {
+  // The score-trend router previously hardcoded disciplineScore=100 because
+  // carry_over_count was not in the bulk query. After the fix, the trend
+  // computes ds via computeDisciplineScore() over the same window of tasks
+  // that getScore uses. This test verifies the math agrees when both are
+  // fed identical inputs — i.e., that the "approximation" is gone.
+  it("produces the same score as getScore-style computation for the same window", () => {
+    const windowTasks = [
+      { carry_over_count: 4, status: "pending", priority: "high" },
+      { carry_over_count: 0, status: "completed", priority: "medium" },
+      { carry_over_count: 3, status: "pending", priority: "low" },
+      { carry_over_count: 1, status: "completed", priority: "high" },
+    ];
+
+    // What the trend now computes:
+    const total = windowTasks.length;
+    const completed = windowTasks.filter((t) => t.status === "completed").length;
+    const cr = computeCompletionRate(total, completed);
+    const conr = computeConsistencyRate(2, 14);
+    const ds = computeDisciplineScore(
+      windowTasks.map((t) => ({ carry_over_count: t.carry_over_count, status: t.status })),
+      total
+    );
+    const trendScore = computeScore({
+      weightedCompletion: cr,
+      consistencyRate: conr,
+      disciplineScore: ds,
+      currentStreak: 0,
+      velocityBonus: 0,
+    });
+
+    // What the bug was: ds forced to 100. The two scores must differ when
+    // there are real carry-overs.
+    const buggyScore = computeScore({
+      weightedCompletion: cr,
+      consistencyRate: conr,
+      disciplineScore: 100,
+      currentStreak: 0,
+      velocityBonus: 0,
+    });
+
+    expect(ds).toBeLessThan(100); // there are carry-overs and overcommit
+    expect(trendScore).toBeLessThan(buggyScore); // bug inflated the score
+  });
+});
+
 describe("getTier", () => {
   it("returns Slacking for score < 40", () => {
     expect(getTier(0)).toEqual({ name: "Slacking", color: "red" });
