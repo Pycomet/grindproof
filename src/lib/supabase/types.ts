@@ -7,11 +7,8 @@ export type Database = {
           user_id: string;
           title: string;
           description: string | null;
-          target_date: string | null;
-          status: "active" | "completed" | "paused";
-          github_repos: string[] | null;
+          status: "active" | "completed";
           priority: "high" | "medium" | "low";
-          time_horizon: "daily" | "weekly" | "monthly" | "annual" | null;
           created_at: string;
           updated_at: string;
         };
@@ -20,11 +17,8 @@ export type Database = {
           user_id: string;
           title: string;
           description?: string | null;
-          target_date?: string | null;
-          status?: "active" | "completed" | "paused";
-          github_repos?: string[] | null;
+          status?: "active" | "completed";
           priority?: "high" | "medium" | "low";
-          time_horizon?: "daily" | "weekly" | "monthly" | "annual" | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -33,11 +27,8 @@ export type Database = {
           user_id?: string;
           title?: string;
           description?: string | null;
-          target_date?: string | null;
-          status?: "active" | "completed" | "paused";
-          github_repos?: string[] | null;
+          status?: "active" | "completed";
           priority?: "high" | "medium" | "low";
-          time_horizon?: "daily" | "weekly" | "monthly" | "annual" | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -51,101 +42,37 @@ export type Database = {
           }
         ];
       };
-      routines: {
-        Row: {
-          id: string;
-          name: string;
-          description: string | null;
-          frequency: "daily" | "weekly" | "custom";
-          days_of_week: number[] | null;
-          time_of_day: string | null;
-          is_active: boolean;
-          goal_id: string | null;
-          created_at: string;
-          updated_at: string;
-        };
-        Insert: {
-          id?: string;
-          name: string;
-          description?: string | null;
-          frequency?: "daily" | "weekly" | "custom";
-          days_of_week?: number[] | null;
-          time_of_day?: string | null;
-          is_active?: boolean;
-          goal_id?: string | null;
-          created_at?: string;
-          updated_at?: string;
-        };
-        Update: {
-          id?: string;
-          name?: string;
-          description?: string | null;
-          frequency?: "daily" | "weekly" | "custom";
-          days_of_week?: number[] | null;
-          time_of_day?: string | null;
-          is_active?: boolean;
-          goal_id?: string | null;
-          created_at?: string;
-          updated_at?: string;
-        };
-        Relationships: [];
-      };
       profiles: {
         Row: {
           id: string;
           name: string | null;
-          profile_pic_url: string | null;
+          email: string | null;
           created_at: string;
           updated_at: string;
         };
         Insert: {
           id: string;
           name?: string | null;
-          profile_pic_url?: string | null;
+          email?: string | null;
           created_at?: string;
           updated_at?: string;
         };
         Update: {
           id?: string;
           name?: string | null;
-          profile_pic_url?: string | null;
+          email?: string | null;
           created_at?: string;
           updated_at?: string;
         };
-        Relationships: [];
-      };
-      integrations: {
-        Row: {
-          id: string;
-          user_id: string;
-          service_type: string;
-          credentials: Record<string, unknown>;
-          status: "connected" | "disconnected" | "error";
-          metadata: Record<string, unknown> | null;
-          created_at: string;
-          updated_at: string;
-        };
-        Insert: {
-          id?: string;
-          user_id: string;
-          service_type: string;
-          credentials: Record<string, unknown>;
-          status?: "connected" | "disconnected" | "error";
-          metadata?: Record<string, unknown> | null;
-          created_at?: string;
-          updated_at?: string;
-        };
-        Update: {
-          id?: string;
-          user_id?: string;
-          service_type?: string;
-          credentials?: Record<string, unknown>;
-          status?: "connected" | "disconnected" | "error";
-          metadata?: Record<string, unknown> | null;
-          created_at?: string;
-          updated_at?: string;
-        };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: "profiles_id_fkey";
+            columns: ["id"];
+            isOneToOne: true;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          }
+        ];
       };
       tasks: {
         Row: {
@@ -157,17 +84,10 @@ export type Database = {
           due_date: string | null;
           start_time: string | null;
           end_time: string | null;
-          reminders: unknown;
           status: "pending" | "completed" | "skipped";
           priority: "high" | "medium" | "low";
-          completion_proof: string | null;
           tags: string[] | null;
-          google_calendar_event_id: string | null;
-          is_synced_with_calendar: boolean;
-          recurrence_pattern: unknown;
           recurrence_rule: string | null;
-          recurring_event_id: string | null;
-          parent_task_id: string | null;
           reflection: string | null;
           carry_over_count: number;
           created_at: string;
@@ -182,17 +102,10 @@ export type Database = {
           due_date?: string | null;
           start_time?: string | null;
           end_time?: string | null;
-          reminders?: unknown;
           status?: "pending" | "completed" | "skipped";
           priority?: "high" | "medium" | "low";
-          completion_proof?: string | null;
           tags?: string[] | null;
-          google_calendar_event_id?: string | null;
-          is_synced_with_calendar?: boolean;
-          recurrence_pattern?: unknown;
           recurrence_rule?: string | null;
-          recurring_event_id?: string | null;
-          parent_task_id?: string | null;
           reflection?: string | null;
           carry_over_count?: number;
           created_at?: string;
@@ -207,17 +120,10 @@ export type Database = {
           due_date?: string | null;
           start_time?: string | null;
           end_time?: string | null;
-          reminders?: unknown;
           status?: "pending" | "completed" | "skipped";
           priority?: "high" | "medium" | "low";
-          completion_proof?: string | null;
           tags?: string[] | null;
-          google_calendar_event_id?: string | null;
-          is_synced_with_calendar?: boolean;
-          recurrence_pattern?: unknown;
           recurrence_rule?: string | null;
-          recurring_event_id?: string | null;
-          parent_task_id?: string | null;
           reflection?: string | null;
           carry_over_count?: number;
           created_at?: string;
@@ -237,12 +143,34 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: "goals";
             referencedColumns: ["id"];
-          },
+          }
+        ];
+      };
+      daily_checks: {
+        Row: {
+          id: string;
+          user_id: string;
+          type: "morning" | "evening";
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          type: "morning" | "evening";
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          type?: "morning" | "evening";
+          created_at?: string;
+        };
+        Relationships: [
           {
-            foreignKeyName: "tasks_parent_task_id_fkey";
-            columns: ["parent_task_id"];
+            foreignKeyName: "daily_checks_user_id_fkey";
+            columns: ["user_id"];
             isOneToOne: false;
-            referencedRelation: "tasks";
+            referencedRelation: "users";
             referencedColumns: ["id"];
           }
         ];
@@ -251,13 +179,23 @@ export type Database = {
         Row: {
           id: string;
           user_id: string;
-          category: "commitment" | "recommendation" | "pattern" | "observation" | "excuse_flagged";
+          category:
+            | "commitment"
+            | "recommendation"
+            | "pattern"
+            | "observation"
+            | "excuse_flagged";
           content: string;
           source: "coach_inline" | "pattern_engine" | "weekly_roast";
           severity: "info" | "warning" | "critical" | null;
           related_to: Record<string, unknown> | null;
           pattern_key: string | null;
-          status: "active" | "fulfilled" | "broken" | "expired" | "superseded";
+          status:
+            | "active"
+            | "fulfilled"
+            | "broken"
+            | "expired"
+            | "superseded";
           expires_at: string | null;
           created_at: string;
           updated_at: string;
@@ -265,13 +203,23 @@ export type Database = {
         Insert: {
           id?: string;
           user_id: string;
-          category: "commitment" | "recommendation" | "pattern" | "observation" | "excuse_flagged";
+          category:
+            | "commitment"
+            | "recommendation"
+            | "pattern"
+            | "observation"
+            | "excuse_flagged";
           content: string;
           source: "coach_inline" | "pattern_engine" | "weekly_roast";
           severity?: "info" | "warning" | "critical" | null;
           related_to?: Record<string, unknown> | null;
           pattern_key?: string | null;
-          status?: "active" | "fulfilled" | "broken" | "expired" | "superseded";
+          status?:
+            | "active"
+            | "fulfilled"
+            | "broken"
+            | "expired"
+            | "superseded";
           expires_at?: string | null;
           created_at?: string;
           updated_at?: string;
@@ -279,13 +227,23 @@ export type Database = {
         Update: {
           id?: string;
           user_id?: string;
-          category?: "commitment" | "recommendation" | "pattern" | "observation" | "excuse_flagged";
+          category?:
+            | "commitment"
+            | "recommendation"
+            | "pattern"
+            | "observation"
+            | "excuse_flagged";
           content?: string;
           source?: "coach_inline" | "pattern_engine" | "weekly_roast";
           severity?: "info" | "warning" | "critical" | null;
           related_to?: Record<string, unknown> | null;
           pattern_key?: string | null;
-          status?: "active" | "fulfilled" | "broken" | "expired" | "superseded";
+          status?:
+            | "active"
+            | "fulfilled"
+            | "broken"
+            | "expired"
+            | "superseded";
           expires_at?: string | null;
           created_at?: string;
           updated_at?: string;
@@ -308,6 +266,8 @@ export type Database = {
           p256dh_key: string;
           auth_key: string;
           user_agent: string | null;
+          device_name: string | null;
+          last_successful_push: string | null;
           is_active: boolean;
           created_at: string;
           updated_at: string;
@@ -319,6 +279,8 @@ export type Database = {
           p256dh_key: string;
           auth_key: string;
           user_agent?: string | null;
+          device_name?: string | null;
+          last_successful_push?: string | null;
           is_active?: boolean;
           created_at?: string;
           updated_at?: string;
@@ -330,6 +292,8 @@ export type Database = {
           p256dh_key?: string;
           auth_key?: string;
           user_agent?: string | null;
+          device_name?: string | null;
+          last_successful_push?: string | null;
           is_active?: boolean;
           created_at?: string;
           updated_at?: string;
@@ -352,9 +316,8 @@ export type Database = {
           morning_check_time: string;
           evening_check_enabled: boolean;
           evening_check_time: string;
-          hourly_review_enabled: boolean;
-          hourly_review_start_time: string;
-          hourly_review_end_time: string;
+          email_notifications_enabled: boolean;
+          push_notifications_enabled: boolean;
           timezone: string;
           created_at: string;
           updated_at: string;
@@ -366,9 +329,8 @@ export type Database = {
           morning_check_time?: string;
           evening_check_enabled?: boolean;
           evening_check_time?: string;
-          hourly_review_enabled?: boolean;
-          hourly_review_start_time?: string;
-          hourly_review_end_time?: string;
+          email_notifications_enabled?: boolean;
+          push_notifications_enabled?: boolean;
           timezone?: string;
           created_at?: string;
           updated_at?: string;
@@ -380,9 +342,8 @@ export type Database = {
           morning_check_time?: string;
           evening_check_enabled?: boolean;
           evening_check_time?: string;
-          hourly_review_enabled?: boolean;
-          hourly_review_start_time?: string;
-          hourly_review_end_time?: string;
+          email_notifications_enabled?: boolean;
+          push_notifications_enabled?: boolean;
           timezone?: string;
           created_at?: string;
           updated_at?: string;
@@ -397,43 +358,31 @@ export type Database = {
           }
         ];
       };
-      accountability_scores: {
+      notification_log: {
         Row: {
           id: string;
           user_id: string;
-          week_start: string;
-          alignment_score: number;
-          completed_tasks: number;
-          total_tasks: number;
-          roast_metadata: any | null;
+          type: string;
+          sent_date: string;
           created_at: string;
-          updated_at: string;
         };
         Insert: {
           id?: string;
           user_id: string;
-          week_start: string;
-          alignment_score: number;
-          completed_tasks: number;
-          total_tasks: number;
-          roast_metadata?: any | null;
+          type: string;
+          sent_date: string;
           created_at?: string;
-          updated_at?: string;
         };
         Update: {
           id?: string;
           user_id?: string;
-          week_start?: string;
-          alignment_score?: number;
-          completed_tasks?: number;
-          total_tasks?: number;
-          roast_metadata?: any | null;
+          type?: string;
+          sent_date?: string;
           created_at?: string;
-          updated_at?: string;
         };
         Relationships: [
           {
-            foreignKeyName: "accountability_scores_user_id_fkey";
+            foreignKeyName: "notification_log_user_id_fkey";
             columns: ["user_id"];
             isOneToOne: false;
             referencedRelation: "users";
@@ -441,43 +390,72 @@ export type Database = {
           }
         ];
       };
-      user_feedback: {
+      weekly_roasts: {
         Row: {
           id: string;
           user_id: string;
-          trigger_type: "chat" | "eveningCheck" | "taskMilestone";
-          feedback_type: "star" | "emoji" | "thumbs";
-          rating: number | null;
-          emoji: string | null;
-          thumb: "up" | "down" | null;
-          comment: string | null;
+          week_start: string;
+          week_end: string;
+          roast_data: Record<string, unknown>;
+          task_stats: Record<string, unknown> | null;
+          delivered_via: string[];
           created_at: string;
         };
         Insert: {
           id?: string;
           user_id: string;
-          trigger_type: "chat" | "eveningCheck" | "taskMilestone";
-          feedback_type: "star" | "emoji" | "thumbs";
-          rating?: number | null;
-          emoji?: string | null;
-          thumb?: "up" | "down" | null;
-          comment?: string | null;
+          week_start: string;
+          week_end: string;
+          roast_data: Record<string, unknown>;
+          task_stats?: Record<string, unknown> | null;
+          delivered_via?: string[];
           created_at?: string;
         };
         Update: {
           id?: string;
           user_id?: string;
-          trigger_type?: "chat" | "eveningCheck" | "taskMilestone";
-          feedback_type?: "star" | "emoji" | "thumbs";
-          rating?: number | null;
-          emoji?: string | null;
-          thumb?: "up" | "down" | null;
-          comment?: string | null;
+          week_start?: string;
+          week_end?: string;
+          roast_data?: Record<string, unknown>;
+          task_stats?: Record<string, unknown> | null;
+          delivered_via?: string[];
           created_at?: string;
         };
         Relationships: [
           {
-            foreignKeyName: "user_feedback_user_id_fkey";
+            foreignKeyName: "weekly_roasts_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      conversations: {
+        Row: {
+          id: string;
+          user_id: string;
+          messages: unknown[];
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          messages?: unknown[];
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          messages?: unknown[];
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "conversations_user_id_fkey";
             columns: ["user_id"];
             isOneToOne: false;
             referencedRelation: "users";
@@ -500,4 +478,3 @@ export type Database = {
     };
   };
 };
-

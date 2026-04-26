@@ -5,6 +5,7 @@ import { generateText, Output } from "ai";
 import { z } from "zod";
 import { env } from "@/lib/env";
 import { WEEKLY_ROAST_PROMPT } from "@/lib/prompts/weekly-roast-prompt";
+import { sanitizeForPrompt, wrapUntrustedBlock } from "@/lib/prompts/sanitize";
 import { sendWeeklyRoastEmail } from "@/lib/notifications/email-service";
 import { verifyCronSecret } from "@/lib/cron-auth";
 import { getUserLocalTime } from "@/lib/timezone";
@@ -68,6 +69,19 @@ export async function GET(request: NextRequest) {
       const weekEnd = new Date(now);
       const weekStart = new Date(now);
       weekStart.setDate(weekStart.getDate() - 7);
+      const weekStartDate = weekStart.toISOString().split("T")[0];
+      const weekEndDate = weekEnd.toISOString().split("T")[0];
+
+      // Idempotency guard — skip users who already have a roast for this week.
+      // The weekly_roasts row is only inserted after a successful email send
+      // (see end of loop), so its presence is a true delivery marker.
+      const { data: existingRoast } = await supabase
+        .from("weekly_roasts")
+        .select("id")
+        .eq("user_id", setting.user_id)
+        .eq("week_start", weekStartDate)
+        .limit(1);
+      if (existingRoast && existingRoast.length > 0) continue;
 
       // Fetch week's tasks
       const { data: tasks } = await supabase
@@ -85,15 +99,26 @@ export async function GET(request: NextRequest) {
       const total = tasks.length;
       const completionRate = Math.round((completed / total) * 100);
 
-      // Get reflections from skipped tasks
-      const reflections = tasks
+      // Get reflections from skipped tasks. Sanitize and fence the user-supplied
+      // strings so they can't escape the prompt envelope (CVE-class prompt injection).
+      const reflectionLines = tasks
         .filter((t) => t.reflection)
-        .map((t) => ({ title: t.title, reflection: t.reflection }));
+        .map((t) => {
+          const title = sanitizeForPrompt(t.title, 200);
+          const reflection = sanitizeForPrompt(t.reflection, 1000);
+          return `- title: "${title}" | reflection: "${reflection}"`;
+        });
+
+      const reflectionsBlock =
+        reflectionLines.length > 0
+          ? wrapUntrustedBlock(reflectionLines.join("\n"))
+          : "None provided.";
 
       const weekData = `
 Tasks this week: ${total} total, ${completed} completed, ${skipped} skipped, ${pending} still pending.
 Completion rate: ${completionRate}%.
-Reflections on skipped tasks: ${reflections.length > 0 ? JSON.stringify(reflections) : "None provided."}
+Reflections on skipped tasks:
+${reflectionsBlock}
       `.trim();
 
       // Compute accountability score for context
@@ -163,7 +188,9 @@ Active Days (14d): ${activeDaysSet.size}/14
         .maybeSingle();
 
       const prevContext = prevRoast?.roast_data
-        ? `\nPrevious week's summary: "${(prevRoast.roast_data as any).weekSummary}"`
+        ? `\nPrevious week's summary: ${wrapUntrustedBlock(
+            sanitizeForPrompt((prevRoast.roast_data as any).weekSummary, 500)
+          )}`
         : "";
 
       // Generate roast with AI
@@ -179,17 +206,41 @@ Active Days (14d): ${activeDaysSet.size}/14
         continue;
       }
 
-      // Store roast
+      // Send email FIRST. The weekly_roasts row is the idempotency record,
+      // so we only persist after a successful delivery — otherwise a Resend
+      // failure would leave a phantom row and the user would never get retried.
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("email, name")
+        .eq("id", setting.user_id)
+        .maybeSingle();
+
+      if (!profile?.email) {
+        console.warn(`Skipping weekly roast for user ${setting.user_id}: no email on profile`);
+        continue;
+      }
+
+      await sendWeeklyRoastEmail(profile.email, {
+        name: profile.name,
+        weekSummary: roast.weekSummary,
+        insights: roast.insights,
+        recommendations: roast.recommendations,
+        completionRate,
+        tasksCompleted: completed,
+        tasksTotal: total,
+      });
+
+      // Persist roast — only reached after a successful send.
       await supabase.from("weekly_roasts").insert({
         user_id: setting.user_id,
-        week_start: weekStart.toISOString().split("T")[0],
-        week_end: weekEnd.toISOString().split("T")[0],
+        week_start: weekStartDate,
+        week_end: weekEndDate,
         roast_data: roast,
         task_stats: { total, completed, skipped, pending, completionRate },
         delivered_via: ["email"],
       });
 
-      // Write high-severity insights back to coach_memory
+      // Write high-severity insights back to coach_memory.
       if (roast.insights) {
         for (const insight of roast.insights) {
           if (insight.severity === "high") {
@@ -206,25 +257,6 @@ Active Days (14d): ${activeDaysSet.size}/14
             });
           }
         }
-      }
-
-      // Send email
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("email, name")
-        .eq("id", setting.user_id)
-        .single();
-
-      if (profile?.email) {
-        await sendWeeklyRoastEmail(profile.email, {
-          name: profile.name,
-          weekSummary: roast.weekSummary,
-          insights: roast.insights,
-          recommendations: roast.recommendations,
-          completionRate,
-          tasksCompleted: completed,
-          tasksTotal: total,
-        });
       }
 
       roastsGenerated++;
