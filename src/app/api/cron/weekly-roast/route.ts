@@ -9,15 +9,7 @@ import { sanitizeForPrompt, wrapUntrustedBlock } from "@/lib/prompts/sanitize";
 import { sendWeeklyRoastEmail } from "@/lib/notifications/email-service";
 import { verifyCronSecret } from "@/lib/cron-auth";
 import { getUserLocalTime } from "@/lib/timezone";
-import {
-  computeWeightedCompletion,
-  computeCompletionRate,
-  computeConsistencyRate,
-  computeDisciplineScore,
-  computeVelocityBonus,
-  computeScore,
-  getTier,
-} from "@/lib/accountability";
+import { computeUserAccountability } from "@/lib/accountability/compute";
 
 const google = createGoogleGenerativeAI({ apiKey: env.NEXT_GOOGLE_GEMINI_API_KEY });
 
@@ -121,46 +113,19 @@ Reflections on skipped tasks:
 ${reflectionsBlock}
       `.trim();
 
-      // Compute accountability score for context
-      const windowStart14 = new Date(now);
-      windowStart14.setDate(windowStart14.getDate() - 13);
-
-      const { data: recentTasks } = await supabase
-        .from("tasks")
-        .select("status, due_date, priority, carry_over_count")
-        .eq("user_id", setting.user_id)
-        .gte("due_date", windowStart14.toISOString())
-        .lte("due_date", now.toISOString());
-
-      const recentAll = recentTasks || [];
-      const activeDaysSet = new Set(
-        recentAll
-          .filter((t) => t.status === "completed")
-          .map((t) => new Date(t.due_date).toISOString().split("T")[0])
+      // Compute accountability snapshot via the single source of truth.
+      const acctSnap = await computeUserAccountability(
+        supabase as unknown as Parameters<typeof computeUserAccountability>[0],
+        setting.user_id,
+        now
       );
-
-      const cr = computeWeightedCompletion(
-        recentAll.map((t: any) => ({ status: t.status, priority: t.priority ?? "medium" }))
-      );
-      const conr = computeConsistencyRate(activeDaysSet.size, 14);
-      const ds = computeDisciplineScore(
-        recentAll.map((t: any) => ({ carry_over_count: t.carry_over_count ?? 0, status: t.status })),
-        recentAll.length
-      );
-      const accountScore = computeScore({
-        weightedCompletion: cr,
-        consistencyRate: conr,
-        disciplineScore: ds,
-        currentStreak: 0,
-        velocityBonus: 0,
-      });
-      const accountTier = getTier(accountScore);
 
       const scoreContext = `
-Accountability Score: ${accountScore}/100 (Tier: ${accountTier.name})
-Completion Rate (14d): ${cr}%
-Consistency Rate (14d): ${Math.round(conr)}%
-Active Days (14d): ${activeDaysSet.size}/14
+Accountability Score: ${acctSnap.score}/100 (Tier: ${acctSnap.tier.name})
+Completion Rate (14d): ${acctSnap.weightedCompletion}%
+Consistency Rate (14d): ${Math.round(acctSnap.consistencyRate)}%
+Streak: ${acctSnap.streak} days
+Driver: ${acctSnap.drivers.top}${acctSnap.drivers.drag ? ` | Drag: ${acctSnap.drivers.drag}` : ""}
       `.trim();
 
       // Fetch coach memory for context

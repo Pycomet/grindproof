@@ -90,6 +90,7 @@ export type Database = {
           recurrence_rule: string | null;
           reflection: string | null;
           carry_over_count: number;
+          completed_at: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -108,6 +109,7 @@ export type Database = {
           recurrence_rule?: string | null;
           reflection?: string | null;
           carry_over_count?: number;
+          completed_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -126,6 +128,7 @@ export type Database = {
           recurrence_rule?: string | null;
           reflection?: string | null;
           carry_over_count?: number;
+          completed_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -463,12 +466,116 @@ export type Database = {
           }
         ];
       };
+      accountability_snapshots: {
+        Row: {
+          id: string;
+          user_id: string;
+          local_date: string;
+          score: number;
+          streak: number;
+          weighted_completion: number;
+          consistency_rate: number;
+          discipline_score: number;
+          velocity_bonus: number;
+          streak_bonus: number;
+          active: boolean;
+          computed_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          local_date: string;
+          score: number;
+          streak: number;
+          weighted_completion: number;
+          consistency_rate: number;
+          discipline_score: number;
+          velocity_bonus: number;
+          streak_bonus: number;
+          active: boolean;
+          computed_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          local_date?: string;
+          score?: number;
+          streak?: number;
+          weighted_completion?: number;
+          consistency_rate?: number;
+          discipline_score?: number;
+          velocity_bonus?: number;
+          streak_bonus?: number;
+          active?: boolean;
+          computed_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "accountability_snapshots_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      score_events: {
+        Row: {
+          id: string;
+          user_id: string;
+          occurred_at: string;
+          score_before: number | null;
+          score_after: number;
+          reason: string;
+          related_task_id: string | null;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          occurred_at?: string;
+          score_before?: number | null;
+          score_after: number;
+          reason: string;
+          related_task_id?: string | null;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          occurred_at?: string;
+          score_before?: number | null;
+          score_after?: number;
+          reason?: string;
+          related_task_id?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "score_events_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "score_events_related_task_id_fkey";
+            columns: ["related_task_id"];
+            isOneToOne: false;
+            referencedRelation: "tasks";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
     };
     Views: {
       [_ in never]: never;
     };
     Functions: {
-      [_ in never]: never;
+      carry_over_tasks: {
+        Args: {
+          p_task_ids: string[];
+          p_new_due: string;
+        };
+        Returns: number;
+      };
     };
     Enums: {
       [_ in never]: never;

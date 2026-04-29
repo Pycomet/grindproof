@@ -8,9 +8,14 @@ import { useChatContext } from "@/contexts/ChatContext";
 export function MorningCheckIn() {
   const { refreshTasks } = useTaskContext();
   const { sendMessage, setIsOpen } = useChatContext();
+  const utils = trpc.useUtils();
   const { data, isLoading } = trpc.dailyCheck.getMorningSchedule.useQuery();
   const carryOverMutation = trpc.dailyCheck.carryOverTasks.useMutation({
-    onSuccess: () => refreshTasks(),
+    onSuccess: () => {
+      refreshTasks();
+      utils.accountabilityScore.getScore.invalidate();
+      utils.accountabilityScore.getScoreTrend.invalidate();
+    },
   });
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [submitted, setSubmitted] = useState(false);

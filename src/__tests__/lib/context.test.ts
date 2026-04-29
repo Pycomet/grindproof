@@ -63,6 +63,7 @@ describe("formatCoachContext", () => {
       todayTasks: [{ title: "Fix auth bug", status: "pending", priority: "high", dueDate: "2026-04-16", isOverdue: false }],
       activeGoals: [{ title: "Ship v2", completed: 6, total: 10 }],
       coachMemory: [{ category: "commitment", content: "Finish auth by Friday", createdAt: "2026-04-14T10:00:00Z" }],
+      drivers: { top: "3-day streak", drag: "\"Fix auth bug\" carried 3×" },
     });
     expect(ctx).toContain("=== CURRENT USER CONTEXT ===");
     expect(ctx).toContain("ALERTS:");
@@ -71,6 +72,7 @@ describe("formatCoachContext", () => {
     expect(ctx).toContain("Fix auth bug");
     expect(ctx).toContain("Ship v2");
     expect(ctx).toContain("Finish auth by Friday");
+    expect(ctx).toContain("Driver: 3-day streak");
     expect(ctx).toContain("=== END CONTEXT ===");
   });
 
@@ -79,6 +81,7 @@ describe("formatCoachContext", () => {
       alerts: [], score: 75, tierName: "Locked In", streak: 5,
       completionRate: 80, consistencyRate: 60, delta: 3,
       todayTasks: [], activeGoals: [], coachMemory: [],
+      drivers: { top: "5-day streak", drag: null },
     });
     expect(ctx).not.toContain("ALERTS:");
   });
