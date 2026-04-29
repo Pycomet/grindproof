@@ -28,7 +28,7 @@ export function WeeklyRoastCard() {
   const { roastData, taskStats } = roast;
 
   return (
-    <div className="rounded-lg border border-zinc-200 bg-zinc-900 p-4 text-white dark:border-zinc-700">
+    <div className="rounded-md border border-zinc-700 bg-zinc-900 p-5 text-white">
       <div className="mb-3 flex items-center justify-between">
         <h3 className="text-sm font-semibold">Weekly Roast</h3>
         <button

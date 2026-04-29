@@ -8,57 +8,57 @@ export const metadata: Metadata = {
 
 export default function PrivacyPolicyPage() {
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
+    <div className="min-h-screen bg-background text-foreground">
       <div className="container mx-auto px-4 py-12 max-w-4xl">
         {/* Header */}
         <div className="mb-8">
           <Link
             href="/"
-            className="inline-flex items-center text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white transition-colors mb-6"
+            className="inline-flex items-center text-brand hover:text-brand/80 transition-colors mb-6"
           >
             ← Back to Home
           </Link>
-          <h1 className="text-4xl font-bold text-zinc-900 dark:text-white mb-2">Privacy Policy</h1>
-          <p className="text-zinc-500 dark:text-zinc-400">Last Updated: November 14, 2025</p>
+          <h1 className="text-4xl font-bold text-zinc-50 mb-2 font-[family-name:var(--font-space-grotesk)]">Privacy Policy</h1>
+          <p className="text-zinc-400">Last Updated: November 14, 2025</p>
         </div>
 
         {/* Content */}
-        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg p-8 shadow-sm">
-          <div className="prose prose-zinc dark:prose-invert max-w-none">
+        <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-8 shadow-sm">
+          <div className="max-w-none">
             {/* Table of Contents */}
-            <nav className="mb-8 p-4 bg-zinc-100 dark:bg-zinc-800 rounded-lg">
-              <h2 className="text-xl font-semibold text-zinc-900 dark:text-white mb-4">Table of Contents</h2>
+            <nav className="mb-8 p-4 bg-zinc-800 rounded-lg">
+              <h2 className="text-xl font-semibold text-zinc-50 mb-4 font-[family-name:var(--font-space-grotesk)]">Table of Contents</h2>
               <ul className="space-y-2 text-sm">
-                <li><a href="#introduction" className="text-blue-400 hover:text-blue-300">1. Introduction</a></li>
-                <li><a href="#information-we-collect" className="text-blue-400 hover:text-blue-300">2. Information We Collect</a></li>
-                <li><a href="#how-we-use" className="text-blue-400 hover:text-blue-300">3. How We Use Your Information</a></li>
-                <li><a href="#data-storage" className="text-blue-400 hover:text-blue-300">4. Data Storage and Security</a></li>
-                <li><a href="#third-party" className="text-blue-400 hover:text-blue-300">5. Third-Party Services</a></li>
-                <li><a href="#your-rights" className="text-blue-400 hover:text-blue-300">6. Your Rights</a></li>
-                <li><a href="#cookies" className="text-blue-400 hover:text-blue-300">7. Cookies and Local Storage</a></li>
-                <li><a href="#children" className="text-blue-400 hover:text-blue-300">8. Children's Privacy</a></li>
-                <li><a href="#changes" className="text-blue-400 hover:text-blue-300">9. Changes to This Policy</a></li>
-                <li><a href="#contact" className="text-blue-400 hover:text-blue-300">10. Contact Us</a></li>
+                <li><a href="#introduction" className="text-brand hover:text-brand/80 transition-colors">1. Introduction</a></li>
+                <li><a href="#information-we-collect" className="text-brand hover:text-brand/80 transition-colors">2. Information We Collect</a></li>
+                <li><a href="#how-we-use" className="text-brand hover:text-brand/80 transition-colors">3. How We Use Your Information</a></li>
+                <li><a href="#data-storage" className="text-brand hover:text-brand/80 transition-colors">4. Data Storage and Security</a></li>
+                <li><a href="#third-party" className="text-brand hover:text-brand/80 transition-colors">5. Third-Party Services</a></li>
+                <li><a href="#your-rights" className="text-brand hover:text-brand/80 transition-colors">6. Your Rights</a></li>
+                <li><a href="#cookies" className="text-brand hover:text-brand/80 transition-colors">7. Cookies and Local Storage</a></li>
+                <li><a href="#children" className="text-brand hover:text-brand/80 transition-colors">8. Children's Privacy</a></li>
+                <li><a href="#changes" className="text-brand hover:text-brand/80 transition-colors">9. Changes to This Policy</a></li>
+                <li><a href="#contact" className="text-brand hover:text-brand/80 transition-colors">10. Contact Us</a></li>
               </ul>
             </nav>
 
             {/* Introduction */}
             <section id="introduction" className="mb-8">
-              <h2 className="text-2xl font-bold text-zinc-900 dark:text-white mb-4">1. Introduction</h2>
-              <p className="text-zinc-700 dark:text-zinc-300 mb-4">
+              <h2 className="text-2xl font-bold text-zinc-50 mb-4 font-[family-name:var(--font-space-grotesk)]">1. Introduction</h2>
+              <p className="text-zinc-300 mb-4">
                 Welcome to GrindProof ("we," "our," or "us"). We are committed to protecting your privacy and ensuring the security of your personal information. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our productivity tracking application.
               </p>
-              <p className="text-zinc-700 dark:text-zinc-300">
+              <p className="text-zinc-300">
                 By using GrindProof, you agree to the collection and use of information in accordance with this policy. If you do not agree with our policies and practices, please do not use our service.
               </p>
             </section>
 
             {/* Information We Collect */}
             <section id="information-we-collect" className="mb-8">
-              <h2 className="text-2xl font-bold text-zinc-900 dark:text-white mb-4">2. Information We Collect</h2>
-              
-              <h3 className="text-xl font-semibold text-zinc-900 dark:text-white mb-3">2.1 Information You Provide</h3>
-              <ul className="text-zinc-700 dark:text-zinc-300 mb-4 space-y-2">
+              <h2 className="text-2xl font-bold text-zinc-50 mb-4 font-[family-name:var(--font-space-grotesk)]">2. Information We Collect</h2>
+
+              <h3 className="text-xl font-semibold text-zinc-50 mb-3 font-[family-name:var(--font-space-grotesk)]">2.1 Information You Provide</h3>
+              <ul className="text-zinc-300 mb-4 space-y-2">
                 <li><strong>Account Information:</strong> Email address, name, and password when you create an account</li>
                 <li><strong>Profile Information:</strong> Optional profile picture and display name</li>
                 <li><strong>Task and Goal Data:</strong> Tasks, goals, routines, notes, and related productivity data you create</li>
@@ -66,14 +66,14 @@ export default function PrivacyPolicyPage() {
               </ul>
 
               <h3 className="text-xl font-semibold text-zinc-900 dark:text-white mb-3">2.2 Information Collected Automatically</h3>
-              <ul className="text-zinc-700 dark:text-zinc-300 mb-4 space-y-2">
+              <ul className="text-zinc-300 mb-4 space-y-2">
                 <li><strong>Usage Data:</strong> Information about how you interact with our service, including features used and actions taken</li>
                 <li><strong>Device Information:</strong> Browser type, operating system, device identifiers</li>
                 <li><strong>Log Data:</strong> IP address, access times, pages viewed, and referring website addresses</li>
               </ul>
 
               <h3 className="text-xl font-semibold text-zinc-900 dark:text-white mb-3">2.3 Information from Third-Party Integrations</h3>
-              <ul className="text-zinc-700 dark:text-zinc-300 space-y-2">
+              <ul className="text-zinc-300 space-y-2">
                 <li><strong>GitHub Integration:</strong> When you connect your GitHub account, we collect your GitHub username, repository information, commit activity, and pull request data to track your development work</li>
                 <li><strong>Google Calendar Integration:</strong> When you connect Google Calendar, we access your calendar events, event attendance status, and event details to help track your time and commitments</li>
               </ul>
@@ -83,7 +83,7 @@ export default function PrivacyPolicyPage() {
             <section id="how-we-use" className="mb-8">
               <h2 className="text-2xl font-bold text-zinc-900 dark:text-white mb-4">3. How We Use Your Information</h2>
               <p className="text-zinc-700 dark:text-zinc-300 mb-4">We use the information we collect to:</p>
-              <ul className="text-zinc-700 dark:text-zinc-300 space-y-2">
+              <ul className="text-zinc-300 space-y-2">
                 <li>• Provide, maintain, and improve our services</li>
                 <li>• Create and manage your account</li>
                 <li>• Track your productivity metrics and generate insights</li>
@@ -102,7 +102,7 @@ export default function PrivacyPolicyPage() {
               <p className="text-zinc-700 dark:text-zinc-300 mb-4">
                 We implement appropriate technical and organizational security measures to protect your personal information against unauthorized access, alteration, disclosure, or destruction. These measures include:
               </p>
-              <ul className="text-zinc-700 dark:text-zinc-300 mb-4 space-y-2">
+              <ul className="text-zinc-300 mb-4 space-y-2">
                 <li>• Encryption of data in transit using SSL/TLS</li>
                 <li>• Encryption of sensitive data at rest</li>
                 <li>• Regular security assessments and updates</li>
@@ -112,7 +112,7 @@ export default function PrivacyPolicyPage() {
               <p className="text-zinc-700 dark:text-zinc-300 mb-4">
                 Your data is stored using Supabase, a secure database platform that complies with industry-standard security practices. We retain your data for as long as your account is active or as needed to provide you services.
               </p>
-              <p className="text-zinc-700 dark:text-zinc-300">
+              <p className="text-zinc-300">
                 However, no method of transmission over the Internet or electronic storage is 100% secure. While we strive to use commercially acceptable means to protect your personal information, we cannot guarantee its absolute security.
               </p>
             </section>
@@ -139,7 +139,7 @@ export default function PrivacyPolicyPage() {
                 When you connect Google Calendar, we access your calendar data through Google's API. Google's privacy policy applies to data collected through their service. Learn more at <a href="https://policies.google.com/privacy" className="text-blue-400 hover:text-blue-300" target="_blank" rel="noopener noreferrer">Google Privacy Policy</a>
               </p>
 
-              <p className="text-zinc-700 dark:text-zinc-300">
+              <p className="text-zinc-300">
                 We do not sell, trade, or rent your personal information to third parties. We may share aggregated, anonymized data that does not identify you personally for analytics and service improvement purposes.
               </p>
             </section>
@@ -152,7 +152,7 @@ export default function PrivacyPolicyPage() {
               </p>
               
               <h3 className="text-xl font-semibold text-zinc-900 dark:text-white mb-3">6.1 General Rights</h3>
-              <ul className="text-zinc-700 dark:text-zinc-300 mb-4 space-y-2">
+              <ul className="text-zinc-300 mb-4 space-y-2">
                 <li><strong>Access:</strong> Request a copy of the personal information we hold about you</li>
                 <li><strong>Correction:</strong> Request correction of inaccurate or incomplete information</li>
                 <li><strong>Deletion:</strong> Request deletion of your personal information (subject to legal obligations)</li>
@@ -170,7 +170,7 @@ export default function PrivacyPolicyPage() {
                 If you are a California resident, you have rights under the California Consumer Privacy Act (CCPA), including the right to know what personal information is collected, to delete personal information, and to opt-out of the sale of personal information (note: we do not sell your information).
               </p>
 
-              <p className="text-zinc-700 dark:text-zinc-300">
+              <p className="text-zinc-300">
                 To exercise any of these rights, please contact us at <a href="mailto:support@grindproof.co" className="text-blue-400 hover:text-blue-300">support@grindproof.co</a>. We will respond to your request within 30 days.
               </p>
             </section>
@@ -181,13 +181,13 @@ export default function PrivacyPolicyPage() {
               <p className="text-zinc-700 dark:text-zinc-300 mb-4">
                 GrindProof uses cookies and browser local storage to enhance your experience:
               </p>
-              <ul className="text-zinc-700 dark:text-zinc-300 mb-4 space-y-2">
+              <ul className="text-zinc-300 mb-4 space-y-2">
                 <li><strong>Essential Cookies:</strong> Required for authentication and security</li>
                 <li><strong>Session Storage:</strong> Stores your authentication state and preferences</li>
                 <li><strong>Local Storage:</strong> Caches application data for offline functionality and improved performance</li>
                 <li><strong>Service Worker:</strong> Enables Progressive Web App (PWA) features including offline access</li>
               </ul>
-              <p className="text-zinc-700 dark:text-zinc-300">
+              <p className="text-zinc-300">
                 Most web browsers automatically accept cookies, but you can modify your browser settings to decline cookies. However, this may prevent you from taking full advantage of our service.
               </p>
             </section>
@@ -198,7 +198,7 @@ export default function PrivacyPolicyPage() {
               <p className="text-zinc-700 dark:text-zinc-300 mb-4">
                 GrindProof is intended for users who are at least 13 years old. We do not knowingly collect personal information from children under 13. If you are a parent or guardian and believe your child has provided us with personal information, please contact us at <a href="mailto:support@grindproof.co" className="text-blue-400 hover:text-blue-300">support@grindproof.co</a>.
               </p>
-              <p className="text-zinc-700 dark:text-zinc-300">
+              <p className="text-zinc-300">
                 If we become aware that we have collected personal information from a child under 13 without parental consent, we will take steps to delete that information from our servers.
               </p>
             </section>
@@ -209,12 +209,12 @@ export default function PrivacyPolicyPage() {
               <p className="text-zinc-700 dark:text-zinc-300 mb-4">
                 We may update this Privacy Policy from time to time to reflect changes in our practices or legal requirements. We will notify you of any material changes by:
               </p>
-              <ul className="text-zinc-700 dark:text-zinc-300 mb-4 space-y-2">
+              <ul className="text-zinc-300 mb-4 space-y-2">
                 <li>• Posting the new Privacy Policy on this page</li>
                 <li>• Updating the "Last Updated" date at the top of this policy</li>
                 <li>• Sending you an email notification (for significant changes)</li>
               </ul>
-              <p className="text-zinc-700 dark:text-zinc-300">
+              <p className="text-zinc-300">
                 Your continued use of GrindProof after any changes indicates your acceptance of the updated Privacy Policy. We encourage you to review this Privacy Policy periodically.
               </p>
             </section>
@@ -227,7 +227,7 @@ export default function PrivacyPolicyPage() {
               </p>
               <div className="bg-zinc-100 dark:bg-zinc-800 p-4 rounded-lg">
                 <p className="text-zinc-700 dark:text-zinc-300 mb-2"><strong>Email:</strong> <a href="mailto:support@grindproof.co" className="text-blue-400 hover:text-blue-300">support@grindproof.co</a></p>
-                <p className="text-zinc-700 dark:text-zinc-300"><strong>Service:</strong> GrindProof</p>
+                <p className="text-zinc-300"><strong>Service:</strong> GrindProof</p>
               </div>
               <p className="text-zinc-300 mt-4">
                 We will respond to your inquiry as promptly as possible, typically within 48 hours.

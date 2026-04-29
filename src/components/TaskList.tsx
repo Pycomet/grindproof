@@ -95,12 +95,12 @@ export function TaskList() {
             ? `Today's Tasks (${todayTasks.length})`
             : `This Week (${weekTasks.length})`}
         </h2>
-        <div className="flex rounded-md border border-zinc-200 dark:border-zinc-700">
+        <div className="flex rounded-md border border-border">
           <button
             onClick={() => setViewMode("today")}
             className={`px-3 py-1 text-xs font-medium transition-colors ${
               viewMode === "today"
-                ? "bg-zinc-900 text-white dark:bg-zinc-50 dark:text-zinc-900"
+                ? "bg-primary text-primary-foreground"
                 : "text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
             } rounded-l-md`}
           >
@@ -110,7 +110,7 @@ export function TaskList() {
             onClick={() => setViewMode("week")}
             className={`px-3 py-1 text-xs font-medium transition-colors ${
               viewMode === "week"
-                ? "bg-zinc-900 text-white dark:bg-zinc-50 dark:text-zinc-900"
+                ? "bg-primary text-primary-foreground"
                 : "text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
             } rounded-r-md`}
           >
@@ -182,7 +182,7 @@ export function TaskList() {
                   }`}
                 >
                   {isToday(date) && (
-                    <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-zinc-900 dark:bg-zinc-50" />
+                    <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-brand" />
                   )}
                   {formatDayHeader(date)}
                 </div>

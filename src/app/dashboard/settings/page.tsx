@@ -7,6 +7,7 @@ import { ArrowLeft } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNotificationContext } from "@/contexts/NotificationContext";
 import { trpc } from "@/lib/trpc/client";
+import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -55,8 +56,8 @@ function ProfileSection() {
   if (isLoading) return <SectionSkeleton />;
 
   return (
-    <section className="space-y-4">
-      <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">Profile</h2>
+    <section className="space-y-4 rounded-md border border-border bg-card p-4">
+      <h2 className="text-sm font-semibold tracking-caps uppercase text-zinc-500">Profile</h2>
       <div className="space-y-2">
         <Label htmlFor="name">Display name</Label>
         <Input
@@ -64,19 +65,20 @@ function ProfileSection() {
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Your name"
+          className="rounded-sm"
         />
       </div>
       <div className="flex items-center gap-3">
         <button
           onClick={handleSave}
           disabled={updateProfile.isPending}
-          className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+          className="rounded-sm bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50 transition-opacity duration-150"
         >
           {updateProfile.isPending ? "Saving..." : "Save"}
         </button>
-        {saved && <span className="text-sm text-green-600 dark:text-green-400">Saved</span>}
+        {saved && <span className="text-sm text-success">Saved</span>}
         {updateProfile.isError && (
-          <span className="text-sm text-red-600 dark:text-red-400">Failed to save</span>
+          <span className="text-sm text-error">Failed to save</span>
         )}
       </div>
     </section>
@@ -103,12 +105,12 @@ function NotificationsSection() {
 
   return (
     <section className="space-y-4">
-      <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">Notifications</h2>
+      <h2 className="text-sm font-semibold tracking-caps uppercase text-zinc-500">Notifications</h2>
 
       {/* Morning check-in */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between rounded-md border border-border bg-card p-3">
         <div>
-          <p className="text-sm font-medium text-zinc-900 dark:text-zinc-50">Morning check-in</p>
+          <p className="text-sm font-medium">Morning check-in</p>
           <p className="text-xs text-zinc-500">Daily planning reminder</p>
         </div>
         <div className="flex items-center gap-3">
@@ -117,7 +119,7 @@ function NotificationsSection() {
             value={settings.morningCheckTime}
             onChange={(e) => updateTime("morningCheckTime", e.target.value)}
             disabled={!settings.morningCheckEnabled}
-            className="rounded-md border border-zinc-200 bg-white px-2 py-1 text-sm disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50"
+            className="rounded-sm border border-border bg-white dark:bg-zinc-900 px-2 py-1 text-sm disabled:opacity-50 dark:text-zinc-50"
           />
           <ToggleSwitch
             checked={settings.morningCheckEnabled}
@@ -127,9 +129,9 @@ function NotificationsSection() {
       </div>
 
       {/* Evening check-in */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between rounded-md border border-border bg-card p-3">
         <div>
-          <p className="text-sm font-medium text-zinc-900 dark:text-zinc-50">Evening check-in</p>
+          <p className="text-sm font-medium">Evening check-in</p>
           <p className="text-xs text-zinc-500">Daily review reminder</p>
         </div>
         <div className="flex items-center gap-3">
@@ -138,7 +140,7 @@ function NotificationsSection() {
             value={settings.eveningCheckTime}
             onChange={(e) => updateTime("eveningCheckTime", e.target.value)}
             disabled={!settings.eveningCheckEnabled}
-            className="rounded-md border border-zinc-200 bg-white px-2 py-1 text-sm disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50"
+            className="rounded-sm border border-border bg-white dark:bg-zinc-900 px-2 py-1 text-sm disabled:opacity-50 dark:text-zinc-50"
           />
           <ToggleSwitch
             checked={settings.eveningCheckEnabled}
@@ -148,9 +150,9 @@ function NotificationsSection() {
       </div>
 
       {/* Email notifications */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between rounded-md border border-border bg-card p-3">
         <div>
-          <p className="text-sm font-medium text-zinc-900 dark:text-zinc-50">Email notifications</p>
+          <p className="text-sm font-medium">Email notifications</p>
           <p className="text-xs text-zinc-500">Receive check-in reminders via email</p>
         </div>
         <ToggleSwitch
@@ -159,24 +161,64 @@ function NotificationsSection() {
         />
       </div>
 
-      {/* Push notifications */}
-      <div className="flex items-center justify-between">
+      {/* Push notifications - disabled (T-025) */}
+      <div className="flex items-center justify-between opacity-60 cursor-not-allowed rounded-md border border-border bg-card p-3">
         <div>
-          <p className="text-sm font-medium text-zinc-900 dark:text-zinc-50">Push notifications</p>
-          <p className="text-xs text-zinc-500">
-            {isSupported ? "Browser push notifications" : "Not supported in this browser"}
-          </p>
+          <p className="text-sm font-medium">Push notifications</p>
+          <p className="text-xs text-zinc-500">Coming soon — email is the active channel today.</p>
         </div>
-        <ToggleSwitch
-          checked={isSubscribed}
-          onChange={(v) => (v ? subscribe() : unsubscribe())}
-          disabled={!isSupported}
-        />
+        <div className="text-xs text-zinc-500 bg-zinc-100 dark:bg-zinc-800 px-2 py-1 rounded-sm">
+          Soon
+        </div>
       </div>
 
       {updateSettings.isError && (
-        <p className="text-sm text-red-600 dark:text-red-400">Failed to update settings</p>
+        <p className="text-sm text-error">Failed to update settings</p>
       )}
+    </section>
+  );
+}
+
+function ThemeSection() {
+  const [theme, setThemeState] = useState<"light" | "dark" | "system">("system");
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    const stored = localStorage.getItem("grindproof:theme") as typeof theme | null;
+    if (stored) setThemeState(stored);
+  }, []);
+
+  const setTheme = (mode: "light" | "dark" | "system") => {
+    setThemeState(mode);
+    localStorage.setItem("grindproof:theme", mode);
+    const root = document.documentElement;
+    root.classList.remove("light", "dark");
+    if (mode === "light") root.classList.add("light");
+    else if (mode === "dark") root.classList.add("dark");
+  };
+
+  if (!mounted) return <SectionSkeleton />;
+
+  return (
+    <section className="space-y-3 rounded-md border border-border bg-card p-4">
+      <h2 className="text-sm font-semibold tracking-caps uppercase text-zinc-500">Theme</h2>
+      <div className="flex gap-2">
+        {(["light", "dark", "system"] as const).map((mode) => (
+          <button
+            key={mode}
+            onClick={() => setTheme(mode)}
+            className={cn(
+              "px-4 py-2 rounded-sm text-sm capitalize transition-colors duration-150",
+              theme === mode
+                ? "bg-primary text-primary-foreground"
+                : "bg-secondary text-secondary-foreground hover:bg-zinc-200 dark:hover:bg-zinc-700"
+            )}
+          >
+            {mode}
+          </button>
+        ))}
+      </div>
     </section>
   );
 }
@@ -194,8 +236,8 @@ function TimezoneSection() {
   if (isLoading || !settings) return <SectionSkeleton />;
 
   return (
-    <section className="space-y-4">
-      <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">Timezone</h2>
+    <section className="space-y-4 rounded-md border border-border bg-card p-4">
+      <h2 className="text-sm font-semibold tracking-caps uppercase text-zinc-500">Timezone</h2>
       <p className="text-xs text-zinc-500">
         Detected: {detectedTz}
       </p>
@@ -203,7 +245,7 @@ function TimezoneSection() {
         value={settings.timezone}
         onValueChange={(value) => updateSettings.mutate({ timezone: value })}
       >
-        <SelectTrigger className="w-full">
+        <SelectTrigger className="w-full rounded-sm">
           <SelectValue placeholder="Select timezone" />
         </SelectTrigger>
         <SelectContent>
@@ -215,7 +257,7 @@ function TimezoneSection() {
         </SelectContent>
       </Select>
       {updateSettings.isError && (
-        <p className="text-sm text-red-600 dark:text-red-400">Failed to update timezone</p>
+        <p className="text-sm text-error">Failed to update timezone</p>
       )}
     </section>
   );
@@ -231,19 +273,19 @@ function AccountSection() {
   });
 
   return (
-    <section className="space-y-4">
-      <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">Account</h2>
+    <section className="space-y-4 rounded-md border border-border bg-card p-4">
+      <h2 className="text-sm font-semibold tracking-caps uppercase text-error">Danger Zone</h2>
 
       <button
         onClick={signOut}
-        className="w-full rounded-md border border-zinc-200 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+        className="w-full rounded-sm border border-border px-4 py-2 text-sm font-medium hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors duration-150"
       >
         Sign out
       </button>
 
       <Dialog>
         <DialogTrigger asChild>
-          <button className="w-full rounded-md border border-red-200 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950">
+          <button className="w-full rounded-sm border border-error px-4 py-2 text-sm font-medium text-error hover:bg-error/5 transition-colors duration-150">
             Delete account
           </button>
         </DialogTrigger>
@@ -255,20 +297,20 @@ function AccountSection() {
             </DialogDescription>
           </DialogHeader>
           {deleteAccount.isError && (
-            <p className="text-sm text-red-600 dark:text-red-400">
+            <p className="text-sm text-error">
               Failed to delete account. Please try again.
             </p>
           )}
           <DialogFooter>
             <DialogClose asChild>
-              <button className="rounded-md border border-zinc-200 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800">
+              <button className="rounded-sm border border-border px-4 py-2 text-sm font-medium hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors duration-150">
                 Cancel
               </button>
             </DialogClose>
             <button
               onClick={() => deleteAccount.mutate()}
               disabled={deleteAccount.isPending}
-              className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+              className="rounded-sm bg-error px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50 transition-opacity duration-150"
             >
               {deleteAccount.isPending ? "Deleting..." : "Delete my account"}
             </button>
@@ -337,26 +379,24 @@ export default function SettingsPage() {
   if (!user) return null;
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
-      <header className="border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
+    <div className="min-h-screen">
+      <header className="border-b border-border">
         <div className="mx-auto flex max-w-xl items-center gap-3 px-4 py-4">
           <Link
             href="/dashboard"
-            className="text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50 transition-colors"
+            className="text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-300 transition-colors"
           >
             <ArrowLeft className="h-5 w-5" />
           </Link>
-          <h1 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">Settings</h1>
+          <h1 className="text-lg font-semibold">Settings</h1>
         </div>
       </header>
 
-      <div className="mx-auto max-w-xl space-y-8 px-4 py-6">
+      <div className="mx-auto max-w-xl space-y-6 px-4 py-6">
         <ProfileSection />
-        <hr className="border-zinc-200 dark:border-zinc-800" />
         <NotificationsSection />
-        <hr className="border-zinc-200 dark:border-zinc-800" />
+        <ThemeSection />
         <TimezoneSection />
-        <hr className="border-zinc-200 dark:border-zinc-800" />
         <AccountSection />
       </div>
     </div>

@@ -115,8 +115,8 @@ describe("computeConsistencyRate", () => {
 // computeDisciplineScore
 // =========================================================================
 describe("computeDisciplineScore", () => {
-  it("returns 100 for empty tasks array", () => {
-    expect(computeDisciplineScore([], 0)).toBe(100);
+  it("returns 0 for empty tasks array", () => {
+    expect(computeDisciplineScore([], 0)).toBe(0);
   });
 
   it("returns 100 when no carry-overs and no overcommitment", () => {

@@ -14,6 +14,7 @@ import { WeeklyRoastCard } from "@/components/WeeklyRoastCard";
 import { StoicQuote } from "@/components/StoicQuote";
 import { ChatPanel } from "@/components/ChatPanel";
 import { AccountabilityWidget } from "@/components/AccountabilityWidget";
+import { Day1Orientation } from "@/components/Day1Orientation";
 import { useEffect } from "react";
 
 function getGreeting(): string {
@@ -35,17 +36,23 @@ function shouldShowEvening(): boolean {
 
 function DashboardContent() {
   return (
-    <div className="mx-auto max-w-xl space-y-6 px-4 py-6">
-      <AccountabilityWidget />
-      <StoicQuote />
-      <WeeklyRoastCard />
+    <div className="mx-auto max-w-7xl lg:flex lg:gap-6 px-4 py-6">
+      <main className="flex-1 lg:max-w-xl space-y-3">
+        <Day1Orientation />
+        <AccountabilityWidget />
+        <StoicQuote />
+        <WeeklyRoastCard />
 
-      {shouldShowMorning() && <MorningCheckIn />}
-      {shouldShowEvening() && <EveningCheckIn />}
+        {shouldShowMorning() && <MorningCheckIn />}
+        {shouldShowEvening() && <EveningCheckIn />}
 
-      <TaskList />
+        <TaskList />
 
-      <GoalList />
+        <GoalList />
+      </main>
+      <aside className="hidden lg:block lg:w-[380px] lg:sticky lg:top-6 lg:h-[calc(100vh-3rem)]">
+        <ChatPanel docked />
+      </aside>
     </div>
   );
 }
@@ -89,7 +96,9 @@ export default function Dashboard() {
       </header>
 
       <DashboardContent />
-      <ChatPanel />
+      <div className="lg:hidden">
+        <ChatPanel />
+      </div>
     </div>
   );
 }

@@ -84,7 +84,7 @@ export function MorningCheckIn() {
       <button
         onClick={handleSubmit}
         disabled={carryOverMutation.isPending}
-        className="rounded-full bg-zinc-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900"
+        className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
       >
         {selectedIds.length > 0
           ? `Carry over ${selectedIds.length} task${selectedIds.length > 1 ? "s" : ""}`

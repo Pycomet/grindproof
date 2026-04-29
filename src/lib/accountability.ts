@@ -39,7 +39,7 @@ export function computeDisciplineScore(
   tasks: { carry_over_count: number; status: string }[],
   totalCreated: number
 ): number {
-  if (tasks.length === 0) return 100;
+  if (tasks.length === 0) return 0;
 
   const chronicCarryOvers = tasks.filter(
     (t) => t.carry_over_count >= 3

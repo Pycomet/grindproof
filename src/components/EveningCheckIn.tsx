@@ -4,6 +4,7 @@ import { useState } from "react";
 import { trpc } from "@/lib/trpc/client";
 import { useTaskContext } from "@/contexts/TaskContext";
 import { useChatContext } from "@/contexts/ChatContext";
+import { cn } from "@/lib/utils";
 
 export function EveningCheckIn() {
   const { refreshTasks } = useTaskContext();
@@ -82,7 +83,12 @@ export function EveningCheckIn() {
   };
 
   const allReviewed = pendingTasks.every(
-    (t: any) => reflections[t.id]?.status
+    (t: any) => {
+      const r = reflections[t.id];
+      if (!r?.status) return false;
+      if (r.status === "skipped" && (!r.reflection || r.reflection.trim().length === 0)) return false;
+      return true;
+    }
   );
 
   return (
@@ -125,12 +131,20 @@ export function EveningCheckIn() {
               </div>
             </div>
             {reflections[task.id]?.status === "skipped" && (
-              <input
-                placeholder="What happened? (one line)"
-                value={reflections[task.id]?.reflection || ""}
-                onChange={(e) => handleReflection(task.id, e.target.value)}
-                className="w-full rounded border border-zinc-300 bg-white px-2 py-1 text-xs outline-none dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-              />
+              <>
+                <input
+                  placeholder="What happened? (one line)"
+                  value={reflections[task.id]?.reflection || ""}
+                  onChange={(e) => handleReflection(task.id, e.target.value)}
+                  className={cn(
+                    "w-full rounded-sm border bg-white px-2 py-1 text-xs outline-none dark:bg-zinc-900 dark:text-zinc-50",
+                    reflections[task.id]?.reflection?.trim() ? "border-zinc-300 dark:border-zinc-700" : "border-error"
+                  )}
+                />
+                {!reflections[task.id]?.reflection?.trim() && (
+                  <p className="text-2xs text-error mt-0.5">Required.</p>
+                )}
+              </>
             )}
           </div>
         ))}
@@ -138,7 +152,7 @@ export function EveningCheckIn() {
       <button
         onClick={handleSubmit}
         disabled={!allReviewed || submitMutation.isPending}
-        className="rounded-full bg-zinc-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900"
+        className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
       >
         Submit reality check
       </button>
