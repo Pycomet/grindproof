@@ -2,15 +2,7 @@ import { tool } from "ai";
 import { z } from "zod";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
-import {
-  computeWeightedCompletion,
-  computeCompletionRate,
-  computeConsistencyRate,
-  computeDisciplineScore,
-  computeVelocityBonus,
-  computeScore,
-  getTier,
-} from "@/lib/accountability";
+import { computeUserAccountability } from "@/lib/accountability/compute";
 
 /** Escape Postgres LIKE/ILIKE wildcards so user input is treated literally. */
 function escapeLike(str: string): string {
@@ -294,151 +286,23 @@ export function createGrindproofTools(
         "Get the user's current accountability score, tier, streak, and performance metrics. Use when the user asks about their progress, performance, or score.",
       inputSchema: z.object({}),
       execute: async () => {
-        const now = new Date();
-        const windowStart = new Date(now);
-        windowStart.setDate(windowStart.getDate() - 13);
-
-        const { data: tasks } = await supabase
-          .from("tasks")
-          .select("status, due_date, priority, carry_over_count")
-          .eq("user_id", userId)
-          .gte("due_date", windowStart.toISOString())
-          .lte("due_date", now.toISOString());
-
-        const allTasks = tasks || [];
-        const total = allTasks.length;
-        const completed = allTasks.filter((t) => t.status === "completed").length;
-
-        const activeDaysSet = new Set(
-          allTasks
-            .filter((t) => t.status === "completed" && t.due_date != null)
-            .map((t) => new Date(t.due_date!).toISOString().split("T")[0])
-        );
-
-        // Compute actual streak by looping backwards through dates
-        let currentStreak = 0;
-        const checkDate = new Date(now);
-        checkDate.setHours(0, 0, 0, 0);
-        for (let i = 0; i < 14; i++) {
-          const dateStr = checkDate.toISOString().split("T")[0];
-          if (activeDaysSet.has(dateStr)) {
-            currentStreak++;
-            checkDate.setDate(checkDate.getDate() - 1);
-          } else {
-            break;
-          }
-        }
-
-        // Velocity: this week vs last week completion rates
-        const thisWeekStart = new Date(now);
-        thisWeekStart.setDate(thisWeekStart.getDate() - 6);
-        const lastWeekStart = new Date(now);
-        lastWeekStart.setDate(lastWeekStart.getDate() - 13);
-        const lastWeekEnd = new Date(now);
-        lastWeekEnd.setDate(lastWeekEnd.getDate() - 7);
-
-        const thisWeekTasks = allTasks.filter((t) => {
-          if (!t.due_date) return false;
-          const d = new Date(t.due_date);
-          return d >= thisWeekStart && d <= now;
-        });
-        const lastWeekTasks = allTasks.filter((t) => {
-          if (!t.due_date) return false;
-          const d = new Date(t.due_date);
-          return d >= lastWeekStart && d <= lastWeekEnd;
-        });
-
-        const thisWeekCompleted = thisWeekTasks.filter((t) => t.status === "completed").length;
-        const lastWeekCompleted = lastWeekTasks.filter((t) => t.status === "completed").length;
-        const thisWeekRate = thisWeekTasks.length > 0 ? computeCompletionRate(thisWeekTasks.length, thisWeekCompleted) : 0;
-        const lastWeekRate = lastWeekTasks.length > 0 ? computeCompletionRate(lastWeekTasks.length, lastWeekCompleted) : 0;
-        const velocityBonus = computeVelocityBonus(thisWeekRate, lastWeekRate);
-
-        const weightedCompletion = computeWeightedCompletion(
-          allTasks.map((t) => ({ status: t.status, priority: t.priority ?? "medium" }))
-        );
-        const consistencyRate = computeConsistencyRate(activeDaysSet.size, 14);
-        const disciplineScore = computeDisciplineScore(
-          allTasks.map((t) => ({ carry_over_count: t.carry_over_count ?? 0, status: t.status })),
-          total
-        );
-
-        const score = computeScore({
-          weightedCompletion,
-          consistencyRate,
-          disciplineScore,
-          currentStreak,
-          velocityBonus,
-        });
-        const tier = getTier(score);
-
-        // Compute delta: score now vs score from past week window
-        const pastWindowStart = new Date(now);
-        pastWindowStart.setDate(pastWindowStart.getDate() - 20);
-        const pastWindowEnd = new Date(now);
-        pastWindowEnd.setDate(pastWindowEnd.getDate() - 7);
-
-        const { data: pastTasks } = await supabase
-          .from("tasks")
-          .select("status, due_date, priority, carry_over_count")
-          .eq("user_id", userId)
-          .gte("due_date", pastWindowStart.toISOString())
-          .lte("due_date", pastWindowEnd.toISOString());
-
-        const pastAll = pastTasks || [];
-        const pastActiveDaysSet = new Set(
-          pastAll
-            .filter((t) => t.status === "completed" && t.due_date != null)
-            .map((t) => new Date(t.due_date!).toISOString().split("T")[0])
-        );
-        const pastWeightedCompletion = computeWeightedCompletion(
-          pastAll.map((t) => ({ status: t.status, priority: t.priority ?? "medium" }))
-        );
-        const pastConsistencyRate = computeConsistencyRate(pastActiveDaysSet.size, 14);
-        const pastDisciplineScore = computeDisciplineScore(
-          pastAll.map((t) => ({ carry_over_count: t.carry_over_count ?? 0, status: t.status })),
-          pastAll.length
-        );
-        const pastScore = computeScore({
-          weightedCompletion: pastWeightedCompletion,
-          consistencyRate: pastConsistencyRate,
-          disciplineScore: pastDisciplineScore,
-          currentStreak: 0,
-          velocityBonus: 0,
-        });
-
-        const delta = score - pastScore;
-
-        // Today's progress
-        const todayStr = now.toISOString().split("T")[0];
-        const todayStart = new Date(todayStr + "T00:00:00.000Z");
-        const todayEnd = new Date(todayStr + "T23:59:59.999Z");
-        const { data: todayTasksData } = await supabase
-          .from("tasks")
-          .select("status")
-          .eq("user_id", userId)
-          .gte("due_date", todayStart.toISOString())
-          .lte("due_date", todayEnd.toISOString());
-
-        const todayAll = todayTasksData || [];
-        const todayCompleted = todayAll.filter((t) => t.status === "completed").length;
-        const todayProgress = {
-          completed: todayCompleted,
-          total: todayAll.length,
-        };
-
+        const snap = await computeUserAccountability(supabase, userId);
         return {
           success: true as const,
-          score,
-          tier: `${tier.name} (${tier.color})`,
-          currentStreak,
-          weightedCompletion,
-          consistencyRate: Math.round(consistencyRate),
-          disciplineScore,
-          delta,
-          activeDays: activeDaysSet.size,
+          score: snap.score,
+          tier: `${snap.tier.name} (${snap.tier.color})`,
+          currentStreak: snap.streak,
+          weightedCompletion: snap.weightedCompletion,
+          consistencyRate: Math.round(snap.consistencyRate),
+          disciplineScore: snap.disciplineScore,
+          delta: snap.delta,
+          activeDays: Math.round(snap.consistencyRate * 14 / 100),
           windowDays: 14,
-          todayProgress,
+          todayProgress: {
+            completed: snap.today.completed,
+            total: snap.today.total,
+          },
+          drivers: snap.drivers,
         };
       },
     }),

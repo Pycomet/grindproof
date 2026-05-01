@@ -8,9 +8,15 @@ import { useChatContext } from "@/contexts/ChatContext";
 export function EveningCheckIn() {
   const { refreshTasks } = useTaskContext();
   const { sendMessage, setIsOpen } = useChatContext();
+  const utils = trpc.useUtils();
   const { data, isLoading } = trpc.dailyCheck.getEveningSchedule.useQuery();
   const submitMutation = trpc.dailyCheck.submitEveningReflections.useMutation({
-    onSuccess: () => refreshTasks(),
+    onSuccess: () => {
+      refreshTasks();
+      utils.accountabilityScore.getScore.invalidate();
+      utils.accountabilityScore.getScoreTrend.invalidate();
+      utils.accountabilityScore.getActivityHeatmap.invalidate();
+    },
   });
   const [reflections, setReflections] = useState<
     Record<string, { status: "completed" | "skipped"; reflection: string }>
