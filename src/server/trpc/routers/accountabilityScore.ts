@@ -1,230 +1,43 @@
 import { z } from "zod";
 import { router, protectedProcedure } from "../context";
+import { computeUserAccountability } from "@/lib/accountability/compute";
 import {
-  computeWeightedCompletion,
-  computeCompletionRate,
-  computeConsistencyRate,
-  computeDisciplineScore,
-  computeVelocityBonus,
-  computeScore,
-  getTier,
-} from "@/lib/accountability";
+  fetchSnapshotRange,
+  fetchRecentSnapshots,
+} from "@/lib/accountability/snapshot";
+import { fetchRecentScoreEvents } from "@/lib/accountability/events";
+import {
+  getTierWithHysteresis,
+} from "@/lib/accountability/primitives";
+import { localDateRange, localToday } from "@/lib/accountability/active-day";
 
-const WINDOW_DAYS = 14;
-
-function startOfDay(date: Date): string {
-  const d = new Date(date);
-  d.setHours(0, 0, 0, 0);
-  return d.toISOString();
-}
-
-function endOfDay(date: Date): string {
-  const d = new Date(date);
-  d.setHours(23, 59, 59, 999);
-  return d.toISOString();
-}
-
-/** Bulk-fetch active dates, then count consecutive days backwards from today. 2 queries total. */
-async function computeStreak(
-  db: any,
-  userId: string,
-  today: Date
-): Promise<number> {
-  const yearAgo = new Date(today);
-  yearAgo.setDate(yearAgo.getDate() - 365);
-
-  const [{ data: tasks }, { data: checkIns }] = await Promise.all([
-    db
-      .from("tasks")
-      .select("due_date")
-      .eq("user_id", userId)
-      .eq("status", "completed")
-      .gte("due_date", startOfDay(yearAgo))
-      .lte("due_date", endOfDay(today)),
-    db
-      .from("daily_checks")
-      .select("created_at")
-      .eq("user_id", userId)
-      .gte("created_at", startOfDay(yearAgo))
-      .lte("created_at", endOfDay(today)),
-  ]);
-
-  const activeDates = new Set<string>();
-  for (const t of tasks || []) {
-    activeDates.add(new Date(t.due_date).toISOString().split("T")[0]);
-  }
-  for (const c of checkIns || []) {
-    activeDates.add(new Date(c.created_at).toISOString().split("T")[0]);
-  }
-
-  let streak = 0;
-  const checkDate = new Date(today);
-  for (let i = 0; i < 365; i++) {
-    const dateStr = checkDate.toISOString().split("T")[0];
-    if (activeDates.has(dateStr)) {
-      streak++;
-    } else {
-      break;
-    }
-    checkDate.setDate(checkDate.getDate() - 1);
-  }
-
-  return streak;
-}
-
-async function getWindowStats(
-  db: any,
-  userId: string,
-  windowStart: Date,
-  windowEnd: Date
-) {
-  const { data: tasks } = await db
-    .from("tasks")
-    .select("status, due_date, priority, carry_over_count")
-    .eq("user_id", userId)
-    .gte("due_date", startOfDay(windowStart))
-    .lte("due_date", endOfDay(windowEnd));
-
-  const allTasks = tasks || [];
-  const total = allTasks.length;
-  const completed = allTasks.filter(
-    (t: any) => t.status === "completed"
-  ).length;
-
-  const activeDaysFromTasks = new Set(
-    allTasks
-      .filter((t: any) => t.status === "completed")
-      .map((t: any) => new Date(t.due_date).toISOString().split("T")[0])
-  );
-
-  const { data: checkIns } = await db
-    .from("daily_checks")
-    .select("created_at")
-    .eq("user_id", userId)
-    .gte("created_at", startOfDay(windowStart))
-    .lte("created_at", endOfDay(windowEnd));
-
-  const activeDaysFromCheckIns = new Set(
-    (checkIns || []).map((c: any) =>
-      new Date(c.created_at).toISOString().split("T")[0]
-    )
-  );
-
-  const activeDaysCompletionsOnly = activeDaysFromTasks.size;
-  const activeDaysAll = new Set([
-    ...activeDaysFromTasks,
-    ...activeDaysFromCheckIns,
-  ]).size;
-
-  return { total, completed, activeDaysCompletionsOnly, activeDaysAll, allTasks };
-}
+/**
+ * Router responsibilities:
+ *  - getScore: compute the live snapshot for "now", apply tier hysteresis
+ *    using the last 4 daily snapshots, return everything the widget needs.
+ *  - getScoreTrend: read snapshots for the requested window. Today's row
+ *    may not exist yet, so we recompute it live to avoid a missing data
+ *    point at the trailing edge.
+ *  - getActivityHeatmap: same — read weighted_completion per day from the
+ *    snapshot table.
+ *  - getRecentEvents: drive the "why did my score change?" feed on stats.
+ *
+ * Deliberately does no math itself: math lives in @/lib/accountability/*.
+ */
 
 export const accountabilityScoreRouter = router({
   getScore: protectedProcedure.query(async ({ ctx }) => {
-    const userId = ctx.user.id;
-    const today = new Date();
+    const snap = await computeUserAccountability(ctx.db, ctx.user.id);
 
-    const windowStart = new Date(today);
-    windowStart.setDate(windowStart.getDate() - (WINDOW_DAYS - 1));
-    const stats = await getWindowStats(ctx.db, userId, windowStart, today);
+    // Pull a few prior snapshots for tier hysteresis. If the user has none,
+    // we degrade gracefully to the naive tier inside the helper.
+    const recent = await fetchRecentSnapshots(ctx.db, ctx.user.id, 4);
+    const priorScores = recent
+      .filter((r) => r.local_date < snap.localDate)
+      .map((r) => r.score);
+    const tier = getTierWithHysteresis(snap.score, priorScores);
 
-    const currentStreak = await computeStreak(ctx.db, userId, today);
-
-    const weightedCompletion = computeWeightedCompletion(
-      stats.allTasks.map((t: any) => ({ status: t.status, priority: t.priority }))
-    );
-    const consistencyRate = computeConsistencyRate(
-      stats.activeDaysCompletionsOnly,
-      WINDOW_DAYS
-    );
-    const disciplineScore = computeDisciplineScore(
-      stats.allTasks.map((t: any) => ({
-        carry_over_count: t.carry_over_count,
-        status: t.status,
-      })),
-      stats.total
-    );
-
-    // Split tasks into this-week and last-week for velocity bonus
-    const midPoint = new Date(today);
-    midPoint.setDate(midPoint.getDate() - 7);
-    const thisWeekTasks = stats.allTasks.filter(
-      (t: any) => new Date(t.due_date) > midPoint
-    );
-    const lastWeekTasks = stats.allTasks.filter(
-      (t: any) => new Date(t.due_date) <= midPoint
-    );
-    const thisWeekRate = computeCompletionRate(
-      thisWeekTasks.length,
-      thisWeekTasks.filter((t: any) => t.status === "completed").length
-    );
-    const lastWeekRate = computeCompletionRate(
-      lastWeekTasks.length,
-      lastWeekTasks.filter((t: any) => t.status === "completed").length
-    );
-    const velocityBonus = computeVelocityBonus(thisWeekRate, lastWeekRate);
-
-    const score = computeScore({
-      weightedCompletion,
-      consistencyRate,
-      disciplineScore,
-      currentStreak,
-      velocityBonus,
-    });
-    const tier = getTier(score);
-
-    const pastEnd = new Date(today);
-    pastEnd.setDate(pastEnd.getDate() - 7);
-    const pastStart = new Date(pastEnd);
-    pastStart.setDate(pastStart.getDate() - (WINDOW_DAYS - 1));
-    const pastStats = await getWindowStats(ctx.db, userId, pastStart, pastEnd);
-
-    const pastWeightedCompletion = computeWeightedCompletion(
-      pastStats.allTasks.map((t: any) => ({ status: t.status, priority: t.priority }))
-    );
-    const pastConsistencyRate = computeConsistencyRate(
-      pastStats.activeDaysCompletionsOnly,
-      WINDOW_DAYS
-    );
-    const pastDisciplineScore = computeDisciplineScore(
-      pastStats.allTasks.map((t: any) => ({
-        carry_over_count: t.carry_over_count,
-        status: t.status,
-      })),
-      pastStats.total
-    );
-    const pastScore = computeScore({
-      weightedCompletion: pastWeightedCompletion,
-      consistencyRate: pastConsistencyRate,
-      disciplineScore: pastDisciplineScore,
-      currentStreak: 0,
-      velocityBonus: 0,
-    });
-    const delta = score - pastScore;
-
-    const todayStart = startOfDay(today);
-    const todayEnd = endOfDay(today);
-    const { data: todayTasks } = await ctx.db
-      .from("tasks")
-      .select("status")
-      .eq("user_id", userId)
-      .gte("due_date", todayStart)
-      .lte("due_date", todayEnd);
-
-    const todayTotal = (todayTasks || []).length;
-    const todayCompleted = (todayTasks || []).filter(
-      (t: any) => t.status === "completed"
-    ).length;
-
-    return {
-      score,
-      tier,
-      currentStreak,
-      weightedCompletion,
-      consistencyRate,
-      delta,
-      today: { completed: todayCompleted, total: todayTotal },
-    };
+    return { ...snap, tier, currentStreak: snap.streak };
   }),
 
   getScoreTrend: protectedProcedure
@@ -234,110 +47,40 @@ export const accountabilityScoreRouter = router({
       })
     )
     .query(async ({ ctx, input }) => {
-      const userId = ctx.user.id;
-      const today = new Date();
-      const numDays = input.days === "all" ? 90 : parseInt(input.days);
+      const numDays = input.days === "all" ? 90 : parseInt(input.days, 10);
+      const liveSnap = await computeUserAccountability(ctx.db, ctx.user.id);
+      const today = localToday(new Date(), liveSnap.timezone);
+      const dates = localDateRange(new Date(), liveSnap.timezone, numDays);
+      const snapshots = await fetchSnapshotRange(
+        ctx.db,
+        ctx.user.id,
+        dates[0],
+        dates[dates.length - 1]
+      );
+      const byDate: Record<string, (typeof snapshots)[number]> = {};
+      for (const s of snapshots) byDate[s.local_date] = s;
 
-      // Fetch all data in the full window (numDays + 14 for rolling score) in 2 queries
-      const fullWindowStart = new Date(today);
-      fullWindowStart.setDate(fullWindowStart.getDate() - (numDays + WINDOW_DAYS - 2));
-
-      const [{ data: allTasks }, { data: allCheckIns }] = await Promise.all([
-        ctx.db
-          .from("tasks")
-          .select("status, due_date, carry_over_count")
-          .eq("user_id", userId)
-          .gte("due_date", startOfDay(fullWindowStart))
-          .lte("due_date", endOfDay(today)),
-        (ctx.db as any)
-          .from("daily_checks")
-          .select("created_at")
-          .eq("user_id", userId)
-          .gte("created_at", startOfDay(fullWindowStart))
-          .lte("created_at", endOfDay(today)),
-      ]);
-
-      const tasks = allTasks || [];
-      const checkIns = allCheckIns || [];
-
-      // Index tasks by due-date string. We keep the raw task rows so the
-      // per-day rolling discipline score can use carry_over_count + status,
-      // matching getScore exactly.
-      type DiscTask = { carry_over_count: number; status: string };
-      const tasksByDate: Record<
-        string,
-        { total: number; completed: number; tasks: DiscTask[] }
-      > = {};
-      for (const t of tasks) {
-        const dateStr = new Date(t.due_date as string).toISOString().split("T")[0];
-        if (!tasksByDate[dateStr])
-          tasksByDate[dateStr] = { total: 0, completed: 0, tasks: [] };
-        tasksByDate[dateStr].total++;
-        if (t.status === "completed") tasksByDate[dateStr].completed++;
-        tasksByDate[dateStr].tasks.push({
-          carry_over_count: (t as any).carry_over_count ?? 0,
-          status: t.status as string,
-        });
-      }
-
-      // Index check-in dates
-      const checkInDates = new Set<string>();
-      for (const c of checkIns) {
-        checkInDates.add(new Date(c.created_at).toISOString().split("T")[0]);
-      }
-
-      // Compute trend in memory
-      const trend: { date: string; score: number; completed: number; total: number }[] = [];
-
-      for (let i = numDays - 1; i >= 0; i--) {
-        const date = new Date(today);
-        date.setDate(date.getDate() - i);
-        const dateStr = date.toISOString().split("T")[0];
-
-        const dayStats = tasksByDate[dateStr] || { total: 0, completed: 0, tasks: [] };
-
-        // Compute rolling 14-day window stats in memory
-        let windowTotal = 0;
-        let windowCompleted = 0;
-        const windowActiveDays = new Set<string>();
-        const windowTasks: DiscTask[] = [];
-
-        for (let w = 0; w < WINDOW_DAYS; w++) {
-          const wDate = new Date(date);
-          wDate.setDate(wDate.getDate() - w);
-          const wDateStr = wDate.toISOString().split("T")[0];
-          const wStats = tasksByDate[wDateStr];
-          if (wStats) {
-            windowTotal += wStats.total;
-            windowCompleted += wStats.completed;
-            if (wStats.completed > 0) windowActiveDays.add(wDateStr);
-            windowTasks.push(...wStats.tasks);
-          }
-          if (checkInDates.has(wDateStr)) windowActiveDays.add(wDateStr);
+      const trend = dates.map((d) => {
+        if (d === today) {
+          return {
+            date: d,
+            score: liveSnap.score,
+            completed: liveSnap.today.completed,
+            total: liveSnap.today.total,
+            active: liveSnap.active,
+          };
         }
+        const row = byDate[d];
+        return {
+          date: d,
+          score: row?.score ?? 0,
+          completed: 0,
+          total: 0,
+          active: row?.active ?? false,
+        };
+      });
 
-        // Flat completion rate is still an approximation here (we lack per-task
-        // priority in the aggregated query). Discipline now uses real
-        // carry_over_count + status, matching getScore.
-        const cr = computeCompletionRate(windowTotal, windowCompleted);
-        const conr = computeConsistencyRate(windowActiveDays.size, WINDOW_DAYS);
-        const ds = computeDisciplineScore(windowTasks, windowTotal);
-        // Streak and velocity omitted from trend: expensive to compute per-day
-        // and the bonus is small (±5) compared to the chart's range.
-        const dayScore = computeScore({
-          weightedCompletion: cr,
-          consistencyRate: conr,
-          disciplineScore: ds,
-          currentStreak: 0,
-          velocityBonus: 0,
-        });
-
-        trend.push({ date: dateStr, score: dayScore, completed: dayStats.completed, total: dayStats.total });
-      }
-
-      const currentStreak = await computeStreak(ctx.db, userId, today);
-
-      return { trend, currentStreak };
+      return { trend, currentStreak: liveSnap.streak };
     }),
 
   getActivityHeatmap: protectedProcedure
@@ -347,35 +90,47 @@ export const accountabilityScoreRouter = router({
       })
     )
     .query(async ({ ctx, input }) => {
-      const userId = ctx.user.id;
-      const today = new Date();
-      const numDays = input.days === "all" ? 90 : parseInt(input.days);
+      const numDays = input.days === "all" ? 90 : parseInt(input.days, 10);
+      const liveSnap = await computeUserAccountability(ctx.db, ctx.user.id);
+      const dates = localDateRange(new Date(), liveSnap.timezone, numDays);
+      const snapshots = await fetchSnapshotRange(
+        ctx.db,
+        ctx.user.id,
+        dates[0],
+        dates[dates.length - 1]
+      );
+      const byDate: Record<string, (typeof snapshots)[number]> = {};
+      for (const s of snapshots) byDate[s.local_date] = s;
 
-      const windowStart = new Date(today);
-      windowStart.setDate(windowStart.getDate() - (numDays - 1));
-
-      const { data: tasks } = await ctx.db
-        .from("tasks")
-        .select("status, due_date")
-        .eq("user_id", userId)
-        .eq("status", "completed")
-        .gte("due_date", startOfDay(windowStart))
-        .lte("due_date", endOfDay(today));
-
-      const countByDate: Record<string, number> = {};
-      for (const task of tasks || []) {
-        const dateStr = new Date(task.due_date as string).toISOString().split("T")[0];
-        countByDate[dateStr] = (countByDate[dateStr] || 0) + 1;
-      }
-
-      const heatmap: { date: string; count: number }[] = [];
-      for (let i = numDays - 1; i >= 0; i--) {
-        const date = new Date(today);
-        date.setDate(date.getDate() - i);
-        const dateStr = date.toISOString().split("T")[0];
-        heatmap.push({ date: dateStr, count: countByDate[dateStr] || 0 });
-      }
+      const heatmap = dates.map((d) => {
+        if (d === liveSnap.localDate) {
+          return {
+            date: d,
+            count: liveSnap.today.completed,
+            intensity: liveSnap.today.weightedCompletion,
+            active: liveSnap.active,
+          };
+        }
+        const row = byDate[d];
+        return {
+          date: d,
+          count: row?.active ? 1 : 0, // legacy field for back-compat
+          intensity: row?.weighted_completion ?? 0,
+          active: row?.active ?? false,
+        };
+      });
 
       return { heatmap };
+    }),
+
+  getRecentEvents: protectedProcedure
+    .input(z.object({ limit: z.number().int().min(1).max(50).default(10) }))
+    .query(async ({ ctx, input }) => {
+      const events = await fetchRecentScoreEvents(
+        ctx.db,
+        ctx.user.id,
+        input.limit
+      );
+      return { events };
     }),
 });

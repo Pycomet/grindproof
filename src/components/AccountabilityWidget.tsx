@@ -1,25 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { Flame } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { trpc } from "@/lib/trpc/client";
-import { cn } from "@/lib/utils";
+import { AccountabilityScoreRing } from "./AccountabilityScoreRing";
+import { StreakBreakBanner } from "./StreakBreakBanner";
 
-const TIER_COLORS: Record<string, string> = {
+const TIER_TEXT_COLORS: Record<string, string> = {
   red: "text-tier-slacking",
   orange: "text-tier-warming",
   amber: "text-tier-grinding",
   green: "text-tier-locked",
   purple: "text-tier-proven",
-};
-
-const RING_STROKE_COLORS: Record<string, string> = {
-  red: "var(--tier-slacking)",
-  orange: "var(--tier-warming)",
-  amber: "var(--tier-grinding)",
-  green: "var(--tier-locked)",
-  purple: "var(--tier-proven)",
 };
 
 export function AccountabilityWidget() {
@@ -28,113 +20,118 @@ export function AccountabilityWidget() {
     undefined,
     { enabled: !!user }
   );
+  const { data: trendData } =
+    trpc.accountabilityScore.getScoreTrend.useQuery(
+      { days: "14" },
+      { enabled: !!user }
+    );
 
   if (!user) return null;
 
-  if (isLoading) {
+  if (isLoading || !data) {
     return (
-      <div className="h-24 animate-pulse rounded-lg border border-zinc-200 bg-zinc-900 dark:border-zinc-800" />
+      <div className="h-28 animate-pulse rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900" />
     );
   }
 
-  if (!data) return null;
+  const { score, tier, currentStreak, delta, today, drivers } = data;
+  const tierColor = TIER_TEXT_COLORS[tier.color] || TIER_TEXT_COLORS.purple;
 
-  const { score, tier, currentStreak, delta, today } = data;
-  const circumference = 2 * Math.PI * 30;
-  const offset = circumference - (score / 100) * circumference;
-  const strokeColor = RING_STROKE_COLORS[tier.color] || "#a78bfa";
+  const yesterdayScore =
+    trendData && trendData.trend.length >= 2
+      ? trendData.trend[trendData.trend.length - 2]
+      : null;
+  const showBreakBanner =
+    currentStreak === 0 &&
+    yesterdayScore?.active === true &&
+    (trendData?.currentStreak ?? 0) === 0;
 
   return (
-    <div className="rounded-md border border-zinc-700 bg-zinc-900 p-5 text-white">
-      <div className="flex items-center justify-between">
-        {/* Score Ring */}
-        <div className="flex items-center gap-3">
-          <div className="relative h-16 w-16">
-            <svg width="64" height="64" viewBox="0 0 64 64">
-              <circle
-                cx="32"
-                cy="32"
-                r="30"
-                fill="none"
-                stroke="#27272a"
-                strokeWidth="4"
-              />
-              <circle
-                cx="32"
-                cy="32"
-                r="30"
-                fill="none"
-                stroke={strokeColor}
-                strokeWidth="4"
-                strokeDasharray={circumference}
-                strokeDashoffset={offset}
-                strokeLinecap="round"
-                transform="rotate(-90 32 32)"
-              />
-            </svg>
-            <div className="absolute inset-0 flex items-center justify-center text-lg font-bold">
-              {score}
+    <div className="space-y-2">
+      {showBreakBanner && yesterdayScore && (
+        <StreakBreakBanner
+          brokenStreak={inferBrokenStreak(trendData?.trend ?? [])}
+          endedOn={yesterdayScore.date}
+        />
+      )}
+
+      <div className="rounded-lg border border-zinc-200 bg-white p-4 text-zinc-900 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <AccountabilityScoreRing score={score} color={tier.color} />
+            <div className="min-w-0">
+              <div
+                className={`text-xs font-semibold uppercase tracking-wide ${tierColor}`}
+              >
+                {tier.name}
+              </div>
+              <div className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
+                {delta > 0 && (
+                  <span className="text-green-600 dark:text-green-400">
+                    +{delta} from last week
+                  </span>
+                )}
+                {delta < 0 && (
+                  <span className="text-red-600 dark:text-red-400">
+                    {delta} from last week
+                  </span>
+                )}
+                {delta === 0 && <span>No change from last week</span>}
+              </div>
             </div>
           </div>
-          <div>
-            <div
-              className={`text-xs font-semibold uppercase tracking-wide ${TIER_COLORS[tier.color] || "text-purple-400"}`}
+
+          <div className="text-center">
+            <div className="text-xl font-bold">{currentStreak}</div>
+            <div className="text-xs text-amber-600 dark:text-amber-400">
+              day streak {currentStreak > 0 ? "🔥" : ""}
+            </div>
+          </div>
+
+          <div className="text-right">
+            <div className="text-xs text-zinc-500 dark:text-zinc-400">
+              Today
+            </div>
+            <div className="text-base font-semibold text-green-600 dark:text-green-400">
+              {today.completed}/{today.total} done
+            </div>
+            <Link
+              href="/dashboard/stats"
+              className="text-xs text-purple-600 transition-colors hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300"
             >
-              {tier.name}
-            </div>
-            <div className="text-xs text-zinc-400">
-              {delta > 0 && (
-                <span className="text-tier-locked">+{delta} from last week</span>
-              )}
-              {delta === 0 && <span>No change from last week</span>}
-              {delta < 0 && delta > -20 && (
-                <span className="text-tier-warming">{delta} from last week</span>
-              )}
-              {delta <= -20 && (
-                <span className="text-zinc-300">Last week was a write-off. New week starts now.</span>
-              )}
-            </div>
+              View stats →
+            </Link>
           </div>
         </div>
 
-        {/* Streak */}
-        <div className="text-center">
-          {currentStreak > 0 ? (
+        <div className="mt-3 border-t border-zinc-100 pt-2 text-xs leading-relaxed text-zinc-600 dark:border-zinc-800 dark:text-zinc-400">
+          <span className="font-medium text-zinc-700 dark:text-zinc-300">
+            Driven by:
+          </span>{" "}
+          {drivers.top}
+          {drivers.drag && (
             <>
-              <div className="text-xl font-bold">{currentStreak}</div>
-              <div className="text-xs text-warning flex items-center justify-center gap-1">
-                day streak <Flame className="h-3 w-3" />
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="text-xs text-zinc-500">No streak</div>
-              <div className="text-xs text-zinc-400 mt-1">Start one today</div>
+              {" · "}
+              <span className="font-medium text-zinc-700 dark:text-zinc-300">
+                Held back by:
+              </span>{" "}
+              {drivers.drag}
             </>
           )}
-        </div>
-
-        {/* Today's Progress */}
-        <div className="text-right">
-          <div className="text-xs text-zinc-400">Today</div>
-          <div className={cn(
-            "text-base font-semibold font-[family-name:var(--font-geist-mono)]",
-            today.total === 0 || today.completed === 0
-              ? "text-zinc-300"
-              : today.completed === today.total
-              ? "text-tier-locked"
-              : "text-tier-warming"
-          )}>
-            {today.completed}/{today.total} done
-          </div>
-          <Link
-            href="/dashboard/stats"
-            className="text-xs text-purple-400 hover:text-purple-300 transition-colors"
-          >
-            View Stats →
-          </Link>
         </div>
       </div>
     </div>
   );
+}
+
+function inferBrokenStreak(
+  trend: { date: string; active: boolean }[]
+): number {
+  if (trend.length < 2) return 0;
+  let count = 0;
+  for (let i = trend.length - 2; i >= 0; i--) {
+    if (trend[i].active) count++;
+    else break;
+  }
+  return count;
 }

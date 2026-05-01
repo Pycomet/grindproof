@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { router, protectedProcedure } from "../context";
+import { fireAndForgetScoreChange } from "@/lib/accountability/hooks";
 
 export const createTaskSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -144,7 +145,16 @@ export const taskRouter = router({
       if (input.goalId !== undefined)
         updateData.goal_id = input.goalId || null;
       if (input.tags !== undefined) updateData.tags = input.tags || null;
-      if (input.status !== undefined) updateData.status = input.status;
+      if (input.status !== undefined) {
+        updateData.status = input.status;
+        // Maintain completed_at in lockstep with status transitions when the
+        // caller doesn't explicitly mention it via complete()/reschedule().
+        if (input.status === "completed") {
+          updateData.completed_at = new Date().toISOString();
+        } else {
+          updateData.completed_at = null;
+        }
+      }
       if (input.reflection !== undefined)
         updateData.reflection = input.reflection || null;
       if (input.recurrencePattern !== undefined)
@@ -160,6 +170,15 @@ export const taskRouter = router({
 
       if (error) throw new Error(`Failed to update task: ${error.message}`);
       if (!data) throw new Error("Task not found or access denied");
+      if (input.status !== undefined) {
+        const reason =
+          input.status === "completed"
+            ? "task_completed"
+            : input.status === "skipped"
+              ? "task_skipped"
+              : "task_rescheduled";
+        fireAndForgetScoreChange(ctx.db, ctx.user.id, reason, data.id);
+      }
       return mapTaskFromDb(data);
     }),
 
@@ -181,7 +200,10 @@ export const taskRouter = router({
     .mutation(async ({ ctx, input }) => {
       const { data, error } = await ctx.db
         .from("tasks")
-        .update({ status: "completed" })
+        .update({
+          status: "completed",
+          completed_at: new Date().toISOString(),
+        })
         .eq("id", input.id)
         .eq("user_id", ctx.user.id)
         .select()
@@ -189,6 +211,7 @@ export const taskRouter = router({
 
       if (error) throw new Error(`Failed to complete task: ${error.message}`);
       if (!data) throw new Error("Task not found or access denied");
+      fireAndForgetScoreChange(ctx.db, ctx.user.id, "task_completed", data.id);
       return mapTaskFromDb(data);
     }),
 
@@ -205,6 +228,7 @@ export const taskRouter = router({
         .update({
           status: "skipped",
           reflection: input.reflection || null,
+          completed_at: null,
         })
         .eq("id", input.id)
         .eq("user_id", ctx.user.id)
@@ -213,6 +237,7 @@ export const taskRouter = router({
 
       if (error) throw new Error(`Failed to skip task: ${error.message}`);
       if (!data) throw new Error("Task not found or access denied");
+      fireAndForgetScoreChange(ctx.db, ctx.user.id, "task_skipped", data.id);
       return mapTaskFromDb(data);
     }),
 
@@ -229,6 +254,7 @@ export const taskRouter = router({
         .update({
           due_date: input.newDueDate.toISOString(),
           status: "pending",
+          completed_at: null,
         })
         .eq("id", input.id)
         .eq("user_id", ctx.user.id)
@@ -238,6 +264,7 @@ export const taskRouter = router({
       if (error)
         throw new Error(`Failed to reschedule task: ${error.message}`);
       if (!data) throw new Error("Task not found or access denied");
+      fireAndForgetScoreChange(ctx.db, ctx.user.id, "task_rescheduled", data.id);
       return mapTaskFromDb(data);
     }),
 });

@@ -37,18 +37,28 @@ const priorityColors = {
 
 export function TaskItem({ task }: TaskItemProps) {
   const { refreshTasks, goals } = useTaskContext();
+  const utils = trpc.useUtils();
+
+  // After any mutation that can move the score, invalidate the
+  // accountability widget queries so the dashboard updates without a refresh.
+  const onTaskMutated = () => {
+    refreshTasks();
+    utils.accountabilityScore.getScore.invalidate();
+    utils.accountabilityScore.getScoreTrend.invalidate();
+    utils.accountabilityScore.getActivityHeatmap.invalidate();
+  };
 
   const completeMutation = trpc.task.complete.useMutation({
-    onSuccess: () => refreshTasks(),
+    onSuccess: onTaskMutated,
   });
   const updateMutation = trpc.task.update.useMutation({
-    onSuccess: () => refreshTasks(),
+    onSuccess: onTaskMutated,
   });
   const deleteMutation = trpc.task.delete.useMutation({
-    onSuccess: () => refreshTasks(),
+    onSuccess: onTaskMutated,
   });
   const rescheduleMutation = trpc.task.reschedule.useMutation({
-    onSuccess: () => refreshTasks(),
+    onSuccess: onTaskMutated,
   });
 
   const [isEditing, setIsEditing] = useState(false);
