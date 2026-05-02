@@ -36,7 +36,7 @@ function shouldShowEvening(): boolean {
 
 function DashboardContent() {
   return (
-    <div className="mx-auto max-w-7xl lg:flex lg:gap-6 px-4 py-6">
+    <div className="mx-auto max-w-7xl lg:flex lg:gap-6 px-4 py-6 pb-20 lg:pb-6">
       <main className="flex-1 lg:max-w-xl space-y-3">
         <Day1Orientation />
         <AccountabilityWidget />
@@ -96,9 +96,6 @@ export default function Dashboard() {
       </header>
 
       <DashboardContent />
-      <div className="lg:hidden">
-        <ChatPanel />
-      </div>
     </div>
   );
 }

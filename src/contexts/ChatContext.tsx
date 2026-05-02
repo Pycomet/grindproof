@@ -110,7 +110,23 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   }, [latestConversation, isError, loaded]);
 
   if (!loaded) {
-    return null;
+    // Render children immediately with a stub context so the dashboard isn't blank
+    // while the conversation history loads. Chat actions are no-ops until ready.
+    return (
+      <ChatContext.Provider
+        value={{
+          messages: [],
+          sendMessage: () => {},
+          status: "ready",
+          isOpen: false,
+          setIsOpen: () => {},
+          input: "",
+          setInput: () => {},
+        }}
+      >
+        {children}
+      </ChatContext.Provider>
+    );
   }
 
   return (

@@ -11,7 +11,7 @@ export const weeklyRoastRouter = router({
       .eq("user_id", ctx.user.id)
       .order("created_at", { ascending: false })
       .limit(1)
-      .single();
+      .maybeSingle();
 
     if (error || !data) return null;
 

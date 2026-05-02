@@ -29,7 +29,7 @@ interface TrendPoint {
 function ScoreTrendChart({ trend }: { trend: TrendPoint[] }) {
   const maxScore = 100;
   return (
-    <div className="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+    <div className="rounded-md border border-zinc-200 bg-white p-4 dark:border-white/[0.08] dark:bg-zinc-900">
       <h3 className="mb-4 text-sm font-semibold text-zinc-900 dark:text-white">
         Score Trend
       </h3>
@@ -86,7 +86,7 @@ function ActivityHeatmap({ heatmap }: { heatmap: HeatmapPoint[] }) {
   }
 
   return (
-    <div className="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+    <div className="rounded-md border border-zinc-200 bg-white p-4 dark:border-white/[0.08] dark:bg-zinc-900">
       <h3 className="mb-3 text-sm font-semibold text-zinc-900 dark:text-white">
         Activity (weighted by priority)
       </h3>
@@ -124,59 +124,109 @@ interface ScoreEvent {
   related_task_id: string | null;
 }
 
+const EVENT_META: Record<string, { glyph: string; cls: string; label: string }> = {
+  task_completed:   { glyph: "✓", cls: "text-tier-locked",   label: "completed"       },
+  task_skipped:     { glyph: "✗", cls: "text-tier-slacking", label: "skipped"         },
+  task_rescheduled: { glyph: "↻", cls: "text-zinc-400",      label: "rescheduled"     },
+  task_carried_over:{ glyph: "→", cls: "text-tier-grinding", label: "carried over"    },
+  evening_reflection:{ glyph: "◎", cls: "text-tier-proven",  label: "evening check-in"},
+  snapshot_cron:    { glyph: "◆", cls: "text-zinc-400",      label: "daily snapshot"  },
+};
+
+function fmtTime(iso: string) {
+  const d = new Date(iso);
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" }) +
+    " " +
+    d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+}
+
 function RecentEvents({ events }: { events: ScoreEvent[] }) {
   if (events.length === 0) {
     return (
-      <div className="rounded-lg border border-zinc-200 bg-white p-4 text-sm text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400">
-        No score changes yet. Complete or skip a task to see it here.
+      <div className="rounded-md border border-zinc-200 bg-white p-4 font-mono text-xs text-zinc-400 dark:border-white/[0.08] dark:bg-zinc-900">
+        <span className="text-zinc-300">$</span> git log --score
+        <br />
+        <span className="text-zinc-500">
+          fatal: no score events yet — complete a task
+        </span>
       </div>
     );
   }
+
+  // Personal best: highest score_after across the list
+  const peakScore = Math.max(...events.map((e) => e.score_after));
+
   return (
-    <div className="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
-      <h3 className="mb-3 text-sm font-semibold text-zinc-900 dark:text-white">
-        Recent score changes
-      </h3>
-      <ul className="space-y-2 text-xs">
-        {events.map((e) => {
+    <div className="rounded-md border border-zinc-200 bg-white dark:border-white/[0.08] dark:bg-zinc-900">
+      {/* header bar */}
+      <div className="flex items-center justify-between border-b border-zinc-100 px-4 py-2 dark:border-white/[0.06]">
+        <span className="font-mono text-[11px] text-zinc-400">
+          $ git log --score --oneline
+        </span>
+        <span className="font-mono text-[11px] text-zinc-500">
+          {events.length} events
+        </span>
+      </div>
+
+      {/* log rows */}
+      <ul className="divide-y divide-zinc-50 dark:divide-white/[0.04]">
+        {events.map((e, i) => {
+          const meta = EVENT_META[e.reason] ?? {
+            glyph: "·",
+            cls: "text-zinc-400",
+            label: e.reason.replace(/_/g, " "),
+          };
           const delta =
             e.score_before === null ? null : e.score_after - e.score_before;
-          const deltaClass =
-            delta === null
-              ? "text-zinc-500"
-              : delta > 0
-                ? "text-green-600 dark:text-green-400"
-                : delta < 0
-                  ? "text-red-600 dark:text-red-400"
-                  : "text-zinc-500";
+          const isPB = e.score_after === peakScore && delta !== null && delta > 0;
+          const isLast = i === events.length - 1;
+
           return (
-            <li
-              key={e.id}
-              className="flex items-center justify-between gap-2 border-b border-zinc-100 pb-2 last:border-0 last:pb-0 dark:border-zinc-800"
-            >
-              <div className="min-w-0">
-                <div className="font-medium text-zinc-800 dark:text-zinc-200">
-                  {humanReason(e.reason)}
-                </div>
-                <div className="text-[10px] text-zinc-500">
-                  {new Date(e.occurred_at).toLocaleString(undefined, {
-                    month: "short",
-                    day: "numeric",
-                    hour: "numeric",
-                    minute: "2-digit",
-                  })}
-                </div>
-              </div>
-              <div className="flex items-baseline gap-1 whitespace-nowrap">
-                <span className="text-zinc-500">
-                  {e.score_before ?? "·"} → {e.score_after}
+            <li key={e.id} className="flex items-stretch gap-0">
+              {/* connector line + sigil */}
+              <div className="flex w-8 shrink-0 flex-col items-center py-2.5">
+                <span className={`font-mono text-sm font-bold leading-none ${meta.cls}`}>
+                  {meta.glyph}
                 </span>
-                {delta !== null && delta !== 0 && (
-                  <span className={deltaClass}>
-                    ({delta > 0 ? "+" : ""}
-                    {delta})
-                  </span>
+                {!isLast && (
+                  <div className="mt-1 flex-1 w-px bg-zinc-100 dark:bg-white/[0.06]" />
                 )}
+              </div>
+
+              {/* content */}
+              <div className="flex flex-1 items-center justify-between gap-2 py-2.5 pr-4">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-mono text-xs text-zinc-700 dark:text-zinc-200">
+                      {meta.label}
+                    </span>
+                    {isPB && (
+                      <span className="rounded-sm bg-tier-proven/10 px-1 py-px font-mono text-[9px] font-semibold uppercase tracking-wide text-tier-proven">
+                        ★ PB
+                      </span>
+                    )}
+                  </div>
+                  <div className="mt-0.5 font-mono text-[10px] text-zinc-400">
+                    {fmtTime(e.occurred_at)}
+                  </div>
+                </div>
+
+                <div className="flex items-baseline gap-1 whitespace-nowrap font-mono tabular-nums text-xs">
+                  <span className="text-zinc-400">
+                    {e.score_before ?? "·"}&nbsp;→&nbsp;{e.score_after}
+                  </span>
+                  {delta !== null && delta !== 0 && (
+                    <span
+                      className={
+                        delta > 0
+                          ? "text-tier-locked"
+                          : "text-tier-slacking"
+                      }
+                    >
+                      ({delta > 0 ? "+" : ""}{delta})
+                    </span>
+                  )}
+                </div>
               </div>
             </li>
           );
@@ -186,23 +236,51 @@ function RecentEvents({ events }: { events: ScoreEvent[] }) {
   );
 }
 
-function humanReason(reason: string): string {
-  switch (reason) {
-    case "task_completed":
-      return "Task completed";
-    case "task_skipped":
-      return "Task skipped";
-    case "task_rescheduled":
-      return "Task rescheduled";
-    case "task_carried_over":
-      return "Carried over to today";
-    case "evening_reflection":
-      return "Evening reflection";
-    case "snapshot_cron":
-      return "Daily snapshot";
-    default:
-      return reason.replace(/_/g, " ");
-  }
+const ALL_BADGES = [
+  { id: "streak-3",  icon: "🔥", label: "3-Day Run",    desc: "3 consecutive days",  check: (s: number, k: number) => k >= 3  },
+  { id: "streak-7",  icon: "⚡", label: "Week Warrior",  desc: "7 consecutive days",  check: (s: number, k: number) => k >= 7  },
+  { id: "streak-14", icon: "💎", label: "Fortnight",     desc: "14 consecutive days", check: (s: number, k: number) => k >= 14 },
+  { id: "streak-30", icon: "👑", label: "Month Locked",  desc: "30 consecutive days", check: (s: number, k: number) => k >= 30 },
+  { id: "score-40",  icon: "🌡", label: "Warming Up",   desc: "Score reaches 40",    check: (s: number, k: number) => s >= 40 },
+  { id: "score-60",  icon: "⚙", label: "Grinding",      desc: "Score reaches 60",    check: (s: number, k: number) => s >= 60 },
+  { id: "score-75",  icon: "🔒", label: "Locked In",    desc: "Score reaches 75",    check: (s: number, k: number) => s >= 75 },
+  { id: "score-90",  icon: "🏆", label: "Proven",        desc: "Score reaches 90",    check: (s: number, k: number) => s >= 90 },
+] as const;
+
+function BadgesSection({ score, streak }: { score: number; streak: number }) {
+  const badges = ALL_BADGES.map((b) => ({ ...b, earned: b.check(score, streak) }));
+  const earnedCount = badges.filter((b) => b.earned).length;
+
+  return (
+    <div className="rounded-md border border-zinc-200 bg-white dark:border-white/[0.08] dark:bg-zinc-900">
+      <div className="flex items-center justify-between border-b border-zinc-100 px-4 py-2.5 dark:border-white/[0.06]">
+        <h3 className="text-sm font-semibold text-zinc-900 dark:text-white">
+          Badges
+        </h3>
+        <span className="font-mono text-xs tabular-nums text-zinc-500">
+          {earnedCount}/{badges.length}
+        </span>
+      </div>
+      <div className="grid grid-cols-2 gap-px bg-zinc-100 dark:bg-white/[0.04]">
+        {badges.map((badge) => (
+          <div
+            key={badge.id}
+            className={`flex items-center gap-2.5 bg-white px-3 py-3 dark:bg-zinc-900 ${
+              badge.earned ? "" : "opacity-30"
+            }`}
+          >
+            <span className="text-xl leading-none">{badge.icon}</span>
+            <div className="min-w-0">
+              <p className="truncate text-xs font-semibold text-zinc-900 dark:text-white">
+                {badge.label}
+              </p>
+              <p className="truncate text-[10px] text-zinc-500">{badge.desc}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 export default function StatsPage() {
@@ -287,19 +365,20 @@ export default function StatsPage() {
 
         {isLoading ? (
           <div className="space-y-4">
-            <div className="h-24 animate-pulse rounded-lg bg-white dark:bg-zinc-900" />
-            <div className="h-40 animate-pulse rounded-lg bg-white dark:bg-zinc-900" />
-            <div className="h-32 animate-pulse rounded-lg bg-white dark:bg-zinc-900" />
+            <div className="h-24 animate-pulse rounded-md bg-white dark:bg-zinc-900" />
+            <div className="h-40 animate-pulse rounded-md bg-white dark:bg-zinc-900" />
+            <div className="h-32 animate-pulse rounded-md bg-white dark:bg-zinc-900" />
           </div>
         ) : (
           <>
             {scoreData && (
-              <div className="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+              <div className="rounded-md border border-zinc-200 bg-white p-4 dark:border-white/[0.08] dark:bg-zinc-900">
                 <div className="flex items-center gap-4">
                   <AccountabilityScoreRing
                     score={scoreData.score}
                     color={scoreData.tier.color}
                     size={72}
+                    showNextTier
                   />
                   <div className="min-w-0">
                     <div
@@ -308,27 +387,27 @@ export default function StatsPage() {
                       {scoreData.tier.name}
                     </div>
                     <div className="mt-0.5 text-sm text-zinc-700 dark:text-zinc-300">
-                      <span className="font-semibold">
+                      <span className="font-mono font-semibold tabular-nums">
                         {scoreData.currentStreak}
                       </span>{" "}
                       day streak ·{" "}
-                      <span className="font-semibold">
+                      <span className="font-mono font-semibold tabular-nums">
                         {scoreData.weightedCompletion}%
                       </span>{" "}
                       completion ·{" "}
-                      <span className="font-semibold">
+                      <span className="font-mono font-semibold tabular-nums">
                         {Math.round(scoreData.consistencyRate)}%
                       </span>{" "}
                       consistency
                     </div>
                     <div className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
                       {scoreData.delta > 0 && (
-                        <span className="text-green-600 dark:text-green-400">
+                        <span className="font-mono tabular-nums text-green-600 dark:text-green-400">
                           +{scoreData.delta} from last week
                         </span>
                       )}
                       {scoreData.delta < 0 && (
-                        <span className="text-red-600 dark:text-red-400">
+                        <span className="font-mono tabular-nums text-red-600 dark:text-red-400">
                           {scoreData.delta} from last week
                         </span>
                       )}
@@ -345,6 +424,12 @@ export default function StatsPage() {
             {heatmapData && <ActivityHeatmap heatmap={heatmapData.heatmap} />}
             {eventsData && (
               <RecentEvents events={eventsData.events as ScoreEvent[]} />
+            )}
+            {scoreData && (
+              <BadgesSection
+                score={scoreData.score}
+                streak={scoreData.currentStreak}
+              />
             )}
           </>
         )}

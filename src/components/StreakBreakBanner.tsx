@@ -40,11 +40,11 @@ export function StreakBreakBanner({ brokenStreak, endedOn }: Props) {
   if (brokenStreak < 3 || dismissed) return null;
 
   return (
-    <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-100">
+    <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-700/50 dark:bg-amber-950/40 dark:text-amber-100">
       <div className="flex items-start justify-between gap-3">
         <div>
           <div className="font-semibold">
-            Your {brokenStreak}-day streak ended {formatEnd(endedOn)}.
+            Your <span className="font-mono tabular-nums">{brokenStreak}</span>-day streak ended {formatEnd(endedOn)}.
           </div>
           <div className="mt-0.5 text-xs opacity-80">
             Streaks count completed work, not check-ins. Show up today to start
