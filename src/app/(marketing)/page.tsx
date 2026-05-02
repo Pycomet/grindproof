@@ -8,22 +8,22 @@ export default function Home() {
       <nav className="border-b border-zinc-700 bg-zinc-900/40 backdrop-blur-sm">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
           <Logo size="md" href="/" />
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3 sm:gap-4">
             <Link
               href="/how-it-works"
-              className="text-sm text-zinc-300 transition-colors hover:text-zinc-50"
+              className="hidden whitespace-nowrap text-sm text-zinc-300 transition-colors hover:text-zinc-50 sm:inline"
             >
               How It Works
             </Link>
             <Link
               href="/auth/login"
-              className="text-sm text-zinc-300 transition-colors hover:text-zinc-50"
+              className="whitespace-nowrap text-sm text-zinc-300 transition-colors hover:text-zinc-50"
             >
               Sign In
             </Link>
             <Link
               href="/auth/signup"
-              className="rounded-full bg-brand px-5 py-2 text-sm font-semibold text-brand-foreground transition-opacity hover:opacity-90"
+              className="whitespace-nowrap rounded-full bg-brand px-4 py-2 text-sm font-semibold text-brand-foreground transition-opacity hover:opacity-90 sm:px-5"
             >
               Get Started
             </Link>

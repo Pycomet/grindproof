@@ -11,12 +11,20 @@ export default function HowItWorks() {
         <div className="mx-auto max-w-5xl px-4 py-4">
           <div className="flex items-center justify-between">
             <Logo size="md" href="/" />
-            <Link
-              href="/auth/signup"
-              className="rounded-full bg-brand px-6 py-2 text-sm font-semibold text-brand-foreground transition-opacity hover:opacity-90"
-            >
-              Get Started
-            </Link>
+            <div className="flex items-center gap-3 sm:gap-4">
+              <Link
+                href="/auth/login"
+                className="whitespace-nowrap text-sm text-zinc-300 transition-colors hover:text-zinc-50"
+              >
+                Sign In
+              </Link>
+              <Link
+                href="/auth/signup"
+                className="whitespace-nowrap rounded-full bg-brand px-4 py-2 text-sm font-semibold text-brand-foreground transition-opacity hover:opacity-90 sm:px-6"
+              >
+                Get Started
+              </Link>
+            </div>
           </div>
         </div>
       </header>

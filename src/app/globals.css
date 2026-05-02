@@ -132,42 +132,80 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
+  /* System mode: apply when OS is dark and no explicit override class is set */
+  :root:not(.light):not(.dark) {
     --background: #0a0a0a;
     --foreground: #ededed;
-
-    /* Dark mode shadcn variables */
-    --primary: #fafafa; /* zinc-50 */
-    --primary-foreground: #18181b; /* zinc-900 */
-    --secondary: #27272a; /* zinc-800 */
-    --secondary-foreground: #fafafa; /* zinc-50 */
-    --accent: #27272a; /* zinc-800 */
-    --accent-foreground: #fafafa; /* zinc-50 */
-    --destructive: #ef4444; /* red-500 */
-    --muted: #27272a; /* zinc-800 */
-    --muted-foreground: #a1a1aa; /* zinc-400 */
-    --border: #3f3f46; /* zinc-700 */
-    --input: #3f3f46; /* zinc-700 */
-    --ring: #fafafa; /* zinc-50 */
-    --card: #18181b; /* zinc-900 */
+    --primary: #fafafa;
+    --primary-foreground: #18181b;
+    --secondary: #27272a;
+    --secondary-foreground: #fafafa;
+    --accent: #27272a;
+    --accent-foreground: #fafafa;
+    --destructive: #ef4444;
+    --muted: #27272a;
+    --muted-foreground: #a1a1aa;
+    --border: #3f3f46;
+    --input: #3f3f46;
+    --ring: #fafafa;
+    --card: #18181b;
     --card-foreground: #fafafa;
-    --popover: #18181b; /* zinc-900 */
+    --popover: #18181b;
     --popover-foreground: #fafafa;
-    --brand: #fbbf24; /* amber-400 */
-    --brand-foreground: #18181b; /* zinc-900 */
+    --brand: #fbbf24;
+    --brand-foreground: #18181b;
+    --tier-slacking: #ef4444;
+    --tier-warming: #f97316;
+    --tier-grinding: #f59e0b;
+    --tier-locked: #22c55e;
+    --tier-proven: #a855f7;
+    --success: #22c55e;
+    --warning: #f59e0b;
+    --error: #ef4444;
+    --info: #6366f1;
+  }
+}
 
-    /* Dark mode tier colors (same hues) */
-    --tier-slacking: #ef4444; /* red-500 */
-    --tier-warming: #f97316; /* orange-500 */
-    --tier-grinding: #f59e0b; /* amber-500 */
-    --tier-locked: #22c55e; /* green-500 */
-    --tier-proven: #a855f7; /* purple-500 */
+/* Forced dark: user explicitly selected dark in settings */
+:root.dark {
+  color-scheme: dark;
+  --background: #0a0a0a;
+  --foreground: #ededed;
+  --primary: #fafafa;
+  --primary-foreground: #18181b;
+  --secondary: #27272a;
+  --secondary-foreground: #fafafa;
+  --accent: #27272a;
+  --accent-foreground: #fafafa;
+  --destructive: #ef4444;
+  --muted: #27272a;
+  --muted-foreground: #a1a1aa;
+  --border: #3f3f46;
+  --input: #3f3f46;
+  --ring: #fafafa;
+  --card: #18181b;
+  --card-foreground: #fafafa;
+  --popover: #18181b;
+  --popover-foreground: #fafafa;
+  --brand: #fbbf24;
+  --brand-foreground: #18181b;
+  --tier-slacking: #ef4444;
+  --tier-warming: #f97316;
+  --tier-grinding: #f59e0b;
+  --tier-locked: #22c55e;
+  --tier-proven: #a855f7;
+  --success: #22c55e;
+  --warning: #f59e0b;
+  --error: #ef4444;
+  --info: #6366f1;
+}
 
-    /* Dark mode status colors (same hues) */
-    --success: #22c55e; /* green-500 */
-    --warning: #f59e0b; /* amber-500 */
-    --error: #ef4444; /* red-500 */
-    --info: #6366f1; /* indigo-500 */
+/* Override Tailwind's dark variant to respond to the .dark or .marketing-dark
+   class (forced) AND the OS media query when no explicit class is set (system). */
+@variant dark {
+  &:where(.dark, .dark *, .marketing-dark, .marketing-dark *) { @slot }
+  @media (prefers-color-scheme: dark) {
+    html:not(.light):not(.dark) & { @slot }
   }
 }
 
