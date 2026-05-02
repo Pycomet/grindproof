@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Flame } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 const QUOTES = [
   { text: "The obstacle in the path becomes the path. Never forget, within every obstacle is an opportunity to improve our condition.", author: "Marcus Aurelius" },
@@ -32,26 +33,33 @@ const QUOTES = [
 ];
 
 export function StoicQuote() {
+  const { user } = useAuth();
   const [quote, setQuote] = useState<typeof QUOTES[number] | null>(null);
 
   useEffect(() => {
-    setQuote(QUOTES[Math.floor(Math.random() * QUOTES.length)]);
-  }, []);
+    const today = new Date();
+    const dayOfYear = Math.floor(
+      (today.getTime() - new Date(today.getFullYear(), 0, 0).getTime()) / 86400000
+    );
+    const userSeed = user?.id?.charCodeAt(0) ?? 0;
+    const index = (dayOfYear + userSeed) % QUOTES.length;
+    setQuote(QUOTES[index]);
+  }, [user?.id]);
 
   if (!quote) return null;
 
   return (
-    <div className="border-l-[3px] border-l-brand rounded-r-lg pl-5 pr-5 py-4 bg-gradient-to-r from-amber-500/[0.06] to-transparent">
-      <div className="flex items-center justify-between mb-2.5">
-        <span className="text-[11px] font-semibold tracking-[1.5px] uppercase text-brand">
-          Today&apos;s Flame
+    <div className="border-l-2 border-l-brand px-4 py-3 bg-zinc-900/50">
+      <div className="flex items-center gap-2 mb-1">
+        <Flame className="h-3.5 w-3.5 text-brand/70" />
+        <span className="text-2xs font-semibold tracking-caps uppercase text-brand">
+          Today&apos;s Reminder
         </span>
-        <Flame className="h-[18px] w-[18px] text-brand/60" />
       </div>
-      <p className="font-serif italic text-[15px] leading-relaxed text-zinc-200 mb-2">
+      <p className="font-serif italic text-sm leading-relaxed text-zinc-300">
         &ldquo;{quote.text}&rdquo;
       </p>
-      <span className="text-[11px] text-zinc-500">
+      <span className="text-2xs text-zinc-500 mt-1 block">
         — {quote.author}
       </span>
     </div>

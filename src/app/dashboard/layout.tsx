@@ -3,6 +3,7 @@
 import { TaskProvider } from "@/contexts/TaskContext";
 import { NotificationProvider } from "@/contexts/NotificationContext";
 import { ChatProvider } from "@/contexts/ChatContext";
+import { MobileNav } from "@/components/MobileNav";
 
 export default function DashboardLayout({
   children,
@@ -13,7 +14,10 @@ export default function DashboardLayout({
     <TaskProvider>
       <NotificationProvider>
         <ChatProvider>
-          {children}
+          <div className="pb-16 lg:pb-0">
+            {children}
+            <MobileNav />
+          </div>
         </ChatProvider>
       </NotificationProvider>
     </TaskProvider>

@@ -5,18 +5,26 @@ import { Logo } from '@/components/Logo';
 
 export default function HowItWorks() {
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
+    <div className="min-h-screen bg-background text-foreground">
       {/* Header */}
-      <header className="border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
+      <header className="border-b border-zinc-800 bg-zinc-900/40">
         <div className="mx-auto max-w-5xl px-4 py-4">
           <div className="flex items-center justify-between">
             <Logo size="md" href="/" />
-            <Link
-              href="/auth/signup"
-              className="rounded-full bg-brand px-6 py-2 text-sm font-semibold text-brand-foreground transition-opacity hover:opacity-90"
-            >
-              Get Started
-            </Link>
+            <div className="flex items-center gap-3 sm:gap-4">
+              <Link
+                href="/auth/login"
+                className="whitespace-nowrap text-sm text-zinc-300 transition-colors hover:text-zinc-50"
+              >
+                Sign In
+              </Link>
+              <Link
+                href="/auth/signup"
+                className="whitespace-nowrap rounded-full bg-brand px-4 py-2 text-sm font-semibold text-brand-foreground transition-opacity hover:opacity-90 sm:px-6"
+              >
+                Get Started
+              </Link>
+            </div>
           </div>
         </div>
       </header>
@@ -24,10 +32,10 @@ export default function HowItWorks() {
       {/* Main Content */}
       <main className="mx-auto max-w-4xl px-4 py-16">
         <div className="text-center">
-          <h1 className="text-4xl font-bold text-zinc-900 dark:text-zinc-50 sm:text-5xl">
+          <h1 className="text-4xl font-bold text-zinc-50 sm:text-5xl font-[family-name:var(--font-space-grotesk)]">
             How Grindproof Works
           </h1>
-          <p className="mx-auto mt-4 max-w-2xl text-lg text-zinc-600 dark:text-zinc-400">
+          <p className="mx-auto mt-4 max-w-2xl text-lg text-zinc-300">
             Three simple steps to stop lying to yourself and actually get shit done.
           </p>
         </div>
@@ -35,16 +43,16 @@ export default function HowItWorks() {
         {/* Steps */}
         <div className="mt-16 space-y-12">
           {/* Step 1 */}
-          <div className="rounded-2xl border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+          <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-8 shadow-sm">
             <div className="flex items-start gap-6">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-blue-600 text-xl font-bold text-white">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-brand text-xl font-bold text-brand-foreground">
                 1
               </div>
               <div className="flex-1">
-                <h2 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
+                <h2 className="text-2xl font-bold text-zinc-50 font-[family-name:var(--font-space-grotesk)]">
                   Morning Planning
                 </h2>
-                <p className="mt-2 text-zinc-600 dark:text-zinc-400">
+                <p className="mt-2 text-zinc-300">
                   Every morning, Grindproof surfaces the tasks you didn&apos;t finish
                   yesterday and makes you decide — carry them forward or start fresh.
                   No quietly forgetting them.
@@ -92,16 +100,16 @@ export default function HowItWorks() {
           </div>
 
           {/* Step 2 */}
-          <div className="rounded-2xl border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+          <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-8 shadow-sm">
             <div className="flex items-start gap-6">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-purple-600 text-xl font-bold text-white">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-brand/70 text-xl font-bold text-brand-foreground">
                 2
               </div>
               <div className="flex-1">
-                <h2 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
+                <h2 className="text-2xl font-bold text-zinc-50 font-[family-name:var(--font-space-grotesk)]">
                   Task &amp; Goal Tracking
                 </h2>
-                <p className="mt-2 text-zinc-600 dark:text-zinc-400">
+                <p className="mt-2 text-zinc-300">
                   Add tasks with due dates and priorities, link them to goals, and track
                   progress through a today view or full-week view. You decide what matters.
                   The app just holds you to it.
@@ -142,9 +150,9 @@ export default function HowItWorks() {
           </div>
 
           {/* Step 3 */}
-          <div className="rounded-2xl border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+          <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-8 shadow-sm">
             <div className="flex items-start gap-6">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-red-600 text-xl font-bold text-white">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-brand/40 text-xl font-bold text-brand-foreground">
                 3
               </div>
               <div className="flex-1">
@@ -211,16 +219,16 @@ export default function HowItWorks() {
           </div>
 
           {/* Bonus: Weekly Roast */}
-          <div className="rounded-2xl border border-red-200 bg-gradient-to-br from-red-50 to-orange-50 p-8 shadow-sm dark:border-red-900 dark:from-red-950/20 dark:to-orange-950/20">
+          <div className="rounded-2xl border border-red-900/50 bg-gradient-to-br from-red-950/20 to-orange-950/20 p-8 shadow-sm">
             <div className="flex items-start gap-6">
               <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-red-600 to-orange-600 text-xl font-bold text-white">
                 🔥
               </div>
               <div className="flex-1">
-                <h2 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
+                <h2 className="text-2xl font-bold text-zinc-50 font-[family-name:var(--font-space-grotesk)]">
                   Weekly Roast Report
                 </h2>
-                <p className="mt-2 text-zinc-600 dark:text-zinc-400">
+                <p className="mt-2 text-zinc-300">
                   Every week, the AI compiles your task stats, spots patterns you&apos;d
                   rather ignore, and tells you exactly what to do differently. No fluff.
                 </p>
@@ -280,28 +288,28 @@ export default function HowItWorks() {
         </div>
       </main>
 
-      <footer className="border-t border-zinc-200 bg-white/50 backdrop-blur-sm dark:border-zinc-800 dark:bg-zinc-950/50">
+      <footer className="border-t border-zinc-800 bg-zinc-900/40 backdrop-blur-sm">
         <div className="container mx-auto px-4 py-8">
           <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
-            <div className="text-sm text-zinc-600 dark:text-zinc-400">
+            <div className="text-sm text-zinc-400">
               &copy; {new Date().getFullYear()} GrindProof. All rights reserved.
             </div>
             <div className="flex items-center gap-4 text-sm">
               <Link
                 href="/privacy"
-                className="text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+                className="text-zinc-400 hover:text-zinc-50 transition-colors"
               >
                 Privacy
               </Link>
               <Link
                 href="/terms"
-                className="text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+                className="text-zinc-400 hover:text-zinc-50 transition-colors"
               >
                 Terms
               </Link>
               <a
                 href="mailto:support@grindproof.co"
-                className="text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+                className="text-zinc-400 hover:text-zinc-50 transition-colors"
               >
                 Contact
               </a>

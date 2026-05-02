@@ -35,6 +35,12 @@ const priorityColors = {
   low: "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400",
 };
 
+const priorityBarColors = {
+  high: "bg-tier-slacking",
+  medium: "bg-tier-grinding",
+  low: "bg-zinc-300 dark:bg-zinc-600",
+};
+
 export function TaskItem({ task }: TaskItemProps) {
   const { refreshTasks, goals } = useTaskContext();
   const utils = trpc.useUtils();
@@ -125,7 +131,7 @@ export function TaskItem({ task }: TaskItemProps) {
 
   if (isEditing) {
     return (
-      <div className="space-y-2 rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+      <div className="space-y-2 rounded-md border border-zinc-200 bg-white p-4 dark:border-white/[0.08] dark:bg-zinc-900">
         <Input
           value={editTitle}
           onChange={(e) => setEditTitle(e.target.value)}
@@ -198,7 +204,10 @@ export function TaskItem({ task }: TaskItemProps) {
   }
 
   return (
-    <div className="flex items-center gap-3 rounded-lg border border-zinc-200 bg-white px-4 py-3 dark:border-zinc-800 dark:bg-zinc-900">
+    <div className="flex items-center overflow-hidden rounded-md border border-zinc-200 bg-white dark:border-white/[0.08] dark:bg-zinc-900">
+      {/* Priority strip */}
+      <div className={`w-[3px] self-stretch shrink-0 ${priorityBarColors[task.priority]}`} />
+      <div className="flex flex-1 items-center gap-3 px-4 py-3">
       <button
         onClick={handleToggle}
         role="checkbox"
@@ -312,6 +321,7 @@ export function TaskItem({ task }: TaskItemProps) {
           </DropdownMenuContent>
         </DropdownMenu>
       )}
+      </div>
     </div>
   );
 }

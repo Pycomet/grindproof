@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { trpc } from "@/lib/trpc/client";
 import { useTaskContext } from "@/contexts/TaskContext";
 import {
@@ -14,11 +14,26 @@ import { GoalDetailModal } from "./GoalDetailModal";
 
 export function GoalList() {
   const { goals, tasks, isLoading, refreshGoals, refreshTasks } = useTaskContext();
-  const [collapsed, setCollapsed] = useState(false);
+  const [expanded, setExpanded] = useState<boolean | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
   const [selectedGoalId, setSelectedGoalId] = useState<string | null>(null);
   const [editGoalId, setEditGoalId] = useState<string | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const stored = localStorage.getItem("grindproof:goals-expanded");
+    if (stored !== null) {
+      setExpanded(stored === "true");
+    } else {
+      setExpanded(goals.length <= 3);
+    }
+  }, [goals.length]);
+
+  const toggle = () => {
+    const next = !expanded;
+    setExpanded(next);
+    localStorage.setItem("grindproof:goals-expanded", String(next));
+  };
 
   const deleteMutation = trpc.goal.delete.useMutation({
     onSuccess: () => {
@@ -46,23 +61,25 @@ export function GoalList() {
   return (
     <div>
       {/* Header */}
-      <div className="mb-2 flex items-center justify-between">
-        <button
-          onClick={() => setCollapsed(!collapsed)}
-          className="flex items-center gap-1 text-sm font-semibold text-zinc-900 dark:text-zinc-50"
-        >
-          <span>Goals ({activeGoals.length})</span>
-          <span className="text-zinc-400">{collapsed ? "+" : "-"}</span>
-        </button>
-        <button
-          onClick={() => { setShowAddForm(true); setCollapsed(false); }}
-          className="text-xs text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
-        >
-          + Add Goal
-        </button>
-      </div>
+      {expanded !== null && (
+        <div className="mb-2 flex items-center justify-between">
+          <button
+            onClick={toggle}
+            className="flex items-center gap-1 text-sm font-semibold text-zinc-900 dark:text-zinc-50"
+          >
+            <span>Goals ({activeGoals.length})</span>
+            <span className="text-zinc-400">{expanded ? "-" : "+"}</span>
+          </button>
+          <button
+            onClick={() => { setShowAddForm(true); setExpanded(true); }}
+            className="text-xs text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
+          >
+            + Add Goal
+          </button>
+        </div>
+      )}
 
-      {!collapsed && (
+      {expanded && (
         <div className="space-y-2">
           {showAddForm && (
             <AddGoalForm onClose={() => setShowAddForm(false)} />

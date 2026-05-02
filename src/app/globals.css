@@ -3,9 +3,12 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
-  
+
   /* Minimal shadcn variables mapped to zinc colors */
-  --radius: 0.5rem;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius: 10px;
   --primary: #18181b; /* zinc-900 */
   --primary-foreground: #fafafa; /* zinc-50 */
   --secondary: #f4f4f5; /* zinc-100 */
@@ -24,6 +27,42 @@
   --popover-foreground: #18181b;
   --brand: #f59e0b; /* amber-500 */
   --brand-foreground: #ffffff;
+
+  /* Tier color tokens */
+  --tier-slacking: #ef4444; /* red-500 */
+  --tier-warming: #f97316; /* orange-500 */
+  --tier-grinding: #f59e0b; /* amber-500 */
+  --tier-locked: #22c55e; /* green-500 */
+  --tier-proven: #a855f7; /* purple-500 */
+
+  /* Status color tokens */
+  --success: #22c55e; /* green-500 */
+  --warning: #f59e0b; /* amber-500 */
+  --error: #ef4444; /* red-500 */
+  --info: #6366f1; /* indigo-500 */
+
+  /* Typography scale tokens */
+  --text-2xs: 11px;
+  --text-xs: 12px;
+  --text-sm: 14px;
+  --text-base: 16px;
+  --text-lg: 18px;
+  --text-xl: 20px;
+  --text-2xl: 24px;
+  --text-3xl: 32px;
+  --text-4xl: 40px;
+  --text-5xl: 56px;
+  --text-6xl: 72px;
+
+  /* Tracking tokens */
+  --tracking-caps: 0.18em;
+
+  /* Motion tokens */
+  --motion-fast: 150ms;
+  --motion-base: 250ms;
+  --motion-slow: 500ms;
+  --ease-default: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 @theme inline {
@@ -31,7 +70,7 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-  
+
   /* Map shadcn variables to Tailwind colors */
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
@@ -51,37 +90,156 @@
   --color-popover-foreground: var(--popover-foreground);
   --color-brand: var(--brand);
   --color-brand-foreground: var(--brand-foreground);
-  
-  --radius-sm: calc(var(--radius) - 2px);
-  --radius-md: var(--radius);
-  --radius-lg: calc(var(--radius) + 2px);
+
+  /* Tier color tokens */
+  --color-tier-slacking: var(--tier-slacking);
+  --color-tier-warming: var(--tier-warming);
+  --color-tier-grinding: var(--tier-grinding);
+  --color-tier-locked: var(--tier-locked);
+  --color-tier-proven: var(--tier-proven);
+
+  /* Status color tokens */
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-error: var(--error);
+  --color-info: var(--info);
+
+  /* Radius tokens */
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+
+  /* Typography scale tokens */
+  --font-size-2xs: var(--text-2xs);
+  --font-size-xs: var(--text-xs);
+  --font-size-sm: var(--text-sm);
+  --font-size-base: var(--text-base);
+  --font-size-lg: var(--text-lg);
+  --font-size-xl: var(--text-xl);
+  --font-size-2xl: var(--text-2xl);
+  --font-size-3xl: var(--text-3xl);
+  --font-size-4xl: var(--text-4xl);
+  --font-size-5xl: var(--text-5xl);
+  --font-size-6xl: var(--text-6xl);
+
+  /* Tracking token */
+  --tracking-caps: var(--tracking-caps);
+
+  /* Motion tokens */
+  --duration-fast: var(--motion-fast);
+  --duration-base: var(--motion-base);
+  --duration-slow: var(--motion-slow);
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
+  /* System mode: apply when OS is dark and no explicit override class is set */
+  :root:not(.light):not(.dark) {
     --background: #0a0a0a;
     --foreground: #ededed;
-    
-    /* Dark mode shadcn variables */
-    --primary: #fafafa; /* zinc-50 */
-    --primary-foreground: #18181b; /* zinc-900 */
-    --secondary: #27272a; /* zinc-800 */
-    --secondary-foreground: #fafafa; /* zinc-50 */
-    --accent: #27272a; /* zinc-800 */
-    --accent-foreground: #fafafa; /* zinc-50 */
-    --destructive: #ef4444; /* red-500 */
-    --muted: #27272a; /* zinc-800 */
-    --muted-foreground: #a1a1aa; /* zinc-400 */
-    --border: #3f3f46; /* zinc-700 */
-    --input: #3f3f46; /* zinc-700 */
-    --ring: #fafafa; /* zinc-50 */
-    --card: #18181b; /* zinc-900 */
+    --primary: #fafafa;
+    --primary-foreground: #18181b;
+    --secondary: #27272a;
+    --secondary-foreground: #fafafa;
+    --accent: #27272a;
+    --accent-foreground: #fafafa;
+    --destructive: #ef4444;
+    --muted: #27272a;
+    --muted-foreground: #a1a1aa;
+    --border: #3f3f46;
+    --input: #3f3f46;
+    --ring: #fafafa;
+    --card: #18181b;
     --card-foreground: #fafafa;
-    --popover: #18181b; /* zinc-900 */
+    --popover: #18181b;
     --popover-foreground: #fafafa;
-    --brand: #fbbf24; /* amber-400 */
-    --brand-foreground: #18181b; /* zinc-900 */
+    --brand: #fbbf24;
+    --brand-foreground: #18181b;
+    --tier-slacking: #ef4444;
+    --tier-warming: #f97316;
+    --tier-grinding: #f59e0b;
+    --tier-locked: #22c55e;
+    --tier-proven: #a855f7;
+    --success: #22c55e;
+    --warning: #f59e0b;
+    --error: #ef4444;
+    --info: #6366f1;
   }
+}
+
+/* Forced dark: user explicitly selected dark in settings */
+:root.dark {
+  color-scheme: dark;
+  --background: #0a0a0a;
+  --foreground: #ededed;
+  --primary: #fafafa;
+  --primary-foreground: #18181b;
+  --secondary: #27272a;
+  --secondary-foreground: #fafafa;
+  --accent: #27272a;
+  --accent-foreground: #fafafa;
+  --destructive: #ef4444;
+  --muted: #27272a;
+  --muted-foreground: #a1a1aa;
+  --border: #3f3f46;
+  --input: #3f3f46;
+  --ring: #fafafa;
+  --card: #18181b;
+  --card-foreground: #fafafa;
+  --popover: #18181b;
+  --popover-foreground: #fafafa;
+  --brand: #fbbf24;
+  --brand-foreground: #18181b;
+  --tier-slacking: #ef4444;
+  --tier-warming: #f97316;
+  --tier-grinding: #f59e0b;
+  --tier-locked: #22c55e;
+  --tier-proven: #a855f7;
+  --success: #22c55e;
+  --warning: #f59e0b;
+  --error: #ef4444;
+  --info: #6366f1;
+}
+
+/* Override Tailwind's dark variant to respond to the .dark or .marketing-dark
+   class (forced) AND the OS media query when no explicit class is set (system). */
+@variant dark {
+  &:where(.dark, .dark *, .marketing-dark, .marketing-dark *) { @slot }
+  @media (prefers-color-scheme: dark) {
+    html:not(.light):not(.dark) & { @slot }
+  }
+}
+
+.marketing-dark {
+  color-scheme: dark;
+  --background: #0a0a0a;
+  --foreground: #ededed;
+  --primary: #fafafa; /* zinc-50 */
+  --primary-foreground: #18181b; /* zinc-900 */
+  --secondary: #27272a; /* zinc-800 */
+  --secondary-foreground: #fafafa; /* zinc-50 */
+  --accent: #27272a; /* zinc-800 */
+  --accent-foreground: #fafafa; /* zinc-50 */
+  --destructive: #ef4444; /* red-500 */
+  --muted: #27272a; /* zinc-800 */
+  --muted-foreground: #a1a1aa; /* zinc-400 */
+  --border: #3f3f46; /* zinc-700 */
+  --input: #3f3f46; /* zinc-700 */
+  --ring: #fafafa; /* zinc-50 */
+  --card: #18181b; /* zinc-900 */
+  --card-foreground: #fafafa;
+  --popover: #18181b; /* zinc-900 */
+  --popover-foreground: #fafafa;
+  --brand: #fbbf24; /* amber-400 */
+  --brand-foreground: #18181b; /* zinc-900 */
+  --tier-slacking: #ef4444;
+  --tier-warming: #f97316;
+  --tier-grinding: #f59e0b;
+  --tier-locked: #22c55e;
+  --tier-proven: #a855f7;
+  --success: #22c55e;
+  --warning: #f59e0b;
+  --error: #ef4444;
+  --info: #6366f1;
 }
 
 body {

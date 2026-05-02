@@ -32,9 +32,20 @@ export const dailyCheckRouter = router({
       .lt("due_date", tomorrow.toISOString())
       .order("start_time", { ascending: true });
 
+    // Guard against duplicate submissions across page reloads
+    const { data: existingCheck } = await ctx.db
+      .from("daily_checks")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("type", "morning")
+      .gte("created_at", today.toISOString())
+      .lt("created_at", tomorrow.toISOString())
+      .maybeSingle();
+
     return {
       yesterdayIncomplete: yesterdayTasks || [],
       todayTasks: todayTasks || [],
+      alreadySubmitted: !!existingCheck,
     };
   }),
 
@@ -80,9 +91,14 @@ export const dailyCheckRouter = router({
       if (error)
         throw new Error(`Failed to carry over tasks: ${error.message}`);
 
-      await ctx.db
+      // Idempotent: unique index on (user_id, type, day) — swallow 23505
+      // (unique_violation) so retries don't surface as errors to the client.
+      const { error: morningErr } = await ctx.db
         .from("daily_checks")
         .insert({ user_id: ctx.user.id, type: "morning" });
+      if (morningErr && morningErr.code !== "23505") {
+        throw new Error(`Failed to record check-in: ${morningErr.message}`);
+      }
 
       fireAndForgetScoreChange(ctx.db, ctx.user.id, "task_carried_over");
 
@@ -169,9 +185,14 @@ export const dailyCheckRouter = router({
         throw new Error(`Failed to update tasks: ${failures.join(", ")}`);
       }
 
-      await ctx.db
+      // Idempotent: unique index on (user_id, type, day) — swallow 23505
+      // (unique_violation) so retries don't surface as errors to the client.
+      const { error: eveningErr } = await ctx.db
         .from("daily_checks")
         .insert({ user_id: ctx.user.id, type: "evening" });
+      if (eveningErr && eveningErr.code !== "23505") {
+        throw new Error(`Failed to record check-in: ${eveningErr.message}`);
+      }
 
       fireAndForgetScoreChange(ctx.db, ctx.user.id, "evening_reflection");
 
