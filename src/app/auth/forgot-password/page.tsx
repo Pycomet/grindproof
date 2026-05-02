@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase/client';
 import Link from 'next/link';
 import { Logo } from '@/components/Logo';
 import { Button } from '@/components/ui/button';
+import { CheckCircle2 } from 'lucide-react';
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
@@ -34,8 +35,8 @@ export default function ForgotPasswordPage() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background px-4">
         <div className="w-full max-w-md text-center">
-          <div className="rounded-xl border border-green-900 bg-green-950/20 p-8">
-            <div className="text-4xl">✓</div>
+          <div className="rounded-lg border border-green-900 bg-green-950/20 p-8">
+            <CheckCircle2 className="mx-auto h-10 w-10 text-green-400" />
             <h2 className="mt-4 text-xl font-bold text-zinc-50">
               Check your email
             </h2>

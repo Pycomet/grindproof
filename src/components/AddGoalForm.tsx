@@ -36,9 +36,9 @@ export function AddGoalForm({ onClose }: AddGoalFormProps) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-3 rounded-lg border border-zinc-200 bg-zinc-50 p-3 dark:border-zinc-800 dark:bg-zinc-900/50">
+    <form onSubmit={handleSubmit} className="space-y-3 rounded-md border border-border bg-card p-3">
       <div>
-        <label className="mb-1 block text-xs text-zinc-500">Title</label>
+        <label className="mb-1 block text-xs text-muted-foreground">Title</label>
         <Input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
@@ -48,7 +48,7 @@ export function AddGoalForm({ onClose }: AddGoalFormProps) {
         />
       </div>
       <div>
-        <label className="mb-1 block text-xs text-zinc-500">Description</label>
+        <label className="mb-1 block text-xs text-muted-foreground">Description</label>
         <Textarea
           value={description}
           onChange={(e) => setDescription(e.target.value)}
@@ -57,7 +57,7 @@ export function AddGoalForm({ onClose }: AddGoalFormProps) {
         />
       </div>
       <div>
-        <label className="mb-1 block text-xs text-zinc-500">Priority</label>
+        <label className="mb-1 block text-xs text-muted-foreground">Priority</label>
         <Select value={priority} onValueChange={(v) => setPriority(v as "high" | "medium" | "low")}>
           <SelectTrigger className="h-8 w-full text-xs">
             <SelectValue />

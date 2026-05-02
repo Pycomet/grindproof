@@ -23,7 +23,7 @@ export default function PrivacyPolicyPage() {
         </div>
 
         {/* Content */}
-        <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-8 shadow-sm">
+        <div className="bg-zinc-900 border border-zinc-800 rounded-md p-8">
           <div className="max-w-none">
             {/* Table of Contents */}
             <nav className="mb-8 p-4 bg-zinc-800 rounded-lg">

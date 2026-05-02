@@ -121,7 +121,7 @@ function NotificationsSection() {
             value={settings.morningCheckTime}
             onChange={(e) => updateTime("morningCheckTime", e.target.value)}
             disabled={!settings.morningCheckEnabled}
-            className="rounded-sm border border-border bg-white dark:bg-zinc-900 px-2 py-1 text-sm disabled:opacity-50 dark:text-zinc-50"
+            className="rounded-sm border border-border bg-card px-2 py-1 text-sm disabled:opacity-50 dark:text-zinc-50"
           />
           <ToggleSwitch
             checked={settings.morningCheckEnabled}
@@ -142,7 +142,7 @@ function NotificationsSection() {
             value={settings.eveningCheckTime}
             onChange={(e) => updateTime("eveningCheckTime", e.target.value)}
             disabled={!settings.eveningCheckEnabled}
-            className="rounded-sm border border-border bg-white dark:bg-zinc-900 px-2 py-1 text-sm disabled:opacity-50 dark:text-zinc-50"
+            className="rounded-sm border border-border bg-card px-2 py-1 text-sm disabled:opacity-50 dark:text-zinc-50"
           />
           <ToggleSwitch
             checked={settings.eveningCheckEnabled}
@@ -169,7 +169,7 @@ function NotificationsSection() {
           <p className="text-sm font-medium">Push notifications</p>
           <p className="text-xs text-zinc-500">Coming soon — email is the active channel today.</p>
         </div>
-        <div className="text-xs text-zinc-500 bg-zinc-100 dark:bg-zinc-800 px-2 py-1 rounded-sm">
+        <div className="text-xs text-zinc-500 bg-accent px-2 py-1 rounded-sm">
           Soon
         </div>
       </div>
@@ -214,7 +214,7 @@ function ThemeSection() {
               "px-4 py-2 rounded-sm text-sm capitalize transition-colors duration-150",
               theme === mode
                 ? "bg-primary text-primary-foreground"
-                : "bg-secondary text-secondary-foreground hover:bg-zinc-200 dark:hover:bg-zinc-700"
+                : "bg-secondary text-secondary-foreground hover:bg-accent"
             )}
           >
             {mode}
@@ -372,7 +372,7 @@ export default function SettingsPage() {
 
   if (isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-zinc-50 dark:bg-zinc-950">
+      <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-zinc-300 border-t-zinc-900 dark:border-zinc-600 dark:border-t-zinc-50" />
       </div>
     );
@@ -386,7 +386,7 @@ export default function SettingsPage() {
         <div className="mx-auto flex max-w-xl items-center gap-3 px-4 py-4">
           <Link
             href="/dashboard"
-            className="text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-300 transition-colors"
+            className="text-muted-foreground hover:text-foreground transition-colors"
           >
             <ArrowLeft className="h-5 w-5" />
           </Link>

@@ -1,77 +1,290 @@
 @import "tailwindcss";
 
+/* ============================================================
+   GrindProof — Design System v3
+   Adversarial, dark-first accountability. Stoic. Confrontational.
+   Spec: GrindProof Design System / colors_and_type.css
+   ============================================================ */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* ---------------------------------------------------------- */
+  /* GP TOKENS — spec source of truth                            */
+  /* ---------------------------------------------------------- */
 
-  /* Minimal shadcn variables mapped to zinc colors */
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 14px;
-  --radius: 10px;
-  --primary: #18181b; /* zinc-900 */
-  --primary-foreground: #fafafa; /* zinc-50 */
-  --secondary: #f4f4f5; /* zinc-100 */
-  --secondary-foreground: #18181b; /* zinc-900 */
-  --accent: #f4f4f5; /* zinc-100 */
-  --accent-foreground: #18181b; /* zinc-900 */
-  --destructive: #dc2626; /* red-600 */
-  --muted: #f4f4f5; /* zinc-100 */
-  --muted-foreground: #71717a; /* zinc-500 */
-  --border: #e4e4e7; /* zinc-200 */
-  --input: #e4e4e7; /* zinc-200 */
-  --ring: #18181b; /* zinc-900 */
-  --card: #ffffff;
-  --card-foreground: #18181b;
-  --popover: #ffffff;
-  --popover-foreground: #18181b;
-  --brand: #f59e0b; /* amber-500 */
-  --brand-foreground: #ffffff;
+  /* Zinc scale — the entire UI structural system */
+  --gp-zinc-50: #fafafa;
+  --gp-zinc-100: #f4f4f5;
+  --gp-zinc-200: #e4e4e7;
+  --gp-zinc-300: #d4d4d8;
+  --gp-zinc-400: #a1a1aa;
+  --gp-zinc-500: #71717a;
+  --gp-zinc-600: #52525b;
+  --gp-zinc-700: #3f3f46;
+  --gp-zinc-800: #27272a;
+  --gp-zinc-900: #18181b;
+  --gp-zinc-950: #09090b;
+  --gp-black: #000000;
 
-  /* Tier color tokens */
-  --tier-slacking: #ef4444; /* red-500 */
-  --tier-warming: #f97316; /* orange-500 */
-  --tier-grinding: #f59e0b; /* amber-500 */
-  --tier-locked: #22c55e; /* green-500 */
-  --tier-proven: #a855f7; /* purple-500 */
+  /* Brand — amber. RESERVED for primary CTAs, active streaks,
+     Stoic quote left border. NEVER for secondary UI/nav/links. */
+  --gp-amber-400: #fbbf24; /* dark-mode brand */
+  --gp-amber-500: #f59e0b; /* light-mode brand */
+  --gp-amber-600: #d97706;
+  --gp-amber-glow: rgba(245, 158, 11, 0.06);
 
-  /* Status color tokens */
-  --success: #22c55e; /* green-500 */
-  --warning: #f59e0b; /* amber-500 */
-  --error: #ef4444; /* red-500 */
-  --info: #6366f1; /* indigo-500 */
+  /* Tier signals — used inside AccountabilityScoreRing only */
+  --gp-tier-red: #f87171;
+  --gp-tier-orange: #fb923c;
+  --gp-tier-amber: #fbbf24;
+  --gp-tier-green: #4ade80;
+  --gp-tier-purple: #a78bfa;
 
-  /* Typography scale tokens */
+  --gp-destructive: #ef4444;
+  --gp-success: #22c55e;
+
+  /* Semantic — DARK-FIRST (canonical experience) */
+  --gp-bg: var(--gp-zinc-950);
+  --gp-surface: var(--gp-zinc-900);
+  --gp-surface-2: var(--gp-zinc-800);
+  --gp-surface-mute: rgba(39, 39, 42, 0.5);
+
+  --gp-border: var(--gp-zinc-800);
+  --gp-border-strong: var(--gp-zinc-700);
+  --gp-input-border: var(--gp-zinc-700);
+  --gp-ring: var(--gp-zinc-50);
+
+  --gp-fg: var(--gp-zinc-50); /* primary text */
+  --gp-fg-2: var(--gp-zinc-200); /* body text */
+  --gp-fg-3: var(--gp-zinc-400); /* muted */
+  --gp-fg-4: var(--gp-zinc-500); /* meta / labels */
+
+  --gp-brand: var(--gp-amber-400);
+  --gp-brand-fg: var(--gp-zinc-900);
+  --gp-brand-soft: var(--gp-amber-glow);
+
+  /* Type families — wired to next/font variables in layout.tsx */
+  --gp-font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --gp-font-mono: var(--font-geist-mono), ui-monospace, "SF Mono", Menlo, monospace;
+  --gp-font-display: var(--font-space-grotesk), var(--font-geist-sans), system-ui, sans-serif;
+
+  /* Type scale (px) */
+  --gp-text-xs: 12px;
+  --gp-text-sm: 13px;
+  --gp-text-base: 15px;
+  --gp-text-md: 16px;
+  --gp-text-lg: 18px;
+  --gp-text-xl: 20px;
+  --gp-text-2xl: 24px;
+  --gp-text-3xl: 30px;
+  --gp-text-4xl: 36px;
+  --gp-text-5xl: 48px;
+  --gp-text-6xl: 60px;
+  --gp-text-7xl: 72px;
+
+  --gp-leading-tight: 1.1;
+  --gp-leading-snug: 1.25;
+  --gp-leading-normal: 1.5;
+  --gp-leading-relax: 1.625;
+
+  --gp-tracking-tight: -0.04em;
+  --gp-tracking-snug: -0.02em;
+  --gp-tracking-normal: 0;
+  --gp-tracking-wide: 0.1em;
+  --gp-tracking-mega: 0.3em;
+
+  /* Strict radii ladder — anything else is wrong */
+  --gp-radius-input: 6px;
+  --gp-radius-card: 10px;
+  --gp-radius-feature: 14px;
+  --gp-radius-pill: 9999px; /* PRIMARY MARKETING CTA only */
+
+  /* Shadows — base cards have NONE; shadow-lg only on floating */
+  --gp-shadow-none: none;
+  --gp-shadow-lg:
+    0 10px 15px -3px rgba(0, 0, 0, 0.5),
+    0 4px 6px -4px rgba(0, 0, 0, 0.5);
+  --gp-shadow-fab:
+    0 12px 32px -8px rgba(0, 0, 0, 0.6),
+    0 0 0 1px rgba(255, 255, 255, 0.04);
+
+  /* Spacing — Tailwind 4px scale */
+  --gp-space-0: 0;
+  --gp-space-1: 4px;
+  --gp-space-2: 8px;
+  --gp-space-3: 12px;
+  --gp-space-4: 16px;
+  --gp-space-5: 20px;
+  --gp-space-6: 24px;
+  --gp-space-8: 32px;
+  --gp-space-10: 40px;
+  --gp-space-12: 48px;
+  --gp-space-16: 64px;
+  --gp-space-24: 96px;
+
+  /* Motion — direct ease-out only. NO bounce, NO overshoot, NO spring. */
+  --gp-dur-fast: 150ms;
+  --gp-dur-base: 200ms;
+  --gp-dur-mid: 300ms;
+  --gp-dur-slow: 500ms;
+  --gp-ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --gp-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* ---------------------------------------------------------- */
+  /* LEGACY ALIASES — existing utility names → gp tokens          */
+  /* Allows components to keep using bg-card/bg-brand/etc.       */
+  /* ---------------------------------------------------------- */
+  --background: var(--gp-bg);
+  --foreground: var(--gp-fg);
+
+  --primary: var(--gp-zinc-50);
+  --primary-foreground: var(--gp-zinc-900);
+  --secondary: var(--gp-surface-2);
+  --secondary-foreground: var(--gp-fg);
+  --accent: var(--gp-surface-2);
+  --accent-foreground: var(--gp-fg);
+  --destructive: var(--gp-destructive);
+  --muted: var(--gp-surface-2);
+  --muted-foreground: var(--gp-fg-3);
+  --border: var(--gp-border);
+  --input: var(--gp-input-border);
+  --ring: var(--gp-ring);
+  --card: var(--gp-surface);
+  --card-foreground: var(--gp-fg);
+  --popover: var(--gp-surface);
+  --popover-foreground: var(--gp-fg);
+  --brand: var(--gp-brand);
+  --brand-foreground: var(--gp-brand-fg);
+
+  /* Tier tokens — shifted from 500-stop to spec 400-stop */
+  --tier-slacking: var(--gp-tier-red);
+  --tier-warming: var(--gp-tier-orange);
+  --tier-grinding: var(--gp-tier-amber);
+  --tier-locked: var(--gp-tier-green);
+  --tier-proven: var(--gp-tier-purple);
+
+  --success: var(--gp-success);
+  --warning: var(--gp-amber-500);
+  --error: var(--gp-destructive);
+  --info: #6366f1;
+
+  /* Radius aliases */
+  --radius-sm: var(--gp-radius-input);
+  --radius-md: var(--gp-radius-card);
+  --radius-lg: var(--gp-radius-feature);
+  --radius: var(--gp-radius-card);
+
+  /* Type aliases */
   --text-2xs: 11px;
-  --text-xs: 12px;
-  --text-sm: 14px;
-  --text-base: 16px;
-  --text-lg: 18px;
-  --text-xl: 20px;
-  --text-2xl: 24px;
-  --text-3xl: 32px;
-  --text-4xl: 40px;
-  --text-5xl: 56px;
-  --text-6xl: 72px;
+  --text-xs: var(--gp-text-xs);
+  --text-sm: var(--gp-text-sm);
+  --text-base: var(--gp-text-base);
+  --text-lg: var(--gp-text-lg);
+  --text-xl: var(--gp-text-xl);
+  --text-2xl: var(--gp-text-2xl);
+  --text-3xl: var(--gp-text-3xl);
+  --text-4xl: var(--gp-text-4xl);
+  --text-5xl: var(--gp-text-5xl);
+  --text-6xl: var(--gp-text-6xl);
+  --text-7xl: var(--gp-text-7xl);
 
-  /* Tracking tokens */
-  --tracking-caps: 0.18em;
+  /* Tracking aliases — caps used to be 0.18em (one token, two jobs) */
+  --tracking-caps: var(--gp-tracking-wide);
+  --tracking-mega: var(--gp-tracking-mega);
 
-  /* Motion tokens */
-  --motion-fast: 150ms;
-  --motion-base: 250ms;
-  --motion-slow: 500ms;
-  --ease-default: cubic-bezier(0.16, 1, 0.3, 1);
-  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  /* Motion aliases */
+  --motion-fast: var(--gp-dur-fast);
+  --motion-base: var(--gp-dur-base);
+  --motion-slow: var(--gp-dur-slow);
+  --ease-default: var(--gp-ease);
+}
+
+/* ---- Light mode (opt-in; product is dark-first) -------------- */
+:root.light,
+:root.gp-allow-light,
+:root[data-theme="light"] {
+  color-scheme: light;
+
+  --gp-bg: #ffffff;
+  --gp-surface: #ffffff;
+  --gp-surface-2: var(--gp-zinc-100);
+  --gp-surface-mute: var(--gp-zinc-100);
+
+  --gp-border: var(--gp-zinc-200);
+  --gp-border-strong: var(--gp-zinc-300);
+  --gp-input-border: var(--gp-zinc-200);
+  --gp-ring: var(--gp-zinc-900);
+
+  --gp-fg: var(--gp-zinc-900);
+  --gp-fg-2: var(--gp-zinc-700);
+  --gp-fg-3: var(--gp-zinc-500);
+  --gp-fg-4: var(--gp-zinc-400);
+
+  --gp-brand: var(--gp-amber-500);
+  --gp-brand-fg: #ffffff;
+
+  --primary: var(--gp-zinc-900);
+  --primary-foreground: var(--gp-zinc-50);
+  --secondary: var(--gp-zinc-100);
+  --secondary-foreground: var(--gp-zinc-900);
+  --accent: var(--gp-zinc-100);
+  --accent-foreground: var(--gp-zinc-900);
+  --muted: var(--gp-zinc-100);
+  --muted-foreground: var(--gp-zinc-500);
+}
+
+/* ---- Forced dark — explicit user preference ----------------- */
+:root.dark {
+  color-scheme: dark;
+  /* Inherits the dark-first :root values; nothing to override. */
+}
+
+/* ---- Marketing — always force dark ------------------------- */
+.marketing-dark {
+  color-scheme: dark;
+
+  --gp-bg: var(--gp-zinc-950);
+  --gp-surface: var(--gp-zinc-900);
+  --gp-surface-2: var(--gp-zinc-800);
+  --gp-border: var(--gp-zinc-800);
+  --gp-border-strong: var(--gp-zinc-700);
+  --gp-input-border: var(--gp-zinc-700);
+  --gp-ring: var(--gp-zinc-50);
+  --gp-fg: var(--gp-zinc-50);
+  --gp-fg-2: var(--gp-zinc-200);
+  --gp-fg-3: var(--gp-zinc-400);
+  --gp-fg-4: var(--gp-zinc-500);
+  --gp-brand: var(--gp-amber-400);
+  --gp-brand-fg: var(--gp-zinc-900);
+
+  --background: var(--gp-bg);
+  --foreground: var(--gp-fg);
+  --primary: var(--gp-zinc-50);
+  --primary-foreground: var(--gp-zinc-900);
+  --secondary: var(--gp-surface-2);
+  --secondary-foreground: var(--gp-fg);
+  --accent: var(--gp-surface-2);
+  --accent-foreground: var(--gp-fg);
+  --muted: var(--gp-surface-2);
+  --muted-foreground: var(--gp-fg-3);
+  --border: var(--gp-border);
+  --input: var(--gp-input-border);
+  --ring: var(--gp-ring);
+  --card: var(--gp-surface);
+  --card-foreground: var(--gp-fg);
+  --popover: var(--gp-surface);
+  --popover-foreground: var(--gp-fg);
+  --brand: var(--gp-brand);
+  --brand-foreground: var(--gp-brand-fg);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--gp-font-sans);
+  --font-mono: var(--gp-font-mono);
+  --font-display: var(--gp-font-display);
 
-  /* Map shadcn variables to Tailwind colors */
+  /* shadcn aliases */
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
   --color-secondary: var(--secondary);
@@ -91,25 +304,40 @@
   --color-brand: var(--brand);
   --color-brand-foreground: var(--brand-foreground);
 
-  /* Tier color tokens */
+  /* gp surface palette as Tailwind utilities */
+  --color-gp-bg: var(--gp-bg);
+  --color-gp-surface: var(--gp-surface);
+  --color-gp-surface-2: var(--gp-surface-2);
+  --color-gp-fg: var(--gp-fg);
+  --color-gp-fg-2: var(--gp-fg-2);
+  --color-gp-fg-3: var(--gp-fg-3);
+  --color-gp-fg-4: var(--gp-fg-4);
+  --color-gp-border: var(--gp-border);
+  --color-gp-border-strong: var(--gp-border-strong);
+  --color-gp-brand: var(--gp-brand);
+  --color-gp-brand-fg: var(--gp-brand-fg);
+
+  /* Tier tokens */
   --color-tier-slacking: var(--tier-slacking);
   --color-tier-warming: var(--tier-warming);
   --color-tier-grinding: var(--tier-grinding);
   --color-tier-locked: var(--tier-locked);
   --color-tier-proven: var(--tier-proven);
+  --color-gp-tier-red: var(--gp-tier-red);
+  --color-gp-tier-orange: var(--gp-tier-orange);
+  --color-gp-tier-amber: var(--gp-tier-amber);
+  --color-gp-tier-green: var(--gp-tier-green);
+  --color-gp-tier-purple: var(--gp-tier-purple);
 
-  /* Status color tokens */
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-error: var(--error);
   --color-info: var(--info);
 
-  /* Radius tokens */
-  --radius-sm: var(--radius-sm);
-  --radius-md: var(--radius-md);
-  --radius-lg: var(--radius-lg);
+  --radius-sm: var(--gp-radius-input);
+  --radius-md: var(--gp-radius-card);
+  --radius-lg: var(--gp-radius-feature);
 
-  /* Typography scale tokens */
   --font-size-2xs: var(--text-2xs);
   --font-size-xs: var(--text-xs);
   --font-size-sm: var(--text-sm);
@@ -121,129 +349,214 @@
   --font-size-4xl: var(--text-4xl);
   --font-size-5xl: var(--text-5xl);
   --font-size-6xl: var(--text-6xl);
+  --font-size-7xl: var(--text-7xl);
 
-  /* Tracking token */
   --tracking-caps: var(--tracking-caps);
+  --tracking-mega: var(--tracking-mega);
 
-  /* Motion tokens */
   --duration-fast: var(--motion-fast);
   --duration-base: var(--motion-base);
   --duration-slow: var(--motion-slow);
 }
 
-@media (prefers-color-scheme: dark) {
-  /* System mode: apply when OS is dark and no explicit override class is set */
-  :root:not(.light):not(.dark) {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-    --primary: #fafafa;
-    --primary-foreground: #18181b;
-    --secondary: #27272a;
-    --secondary-foreground: #fafafa;
-    --accent: #27272a;
-    --accent-foreground: #fafafa;
-    --destructive: #ef4444;
-    --muted: #27272a;
-    --muted-foreground: #a1a1aa;
-    --border: #3f3f46;
-    --input: #3f3f46;
-    --ring: #fafafa;
-    --card: #18181b;
-    --card-foreground: #fafafa;
-    --popover: #18181b;
-    --popover-foreground: #fafafa;
-    --brand: #fbbf24;
-    --brand-foreground: #18181b;
-    --tier-slacking: #ef4444;
-    --tier-warming: #f97316;
-    --tier-grinding: #f59e0b;
-    --tier-locked: #22c55e;
-    --tier-proven: #a855f7;
-    --success: #22c55e;
-    --warning: #f59e0b;
-    --error: #ef4444;
-    --info: #6366f1;
-  }
-}
-
-/* Forced dark: user explicitly selected dark in settings */
-:root.dark {
-  color-scheme: dark;
-  --background: #0a0a0a;
-  --foreground: #ededed;
-  --primary: #fafafa;
-  --primary-foreground: #18181b;
-  --secondary: #27272a;
-  --secondary-foreground: #fafafa;
-  --accent: #27272a;
-  --accent-foreground: #fafafa;
-  --destructive: #ef4444;
-  --muted: #27272a;
-  --muted-foreground: #a1a1aa;
-  --border: #3f3f46;
-  --input: #3f3f46;
-  --ring: #fafafa;
-  --card: #18181b;
-  --card-foreground: #fafafa;
-  --popover: #18181b;
-  --popover-foreground: #fafafa;
-  --brand: #fbbf24;
-  --brand-foreground: #18181b;
-  --tier-slacking: #ef4444;
-  --tier-warming: #f97316;
-  --tier-grinding: #f59e0b;
-  --tier-locked: #22c55e;
-  --tier-proven: #a855f7;
-  --success: #22c55e;
-  --warning: #f59e0b;
-  --error: #ef4444;
-  --info: #6366f1;
-}
-
-/* Override Tailwind's dark variant to respond to the .dark or .marketing-dark
-   class (forced) AND the OS media query when no explicit class is set (system). */
+/* Override Tailwind's dark variant: respond to .dark / .marketing-dark
+   classes (forced) AND OS preference when no explicit class is set. */
 @variant dark {
-  &:where(.dark, .dark *, .marketing-dark, .marketing-dark *) { @slot }
-  @media (prefers-color-scheme: dark) {
-    html:not(.light):not(.dark) & { @slot }
+  &:where(.dark, .dark *, .marketing-dark, .marketing-dark *) {
+    @slot;
   }
-}
-
-.marketing-dark {
-  color-scheme: dark;
-  --background: #0a0a0a;
-  --foreground: #ededed;
-  --primary: #fafafa; /* zinc-50 */
-  --primary-foreground: #18181b; /* zinc-900 */
-  --secondary: #27272a; /* zinc-800 */
-  --secondary-foreground: #fafafa; /* zinc-50 */
-  --accent: #27272a; /* zinc-800 */
-  --accent-foreground: #fafafa; /* zinc-50 */
-  --destructive: #ef4444; /* red-500 */
-  --muted: #27272a; /* zinc-800 */
-  --muted-foreground: #a1a1aa; /* zinc-400 */
-  --border: #3f3f46; /* zinc-700 */
-  --input: #3f3f46; /* zinc-700 */
-  --ring: #fafafa; /* zinc-50 */
-  --card: #18181b; /* zinc-900 */
-  --card-foreground: #fafafa;
-  --popover: #18181b; /* zinc-900 */
-  --popover-foreground: #fafafa;
-  --brand: #fbbf24; /* amber-400 */
-  --brand-foreground: #18181b; /* zinc-900 */
-  --tier-slacking: #ef4444;
-  --tier-warming: #f97316;
-  --tier-grinding: #f59e0b;
-  --tier-locked: #22c55e;
-  --tier-proven: #a855f7;
-  --success: #22c55e;
-  --warning: #f59e0b;
-  --error: #ef4444;
-  --info: #6366f1;
+  @media (prefers-color-scheme: dark) {
+    html:not(.light):not(.dark) & {
+      @slot;
+    }
+  }
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-geist-sans), sans-serif;
+  background: var(--gp-bg);
+  color: var(--gp-fg);
+  font-family: var(--gp-font-sans);
+}
+
+/* ============================================================
+   Semantic typography roles — gp-* utility classes
+   ============================================================ */
+
+.gp-display,
+h1.gp-h1-display {
+  font-family: var(--gp-font-display);
+  font-weight: 700; /* MAX — never go heavier */
+  font-size: var(--gp-text-6xl);
+  line-height: var(--gp-leading-tight);
+  letter-spacing: var(--gp-tracking-tight);
+  color: var(--gp-fg);
+}
+
+.gp-h1 {
+  font-family: var(--gp-font-sans);
+  font-weight: 700;
+  font-size: var(--gp-text-4xl);
+  line-height: var(--gp-leading-tight);
+  letter-spacing: var(--gp-tracking-snug);
+  color: var(--gp-fg);
+}
+
+.gp-h2 {
+  font-family: var(--gp-font-sans);
+  font-weight: 700;
+  font-size: var(--gp-text-2xl);
+  line-height: var(--gp-leading-snug);
+  letter-spacing: var(--gp-tracking-snug);
+  color: var(--gp-fg);
+}
+
+.gp-h3 {
+  font-family: var(--gp-font-sans);
+  font-weight: 600;
+  font-size: var(--gp-text-lg);
+  line-height: var(--gp-leading-snug);
+  color: var(--gp-fg);
+}
+
+.gp-card-title {
+  font-family: var(--gp-font-sans);
+  font-weight: 600;
+  font-size: var(--gp-text-sm);
+  color: var(--gp-fg);
+}
+
+.gp-body {
+  font-family: var(--gp-font-sans);
+  font-weight: 400;
+  font-size: var(--gp-text-base);
+  line-height: var(--gp-leading-relax);
+  color: var(--gp-fg-2);
+}
+
+.gp-meta {
+  font-family: var(--gp-font-sans);
+  font-weight: 400;
+  font-size: var(--gp-text-xs);
+  color: var(--gp-fg-3);
+}
+
+.gp-eyebrow {
+  font-family: var(--gp-font-sans);
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: var(--gp-tracking-wide);
+  text-transform: uppercase;
+  color: var(--gp-fg-3);
+}
+
+.gp-mega-eyebrow {
+  font-family: var(--gp-font-sans);
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: var(--gp-tracking-mega);
+  text-transform: uppercase;
+  color: var(--gp-fg-3);
+}
+
+/* MONO is RESERVED for numerals — scores, streaks, percentages */
+.gp-num {
+  font-family: var(--gp-font-mono);
+  font-feature-settings: "tnum" 1, "ss01" 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.gp-quote {
+  font-family: ui-serif, Georgia, "Times New Roman", serif;
+  font-style: italic;
+  font-size: var(--gp-text-base);
+  line-height: var(--gp-leading-relax);
+  color: var(--gp-fg-2);
+}
+
+/* ============================================================
+   Utility classes — gp-* surface + control primitives
+   ============================================================ */
+.gp-card {
+  background: var(--gp-surface);
+  border: 1px solid var(--gp-border);
+  border-radius: var(--gp-radius-card);
+  /* NO shadow — by spec */
+}
+
+.gp-feature-card {
+  background: var(--gp-surface);
+  border: 1px solid var(--gp-border);
+  border-radius: var(--gp-radius-feature);
+}
+
+.gp-floating {
+  background: var(--gp-surface);
+  border: 1px solid var(--gp-border);
+  border-radius: var(--gp-radius-card);
+  box-shadow: var(--gp-shadow-lg);
+}
+
+.gp-input {
+  background: transparent;
+  border: 1px solid var(--gp-input-border);
+  border-radius: var(--gp-radius-input);
+  color: var(--gp-fg);
+  font-family: var(--gp-font-sans);
+  font-size: var(--gp-text-sm);
+  padding: 8px 12px;
+  outline: none;
+  transition: border-color var(--gp-dur-fast) var(--gp-ease);
+}
+.gp-input:focus {
+  border-color: var(--gp-zinc-500);
+}
+
+.gp-btn-primary {
+  background: var(--gp-brand);
+  color: var(--gp-brand-fg);
+  border-radius: var(--gp-radius-pill); /* PILL only on primary marketing CTA */
+  font-family: var(--gp-font-sans);
+  font-weight: 600;
+  font-size: var(--gp-text-sm);
+  padding: 10px 20px;
+  border: none;
+  transition: opacity var(--gp-dur-fast) var(--gp-ease);
+  cursor: pointer;
+}
+.gp-btn-primary:hover {
+  opacity: 0.9;
+}
+.gp-btn-primary:active {
+  transform: none;
+  opacity: 0.85;
+} /* NO scale, no bounce */
+
+.gp-btn-app {
+  /* In-app primary — uses zinc inversion, NOT amber */
+  background: var(--gp-zinc-50);
+  color: var(--gp-zinc-900);
+  border-radius: var(--gp-radius-pill);
+  font-weight: 500;
+  font-size: var(--gp-text-sm);
+  padding: 8px 16px;
+  border: none;
+  transition: opacity var(--gp-dur-fast) var(--gp-ease);
+  cursor: pointer;
+}
+.gp-btn-app:hover {
+  opacity: 0.9;
+}
+.gp-btn-app:active {
+  opacity: 0.85;
+}
+
+.gp-btn-secondary {
+  background: transparent;
+  color: var(--gp-fg);
+  border: 1px solid var(--gp-border-strong);
+  border-radius: var(--gp-radius-input);
+  font-family: var(--gp-font-sans);
+  font-weight: 500;
+  font-size: var(--gp-text-sm);
+  padding: 8px 14px;
 }

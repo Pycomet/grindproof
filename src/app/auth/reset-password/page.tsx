@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Logo } from '@/components/Logo';
 import { Button } from '@/components/ui/button';
+import { CheckCircle2, XCircle } from 'lucide-react';
 
 export default function ResetPasswordPage() {
   const router = useRouter();
@@ -64,8 +65,8 @@ export default function ResetPasswordPage() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background px-4">
         <div className="w-full max-w-md text-center">
-          <div className="rounded-xl border border-green-900 bg-green-950/20 p-8">
-            <div className="text-4xl">✓</div>
+          <div className="rounded-lg border border-green-900 bg-green-950/20 p-8">
+            <CheckCircle2 className="mx-auto h-10 w-10 text-green-400" />
             <h2 className="mt-4 text-xl font-bold text-zinc-50">
               Password updated!
             </h2>
@@ -82,8 +83,8 @@ export default function ResetPasswordPage() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background px-4">
         <div className="w-full max-w-md text-center">
-          <div className="rounded-xl border border-red-900 bg-red-950/20 p-8">
-            <div className="text-4xl">✗</div>
+          <div className="rounded-lg border border-red-900 bg-red-950/20 p-8">
+            <XCircle className="mx-auto h-10 w-10 text-red-400" />
             <h2 className="mt-4 text-xl font-bold text-zinc-50">
               Invalid Reset Link
             </h2>

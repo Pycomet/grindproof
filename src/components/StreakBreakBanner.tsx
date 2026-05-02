@@ -40,13 +40,14 @@ export function StreakBreakBanner({ brokenStreak, endedOn }: Props) {
   if (brokenStreak < 3 || dismissed) return null;
 
   return (
-    <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-700/50 dark:bg-amber-950/40 dark:text-amber-100">
+    <div className="rounded-md border border-border border-l-2 border-l-red-500 bg-card p-3 text-sm text-foreground">
       <div className="flex items-start justify-between gap-3">
         <div>
           <div className="font-semibold">
-            Your <span className="font-mono tabular-nums">{brokenStreak}</span>-day streak ended {formatEnd(endedOn)}.
+            Your <span className="gp-num">{brokenStreak}</span>-day streak ended{" "}
+            {formatEnd(endedOn)}.
           </div>
-          <div className="mt-0.5 text-xs opacity-80">
+          <div className="mt-0.5 text-xs text-muted-foreground">
             Streaks count completed work, not check-ins. Show up today to start
             a new one.
           </div>
@@ -55,7 +56,7 @@ export function StreakBreakBanner({ brokenStreak, endedOn }: Props) {
           type="button"
           onClick={handleDismiss}
           aria-label="Dismiss streak-break notice"
-          className="shrink-0 rounded p-1 hover:bg-amber-100 dark:hover:bg-amber-900"
+          className="shrink-0 rounded p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
         >
           <X className="h-4 w-4" />
         </button>

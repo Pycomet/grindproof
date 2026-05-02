@@ -46,7 +46,7 @@ export function Day1Orientation() {
 
   if (celebrating) {
     return (
-      <div className="flex items-center gap-4 rounded-md border border-tier-proven/30 bg-zinc-900 p-5 text-zinc-50">
+      <div className="flex items-center gap-4 rounded-md border border-border bg-card p-5 text-foreground">
         <AccountabilityScoreRing
           score={28}
           color="purple"
@@ -55,10 +55,10 @@ export function Day1Orientation() {
           label="—"
         />
         <div>
-          <p className="text-sm font-semibold text-tier-proven">
+          <p className="text-sm font-semibold text-foreground">
             Score tracking started
           </p>
-          <p className="mt-1 text-xs text-zinc-400">
+          <p className="mt-1 text-xs text-muted-foreground">
             Complete tasks to build your accountability score. Consistency is
             everything.
           </p>
@@ -68,44 +68,44 @@ export function Day1Orientation() {
   }
 
   return (
-    <div className="relative rounded-md border border-zinc-700 bg-zinc-900 p-5 text-zinc-50">
+    <div className="relative rounded-md border border-border bg-card p-5 text-foreground">
       <button
         onClick={handleDismiss}
         aria-label="Dismiss orientation"
-        className="absolute right-3 top-3 text-zinc-400 transition-colors duration-150 hover:text-zinc-50"
+        className="absolute right-3 top-3 text-muted-foreground transition-colors hover:text-foreground"
       >
         <X className="h-4 w-4" />
       </button>
       <h2 className="mb-3 text-lg font-semibold tracking-tight">
         Welcome. Here&apos;s how this works.
       </h2>
-      <ul className="space-y-3 text-sm text-zinc-300">
+      <ul className="space-y-3 text-sm text-foreground/80">
         <li className="flex gap-3">
-          <Sunrise className="mt-0.5 h-5 w-5 shrink-0 text-brand" />
+          <Sunrise className="mt-0.5 h-5 w-5 shrink-0 text-foreground" />
           <span>
-            <strong className="text-zinc-50">Each morning</strong>, anything
+            <strong className="text-foreground">Each morning</strong>, anything
             you didn&apos;t finish yesterday surfaces. Carry it forward or drop
             it — no quiet forgetting.
           </span>
         </li>
         <li className="flex gap-3">
-          <Moon className="mt-0.5 h-5 w-5 shrink-0 text-brand" />
+          <Moon className="mt-0.5 h-5 w-5 shrink-0 text-foreground" />
           <span>
-            <strong className="text-zinc-50">Each evening</strong>, every
+            <strong className="text-foreground">Each evening</strong>, every
             pending task gets reviewed. Done or skipped — and if you skipped,
             you say why. One line.
           </span>
         </li>
         <li className="flex gap-3">
-          <FileText className="mt-0.5 h-5 w-5 shrink-0 text-brand" />
+          <FileText className="mt-0.5 h-5 w-5 shrink-0 text-foreground" />
           <span>
-            <strong className="text-zinc-50">Each Sunday</strong>, you get the
-            full week back as a roast: what you shipped, what you skipped, what
-            pattern you&apos;d rather ignore.
+            <strong className="text-foreground">Each Sunday</strong>, you get
+            the full week back as a roast: what you shipped, what you skipped,
+            what pattern you&apos;d rather ignore.
           </span>
         </li>
       </ul>
-      <p className="mt-4 text-sm text-zinc-400">
+      <p className="mt-4 text-sm text-muted-foreground">
         Add your first task below. We&apos;ll take it from there.
       </p>
     </div>

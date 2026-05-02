@@ -53,7 +53,7 @@ export function AddTaskForm({ defaultOpen = false }: AddTaskFormProps) {
     return (
       <button
         onClick={() => setIsOpen(true)}
-        className="w-full rounded-lg border border-dashed border-zinc-300 py-2 text-sm text-zinc-500 transition-colors hover:border-zinc-500 hover:text-zinc-700 dark:border-zinc-700 dark:hover:border-zinc-500 dark:hover:text-zinc-300"
+        className="w-full rounded-md border border-dashed border-border py-2 text-sm text-muted-foreground transition-colors hover:border-muted-foreground hover:text-foreground"
       >
         + Add task
       </button>
@@ -68,7 +68,7 @@ export function AddTaskForm({ defaultOpen = false }: AddTaskFormProps) {
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="What needs to get done?"
-          className="flex-1 rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+          className="flex-1 rounded-sm border border-input bg-transparent px-3 py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-zinc-500 transition-colors"
           onKeyDown={(e) => {
             if (e.key === "Escape") {
               setExpanded(false);
@@ -79,7 +79,7 @@ export function AddTaskForm({ defaultOpen = false }: AddTaskFormProps) {
         <button
           type="submit"
           disabled={!title.trim() || createMutation.isPending}
-          className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900"
+          className="rounded-full bg-zinc-50 px-4 py-2 text-sm font-medium text-zinc-900 transition-opacity hover:opacity-90 active:opacity-85 disabled:opacity-50"
         >
           Add
         </button>
@@ -89,16 +89,16 @@ export function AddTaskForm({ defaultOpen = false }: AddTaskFormProps) {
         <button
           type="button"
           onClick={() => setExpanded(true)}
-          className="text-xs text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
+          className="text-xs text-muted-foreground transition-colors hover:text-foreground"
         >
           More options
         </button>
       ) : (
-        <div className="space-y-3 rounded-lg border border-zinc-200 bg-zinc-50 p-3 dark:border-zinc-800 dark:bg-zinc-900/50">
+        <div className="space-y-3 rounded-md border border-border bg-card p-3">
           <div className="flex gap-3">
             {/* Priority */}
             <div className="flex-1">
-              <label className="mb-1 block text-xs text-zinc-500">Priority</label>
+              <label className="mb-1 block text-xs text-muted-foreground">Priority</label>
               <Select value={priority} onValueChange={(v) => setPriority(v as "high" | "medium" | "low")}>
                 <SelectTrigger className="h-8 w-full text-xs">
                   <SelectValue />
@@ -113,7 +113,7 @@ export function AddTaskForm({ defaultOpen = false }: AddTaskFormProps) {
 
             {/* Due Date */}
             <div className="flex-1">
-              <label className="mb-1 block text-xs text-zinc-500">Due date</label>
+              <label className="mb-1 block text-xs text-muted-foreground">Due date</label>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button variant="outline" size="sm" className="w-full justify-start text-xs font-normal">
@@ -133,7 +133,7 @@ export function AddTaskForm({ defaultOpen = false }: AddTaskFormProps) {
 
           {/* Goal */}
           <div>
-            <label className="mb-1 block text-xs text-zinc-500">Goal</label>
+            <label className="mb-1 block text-xs text-muted-foreground">Goal</label>
             <Select value={goalId} onValueChange={setGoalId}>
               <SelectTrigger className="h-8 w-full text-xs">
                 <SelectValue placeholder="No goal" />
@@ -149,7 +149,7 @@ export function AddTaskForm({ defaultOpen = false }: AddTaskFormProps) {
 
           {/* Description */}
           <div>
-            <label className="mb-1 block text-xs text-zinc-500">Description</label>
+            <label className="mb-1 block text-xs text-muted-foreground">Description</label>
             <Textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}

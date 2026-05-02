@@ -7,7 +7,7 @@ export default function Error({
   reset: () => void;
 }) {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 px-4 dark:bg-zinc-950">
+    <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="text-center">
         <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
           Something went wrong

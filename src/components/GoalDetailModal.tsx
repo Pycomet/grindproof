@@ -21,9 +21,9 @@ interface GoalDetailModalProps {
 }
 
 const priorityColors = {
-  high: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
-  medium: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400",
-  low: "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400",
+  high: "bg-red-500/10 text-red-400 border-red-500/30",
+  medium: "bg-amber-500/10 text-amber-400 border-amber-500/30",
+  low: "bg-accent text-muted-foreground border-border",
 };
 
 export function GoalDetailModal({ goalId, open, onOpenChange, initialEditMode = false }: GoalDetailModalProps) {
@@ -122,11 +122,11 @@ export function GoalDetailModal({ goalId, open, onOpenChange, initialEditMode = 
         {isEditing ? (
           <div className="space-y-3">
             <div>
-              <label className="mb-1 block text-xs text-zinc-500">Title</label>
+              <label className="mb-1 block text-xs text-muted-foreground">Title</label>
               <Input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} className="text-sm" />
             </div>
             <div>
-              <label className="mb-1 block text-xs text-zinc-500">Description</label>
+              <label className="mb-1 block text-xs text-muted-foreground">Description</label>
               <Textarea
                 value={editDescription}
                 onChange={(e) => setEditDescription(e.target.value)}
@@ -136,7 +136,7 @@ export function GoalDetailModal({ goalId, open, onOpenChange, initialEditMode = 
             </div>
             <div className="flex gap-3">
               <div className="flex-1">
-                <label className="mb-1 block text-xs text-zinc-500">Priority</label>
+                <label className="mb-1 block text-xs text-muted-foreground">Priority</label>
                 <Select value={editPriority} onValueChange={(v) => setEditPriority(v as "high" | "medium" | "low")}>
                   <SelectTrigger className="h-8 w-full text-xs">
                     <SelectValue />
@@ -149,7 +149,7 @@ export function GoalDetailModal({ goalId, open, onOpenChange, initialEditMode = 
                 </Select>
               </div>
               <div className="flex-1">
-                <label className="mb-1 block text-xs text-zinc-500">Status</label>
+                <label className="mb-1 block text-xs text-muted-foreground">Status</label>
                 <Select value={editStatus} onValueChange={(v) => setEditStatus(v as "active" | "completed")}>
                   <SelectTrigger className="h-8 w-full text-xs">
                     <SelectValue />
@@ -178,17 +178,17 @@ export function GoalDetailModal({ goalId, open, onOpenChange, initialEditMode = 
             </div>
 
             {goal.description && (
-              <p className="text-sm text-zinc-600 dark:text-zinc-400">{goal.description}</p>
+              <p className="text-sm text-muted-foreground">{goal.description}</p>
             )}
 
             <div>
               <div className="mb-2 flex items-center justify-between">
-                <span className="text-xs font-medium text-zinc-500">
+                <span className="text-xs font-medium text-muted-foreground">
                   Linked Tasks ({completedCount}/{linkedTasks.length} completed)
                 </span>
               </div>
               {linkedTasks.length === 0 ? (
-                <p className="text-xs text-zinc-400">No tasks linked to this goal.</p>
+                <p className="text-xs text-muted-foreground">No tasks linked to this goal.</p>
               ) : (
                 <div className="max-h-60 space-y-1 overflow-y-auto">
                   {linkedTasks.map((task) => (
@@ -213,7 +213,7 @@ export function GoalDetailModal({ goalId, open, onOpenChange, initialEditMode = 
                   value={newTaskTitle}
                   onChange={(e) => setNewTaskTitle(e.target.value)}
                   placeholder="Add a task to this goal..."
-                  className="flex-1 rounded-md border border-zinc-300 bg-white px-2 py-1 text-xs outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+                  className="flex-1 rounded-sm border border-input bg-transparent px-2 py-1 text-xs text-foreground outline-none placeholder:text-muted-foreground focus:border-zinc-500 transition-colors"
                 />
                 <Button type="submit" size="sm" className="h-7 text-xs" disabled={!newTaskTitle.trim() || createTaskMutation.isPending}>
                   Add
@@ -227,7 +227,7 @@ export function GoalDetailModal({ goalId, open, onOpenChange, initialEditMode = 
           <DialogFooter>
             {showDeleteConfirm ? (
               <div className="flex w-full items-center justify-between">
-                <span className="text-xs text-zinc-500">Delete this goal? Tasks linked to it will be unlinked.</span>
+                <span className="text-xs text-muted-foreground">Delete this goal? Tasks linked to it will be unlinked.</span>
                 <div className="flex gap-2">
                   <Button variant="outline" size="sm" onClick={() => setShowDeleteConfirm(false)}>Cancel</Button>
                   <Button variant="destructive" size="sm" onClick={handleDelete}>Delete</Button>

@@ -69,8 +69,8 @@ export default function Dashboard() {
 
   if (isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-zinc-50 dark:bg-zinc-950">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-zinc-300 border-t-zinc-900 dark:border-zinc-600 dark:border-t-zinc-50" />
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-border border-t-foreground" />
       </div>
     );
   }
@@ -78,16 +78,16 @@ export default function Dashboard() {
   if (!user) return null;
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
-      <header className="border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
+    <div className="min-h-screen bg-background">
+      <header className="border-b border-border bg-card">
         <div className="mx-auto flex max-w-xl items-center justify-between px-4 py-4">
           <Logo size="md" href="/" />
           <div className="flex items-center gap-4">
-            <span className="text-sm text-zinc-500">{getGreeting()}</span>
+            <span className="text-sm text-muted-foreground">{getGreeting()}</span>
             <Link
               href="/dashboard/settings"
               aria-label="Settings"
-              className="text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50 transition-colors"
+              className="text-muted-foreground hover:text-foreground transition-colors"
             >
               <Settings className="h-5 w-5" />
             </Link>

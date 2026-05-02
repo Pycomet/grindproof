@@ -55,7 +55,7 @@ export function AccountabilityWidget() {
 
   if (isLoading || !data) {
     return (
-      <div className="h-28 animate-pulse rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900" />
+      <div className="h-28 animate-pulse rounded-md border border-border bg-card" />
     );
   }
 
@@ -72,7 +72,7 @@ export function AccountabilityWidget() {
     const imageUrl =
       (typeof window !== "undefined" ? window.location.origin : "") +
       `/api/share/streak?${params.toString()}`;
-    const tweetText = `Day ${currentStreak} streak on GrindProof 🔥 ${tier.name} tier — ${score}/100 accountability score`;
+    const tweetText = `Day ${currentStreak} streak on GrindProof. ${tier.name} tier — ${score}/100 accountability score`;
     const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}&url=${encodeURIComponent(imageUrl)}`;
 
     if (typeof window !== "undefined") {
@@ -112,7 +112,7 @@ export function AccountabilityWidget() {
         />
       )}
 
-      <div className="rounded-md border border-zinc-200 bg-white p-4 text-zinc-900 dark:border-white/[0.08] dark:bg-zinc-900 dark:text-zinc-100">
+      <div className="rounded-md border border-border bg-card p-4 text-foreground">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <AccountabilityScoreRing score={score} color={tier.color} />
@@ -122,14 +122,14 @@ export function AccountabilityWidget() {
               >
                 {tier.name}
               </div>
-              <div className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
+              <div className="mt-0.5 text-xs text-muted-foreground">
                 {delta > 0 && (
-                  <span className="font-mono tabular-nums text-green-600 dark:text-green-400">
+                  <span className="gp-num text-green-400">
                     +{delta} from last week
                   </span>
                 )}
                 {delta < 0 && (
-                  <span className="font-mono tabular-nums text-red-600 dark:text-red-400">
+                  <span className="gp-num text-red-400">
                     {delta} from last week
                   </span>
                 )}
@@ -140,26 +140,24 @@ export function AccountabilityWidget() {
 
           <div className="flex flex-col items-center">
             <StreakFlame streak={currentStreak} color={tier.color} size={44} />
-            <div className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">day streak</div>
+            <div className="mt-1 text-xs text-muted-foreground">day streak</div>
           </div>
 
           <div className="text-right">
-            <div className="text-xs text-zinc-500 dark:text-zinc-400">
-              Today
-            </div>
-            <div className="font-mono text-base font-semibold tabular-nums text-green-600 dark:text-green-400">
+            <div className="text-xs text-muted-foreground">Today</div>
+            <div className="gp-num text-base font-semibold text-green-400">
               {today.completed}/{today.total} done
             </div>
             <Link
               href="/dashboard/stats"
-              className="text-xs text-purple-600 transition-colors hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300"
+              className="text-xs text-muted-foreground transition-colors hover:text-foreground"
             >
               View stats →
             </Link>
             {currentStreak > 0 && (
               <button
                 onClick={handleShare}
-                className="text-xs text-zinc-400 hover:text-zinc-200 transition-colors flex items-center gap-1"
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
               >
                 <Share2 size={12} />
                 {copied ? "Copied!" : "Share streak"}
@@ -168,15 +166,13 @@ export function AccountabilityWidget() {
           </div>
         </div>
 
-        <div className="mt-3 border-t border-zinc-100 pt-2 text-xs leading-relaxed text-zinc-600 dark:border-zinc-800 dark:text-zinc-400">
-          <span className="font-medium text-zinc-700 dark:text-zinc-300">
-            Driven by:
-          </span>{" "}
+        <div className="mt-3 border-t border-border pt-2 text-xs leading-relaxed text-muted-foreground">
+          <span className="font-medium text-foreground/80">Driven by:</span>{" "}
           {drivers.top}
           {drivers.drag && (
             <>
               {" · "}
-              <span className="font-medium text-zinc-700 dark:text-zinc-300">
+              <span className="font-medium text-foreground/80">
                 Held back by:
               </span>{" "}
               {drivers.drag}

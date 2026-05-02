@@ -79,7 +79,7 @@ export function TaskList() {
         {[1, 2, 3].map((i) => (
           <div
             key={i}
-            className="h-14 animate-pulse rounded-lg bg-zinc-100 dark:bg-zinc-800"
+            className="h-14 animate-pulse rounded-md border border-border bg-card"
           />
         ))}
       </div>
@@ -90,7 +90,7 @@ export function TaskList() {
     <div className="space-y-2">
       {/* Header with toggle */}
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
+        <h2 className="text-sm font-semibold text-foreground">
           {viewMode === "today"
             ? `Today's Tasks (${todayTasks.length})`
             : `This Week (${weekTasks.length})`}
@@ -101,7 +101,7 @@ export function TaskList() {
             className={`px-3 py-1 text-xs font-medium transition-colors ${
               viewMode === "today"
                 ? "bg-primary text-primary-foreground"
-                : "text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
+                : "text-muted-foreground hover:text-foreground"
             } rounded-l-md`}
           >
             Today
@@ -111,7 +111,7 @@ export function TaskList() {
             className={`px-3 py-1 text-xs font-medium transition-colors ${
               viewMode === "week"
                 ? "bg-primary text-primary-foreground"
-                : "text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
+                : "text-muted-foreground hover:text-foreground"
             } rounded-r-md`}
           >
             Week
@@ -123,7 +123,7 @@ export function TaskList() {
       {viewMode === "today" && (
         <>
           {todayTasks.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-zinc-300 py-8 text-center text-sm text-zinc-500 dark:border-zinc-700">
+            <div className="rounded-md border border-dashed border-border py-8 text-center text-sm text-muted-foreground">
               No tasks yet — add your first one below.
             </div>
           ) : (
@@ -133,7 +133,7 @@ export function TaskList() {
               ))}
               {skippedTasks.length > 0 && (
                 <>
-                  <div className="pt-2 text-xs font-medium text-zinc-400">
+                  <div className="pt-2 text-xs font-medium text-muted-foreground">
                     Skipped ({skippedTasks.length})
                   </div>
                   {skippedTasks.map((task) => (
@@ -143,7 +143,7 @@ export function TaskList() {
               )}
               {completedTasks.length > 0 && (
                 <>
-                  <div className="pt-2 text-xs font-medium text-zinc-400">
+                  <div className="pt-2 text-xs font-medium text-muted-foreground">
                     Completed ({completedTasks.length})
                   </div>
                   {completedTasks.map((task) => (
@@ -164,7 +164,7 @@ export function TaskList() {
         <>
           {weekTasks.length === 0 ? (
             <>
-              <div className="rounded-lg border border-dashed border-zinc-300 py-8 text-center text-sm text-zinc-500 dark:border-zinc-700">
+              <div className="rounded-md border border-dashed border-border py-8 text-center text-sm text-muted-foreground">
                 No tasks this week. Add one below.
               </div>
               <div className="mt-2">
@@ -176,9 +176,7 @@ export function TaskList() {
               <div key={date.toISOString()}>
                 <div
                   className={`py-1 text-xs font-medium ${
-                    isToday(date)
-                      ? "text-zinc-900 dark:text-zinc-50"
-                      : "text-zinc-400"
+                    isToday(date) ? "text-foreground" : "text-muted-foreground"
                   }`}
                 >
                   {isToday(date) && (
@@ -187,7 +185,7 @@ export function TaskList() {
                   {formatDayHeader(date)}
                 </div>
                 {dayTasks.length === 0 ? (
-                  <div className="py-2 text-xs text-zinc-400">No tasks</div>
+                  <div className="py-2 text-xs text-muted-foreground">No tasks</div>
                 ) : (
                   <div className="space-y-1">
                     {dayTasks.map((task) => (
