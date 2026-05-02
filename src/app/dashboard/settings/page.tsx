@@ -28,6 +28,8 @@ import {
   DialogClose,
 } from "@/components/ui/dialog";
 
+const TIMEZONES = Intl.supportedValuesOf("timeZone");
+
 function ProfileSection() {
   const { data: profile, isLoading } = trpc.profile.getCurrent.useQuery();
   const utils = trpc.useUtils();
@@ -231,7 +233,6 @@ function TimezoneSection() {
   });
 
   const detectedTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-  const timezones = Intl.supportedValuesOf("timeZone");
 
   if (isLoading || !settings) return <SectionSkeleton />;
 
@@ -249,7 +250,7 @@ function TimezoneSection() {
           <SelectValue placeholder="Select timezone" />
         </SelectTrigger>
         <SelectContent>
-          {timezones.map((tz) => (
+          {TIMEZONES.map((tz) => (
             <SelectItem key={tz} value={tz}>
               {tz.replace(/_/g, " ")}
             </SelectItem>
@@ -267,7 +268,8 @@ function AccountSection() {
   const { signOut } = useAuth();
   const router = useRouter();
   const deleteAccount = trpc.profile.deleteAccount.useMutation({
-    onSuccess: () => {
+    onSuccess: async () => {
+      await signOut();
       router.push("/");
     },
   });
