@@ -9,13 +9,14 @@
 -- network-retry race that the guard cannot.
 
 -- Drop any existing duplicate rows before adding the constraint, keeping the
--- earliest row per (user_id, type, day).
+-- earliest row per (user_id, type, day). Use a UTC day bucket — required to
+-- be IMMUTABLE so it can also be used in the unique index below.
 DELETE FROM daily_checks dc
 USING daily_checks older
 WHERE dc.user_id = older.user_id
   AND dc.type = older.type
-  AND date_trunc('day', dc.created_at) = date_trunc('day', older.created_at)
+  AND ((dc.created_at AT TIME ZONE 'UTC')::date) = ((older.created_at AT TIME ZONE 'UTC')::date)
   AND dc.created_at > older.created_at;
 
 CREATE UNIQUE INDEX IF NOT EXISTS daily_checks_user_type_day_uniq
-  ON daily_checks (user_id, type, (date_trunc('day', created_at)));
+  ON daily_checks (user_id, type, ((created_at AT TIME ZONE 'UTC')::date));

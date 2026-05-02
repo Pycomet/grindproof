@@ -1,6 +1,6 @@
 -- Accountability rebuild: completed_at, snapshots, score_events, atomic carry-over.
--- Depends on 20260429000000_enable_rls_core.sql (tasks RLS must exist before
--- the carry_over_tasks RPC is created with SECURITY INVOKER).
+-- Depends on 20260429000000_add_rls_to_user_tables.sql (tasks RLS must exist
+-- before the carry_over_tasks RPC is created with SECURITY INVOKER).
 
 -- ---------------------------------------------------------------------------
 -- tasks.completed_at — the timestamp at which a task transitioned to
