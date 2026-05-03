@@ -7,11 +7,11 @@ interface Props {
 }
 
 const HEX: Record<string, string> = {
-  red: "#ef4444",
-  orange: "#f97316",
-  amber: "#f59e0b",
-  green: "#22c55e",
-  purple: "#a855f7",
+  red: "#f87171",
+  orange: "#fb923c",
+  amber: "#fbbf24",
+  green: "#4ade80",
+  purple: "#a78bfa",
 };
 
 // Ember — tiny dim teardrop, barely alive
@@ -40,7 +40,7 @@ function EmberFlame({ size }: { size: number }) {
       <path
         className="ember"
         d="M20 28 C16 28 14 24.5 14 22 C14 20 16 18 18 16 C18.8 15 19.4 13.5 20 12 C20.6 13.5 21.2 15 22 16 C24 18 26 20 26 22 C26 24.5 24 28 20 28Z"
-        fill="#ef4444"
+        fill="#f87171"
         opacity="0.15"
       />
     </svg>
@@ -68,7 +68,7 @@ function KindlingFlame({ size }: { size: number }) {
       <path
         className="kindle"
         d="M20 32 C13 32 9 26 9 21 C9 16 13 12 16 8 C17.5 5.5 19 3 20 1 C21 3 22.5 5.5 24 8 C27 12 31 16 31 21 C31 26 27 32 20 32Z"
-        fill="#f97316"
+        fill="#fb923c"
         opacity="0.9"
       />
       <path
@@ -104,7 +104,7 @@ function BurningFlame({ size }: { size: number }) {
       <path
         className="burn"
         d="M20 34 C11 34 7 27 7 21 C7 15 11 10 15 6 C16.5 3.5 18.5 1.5 20 0 C21.5 1.5 23.5 3.5 25 6 C29 10 33 15 33 21 C33 27 29 34 20 34Z"
-        fill="#f59e0b"
+        fill="#fbbf24"
       />
       {/* Mid yellow core */}
       <path
@@ -151,20 +151,20 @@ function RagingFlame({ size }: { size: number }) {
       <path
         className="rage-side"
         d="M14 32 C10 32 8 28 8 25 C8 22 10 19.5 12 17 C12.8 18.5 13.2 20.5 13.5 22 C14.5 20 15.5 18 17 16 C15 19 14 22 14 25 C14 27.5 14.5 30 14 32Z"
-        fill="#22c55e"
+        fill="#4ade80"
         opacity="0.5"
       />
       <path
         className="rage-side"
         d="M26 32 C30 32 32 28 32 25 C32 22 30 19.5 28 17 C27.2 18.5 26.8 20.5 26.5 22 C25.5 20 24.5 18 23 16 C25 19 26 22 26 25 C26 27.5 25.5 30 26 32Z"
-        fill="#22c55e"
+        fill="#4ade80"
         opacity="0.5"
       />
       {/* Main body */}
       <path
         className="rage-main"
         d="M20 35 C10.5 35 6 27.5 6 21 C6 14.5 10.5 9 15 5 C16.5 2.5 18.5 0.5 20 0 C21.5 0.5 23.5 2.5 25 5 C29.5 9 34 14.5 34 21 C34 27.5 29.5 35 20 35Z"
-        fill="#22c55e"
+        fill="#4ade80"
       />
       {/* Core */}
       <path
@@ -220,21 +220,21 @@ function NuclearFlame({ size }: { size: number }) {
         cy="30"
         rx="13"
         ry="5"
-        fill="#a855f7"
+        fill="#a78bfa"
         opacity="0.3"
       />
       {/* Wide outer corona */}
       <path
         className="nuke-glow"
         d="M20 36 C8 36 3 28 3 21 C3 14 7.5 8.5 12 4.5 C14 2.5 17 0.5 20 0 C23 0.5 26 2.5 28 4.5 C32.5 8.5 37 14 37 21 C37 28 32 36 20 36Z"
-        fill="#a855f7"
+        fill="#a78bfa"
         opacity="0.35"
       />
       {/* Main purple body */}
       <path
         className="nuke-main"
         d="M20 34 C11 34 7 27 7 21 C7 15 11 10 15 6 C16.8 3.5 18.8 1 20 0 C21.2 1 23.2 3.5 25 6 C29 10 33 15 33 21 C33 27 29 34 20 34Z"
-        fill="#a855f7"
+        fill="#a78bfa"
       />
       {/* Mid violet layer */}
       <path

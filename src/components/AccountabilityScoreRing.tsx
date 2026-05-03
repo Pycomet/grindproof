@@ -1,11 +1,11 @@
 "use client";
 
 const RING_STROKE_COLORS: Record<string, string> = {
-  red: "#ef4444",
-  orange: "#f97316",
-  amber: "#f59e0b",
-  green: "#22c55e",
-  purple: "#a855f7",
+  red: "#f87171",
+  orange: "#fb923c",
+  amber: "#fbbf24",
+  green: "#4ade80",
+  purple: "#a78bfa",
 };
 
 const TIER_TEXT_COLORS: Record<string, string> = {
@@ -77,7 +77,7 @@ export function AccountabilityScoreRing({
                 to   { stroke-dashoffset: ${offset.toFixed(2)}; }
               }
               .ring-sweep-${size} {
-                animation: ring-sweep-${size} 1s cubic-bezier(0.34,1.2,0.64,1) forwards;
+                animation: ring-sweep-${size} 800ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
               }
             `}</style>
           )}

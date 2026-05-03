@@ -15,7 +15,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { MoreHorizontal } from "lucide-react";
+import { MoreHorizontal, Check, Link2 } from "lucide-react";
 
 interface TaskItemProps {
   task: {
@@ -30,9 +30,9 @@ interface TaskItemProps {
 }
 
 const priorityColors = {
-  high: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
-  medium: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400",
-  low: "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400",
+  high: "bg-red-500/10 text-red-400 border-red-500/30",
+  medium: "bg-amber-500/10 text-amber-400 border-amber-500/30",
+  low: "bg-accent text-muted-foreground border-border",
 };
 
 const priorityBarColors = {
@@ -131,7 +131,7 @@ export function TaskItem({ task }: TaskItemProps) {
 
   if (isEditing) {
     return (
-      <div className="space-y-2 rounded-md border border-zinc-200 bg-white p-4 dark:border-white/[0.08] dark:bg-zinc-900">
+      <div className="space-y-2 rounded-md border border-border bg-card p-4">
         <Input
           value={editTitle}
           onChange={(e) => setEditTitle(e.target.value)}
@@ -140,7 +140,7 @@ export function TaskItem({ task }: TaskItemProps) {
         />
         <div className="flex gap-3">
           <div className="flex-1">
-            <label className="mb-1 block text-xs text-zinc-500">Priority</label>
+            <label className="mb-1 block text-xs text-muted-foreground">Priority</label>
             <Select value={editPriority} onValueChange={(v) => setEditPriority(v as "high" | "medium" | "low")}>
               <SelectTrigger className="h-8 w-full text-xs">
                 <SelectValue />
@@ -153,7 +153,7 @@ export function TaskItem({ task }: TaskItemProps) {
             </Select>
           </div>
           <div className="flex-1">
-            <label className="mb-1 block text-xs text-zinc-500">Due date</label>
+            <label className="mb-1 block text-xs text-muted-foreground">Due date</label>
             <Popover>
               <PopoverTrigger asChild>
                 <Button variant="outline" size="sm" className="w-full justify-start text-xs font-normal">
@@ -173,7 +173,7 @@ export function TaskItem({ task }: TaskItemProps) {
           </div>
         </div>
         <div>
-          <label className="mb-1 block text-xs text-zinc-500">Goal</label>
+          <label className="mb-1 block text-xs text-muted-foreground">Goal</label>
           <Select value={editGoalId} onValueChange={setEditGoalId}>
             <SelectTrigger className="h-8 w-full text-xs">
               <SelectValue placeholder="No goal" />
@@ -187,7 +187,7 @@ export function TaskItem({ task }: TaskItemProps) {
           </Select>
         </div>
         <div>
-          <label className="mb-1 block text-xs text-zinc-500">Description</label>
+          <label className="mb-1 block text-xs text-muted-foreground">Description</label>
           <Textarea
             value={editDescription}
             onChange={(e) => setEditDescription(e.target.value)}
@@ -204,7 +204,7 @@ export function TaskItem({ task }: TaskItemProps) {
   }
 
   return (
-    <div className="flex items-center overflow-hidden rounded-md border border-zinc-200 bg-white dark:border-white/[0.08] dark:bg-zinc-900">
+    <div className="flex items-center overflow-hidden rounded-md border border-border bg-card">
       {/* Priority strip */}
       <div className={`w-[3px] self-stretch shrink-0 ${priorityBarColors[task.priority]}`} />
       <div className="flex flex-1 items-center gap-3 px-4 py-3">
@@ -215,18 +215,14 @@ export function TaskItem({ task }: TaskItemProps) {
         aria-label={`Mark "${task.title}" as ${isCompleted ? "incomplete" : "complete"}`}
         className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 transition-colors ${
           isCompleted
-            ? "border-zinc-900 bg-zinc-900 text-white dark:border-zinc-50 dark:bg-zinc-50 dark:text-zinc-900"
-            : "border-zinc-300 hover:border-zinc-500 dark:border-zinc-600"
+            ? "border-foreground bg-foreground text-background"
+            : "border-border hover:border-muted-foreground"
         }`}
       >
-        {isCompleted && (
-          <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-          </svg>
-        )}
+        {isCompleted && <Check className="h-3 w-3" strokeWidth={3} />}
       </button>
       <span
-        className={`flex-1 text-sm ${isCompleted ? "text-zinc-400 line-through" : "text-zinc-900 dark:text-zinc-50"}`}
+        className={`flex-1 text-sm ${isCompleted ? "text-muted-foreground line-through" : "text-foreground"}`}
       >
         {task.title}
       </span>
@@ -234,19 +230,17 @@ export function TaskItem({ task }: TaskItemProps) {
         {task.priority}
       </Badge>
       {task.goalId && (
-        <span title="Linked to a goal" className="text-amber-400 dark:text-amber-500">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-3 w-3">
-            <path fillRule="evenodd" d="M10.868 2.884c-.321-.772-1.415-.772-1.736 0l-1.83 4.401-4.753.381c-.833.067-1.171 1.107-.536 1.651l3.62 3.102-1.106 4.637c-.194.813.691 1.456 1.405 1.02L10 15.591l4.069 2.485c.713.436 1.598-.207 1.404-1.02l-1.106-4.637 3.62-3.102c.635-.544.297-1.584-.536-1.65l-4.752-.382-1.831-4.401Z" clipRule="evenodd" />
-          </svg>
+        <span title="Linked to a goal" className="text-muted-foreground">
+          <Link2 className="h-3 w-3" />
         </span>
       )}
       {task.dueDate && (
-        <span className="text-xs text-zinc-500">{formatDate(task.dueDate)}</span>
+        <span className="text-xs text-muted-foreground gp-num">{formatDate(task.dueDate)}</span>
       )}
 
       {showDeleteConfirm ? (
         <div className="flex items-center gap-2">
-          <span className="text-xs text-zinc-500">Delete?</span>
+          <span className="text-xs text-muted-foreground">Delete?</span>
           <Button variant="outline" size="sm" className="h-6 text-xs" onClick={() => setShowDeleteConfirm(false)}>
             Cancel
           </Button>
@@ -257,7 +251,7 @@ export function TaskItem({ task }: TaskItemProps) {
       ) : (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="rounded p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-800 dark:hover:text-zinc-300">
+            <button className="rounded p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
               <MoreHorizontal className="h-4 w-4" />
             </button>
           </DropdownMenuTrigger>
@@ -313,7 +307,7 @@ export function TaskItem({ task }: TaskItemProps) {
 
             <DropdownMenuSeparator />
             <DropdownMenuItem
-              className="text-red-600 focus:text-red-600"
+              className="text-red-400 focus:text-red-400"
               onClick={() => setShowDeleteConfirm(true)}
             >
               Delete

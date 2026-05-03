@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Logo } from "@/components/Logo";
+import { Flame, Check, AlertTriangle, XCircle } from "lucide-react";
 
 export default function Home() {
   return (
@@ -36,7 +37,7 @@ export default function Home() {
         <div className="px-4 py-16 sm:py-24">
           <div className="mx-auto max-w-3xl">
             {/* Hero Headline */}
-            <h1 className="text-5xl sm:text-6xl font-bold tracking-tight leading-[1.05] text-zinc-50 max-w-3xl font-[family-name:var(--font-space-grotesk)]">
+            <h1 className="text-6xl sm:text-7xl font-bold tracking-[-0.04em] leading-[1.05] text-zinc-50 max-w-3xl font-[family-name:var(--font-space-grotesk)]">
               Track what you plan.<br />
               Prove what you did.<br />
               <span className="text-brand">Get roasted for the gap.</span>
@@ -57,7 +58,7 @@ export default function Home() {
               </Link>
               <Link
                 href="/how-it-works"
-                className="inline-flex items-center justify-center rounded-full border border-zinc-700 px-8 py-4 text-base font-semibold text-zinc-50 transition-colors duration-150 hover:bg-zinc-50 hover:text-zinc-900"
+                className="inline-flex items-center justify-center rounded-md border border-zinc-700 px-8 py-4 text-base font-semibold text-zinc-50 transition-colors duration-150 hover:bg-zinc-50 hover:text-zinc-900"
               >
                 See How It Works
               </Link>
@@ -90,7 +91,7 @@ export default function Home() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               {/* Morning Check-in mockup */}
-              <div className="rounded-lg border border-amber-700 bg-amber-950/30 p-4">
+              <div className="rounded-md border border-zinc-800 bg-zinc-900 p-4">
                 <p className="mb-3 text-xs font-semibold text-zinc-50">Morning Check-in</p>
                 <p className="mb-3 text-xs text-zinc-300">
                   You left 3 tasks unfinished yesterday. Carry over?
@@ -124,7 +125,7 @@ export default function Home() {
               </div>
 
               {/* Evening Reality Check mockup */}
-              <div className="rounded-lg border border-indigo-700 bg-indigo-950/30 p-4">
+              <div className="rounded-md border border-zinc-800 bg-zinc-900 p-4">
                 <p className="mb-3 text-xs font-semibold text-zinc-50">Evening Reality Check</p>
                 <p className="mb-3 text-xs text-zinc-300">2 tasks still pending. What happened?</p>
                 <div className="space-y-3">
@@ -172,20 +173,20 @@ export default function Home() {
               What Sunday looks like
             </h2>
 
-            <div className="rounded-lg border border-red-900/50 bg-gradient-to-br from-red-950/20 to-orange-950/20 p-8">
+            <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-8">
               <div className="flex items-start gap-6">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-red-600 to-orange-600 text-xl font-bold text-white">
-                  🔥
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-zinc-800 text-zinc-50">
+                  <Flame className="h-6 w-6" />
                 </div>
                 <div className="flex-1">
                   <h3 className="text-2xl font-bold text-zinc-50 mb-4 font-[family-name:var(--font-space-grotesk)]">
                     Weekly Roast Report
                   </h3>
-                  <div className="rounded-lg bg-zinc-900 p-5 text-sm">
-                    <div className="mb-3 flex gap-3 text-xs">
+                  <div className="rounded-md border border-zinc-800 bg-zinc-900 p-5 text-sm">
+                    <div className="mb-3 flex gap-3 text-xs font-[family-name:var(--font-geist-mono)] tabular-nums">
                       <span className="text-green-400">68% done</span>
                       <span className="text-zinc-400">17/25 tasks</span>
-                      <span className="text-amber-400">4 skipped</span>
+                      <span className="text-zinc-400">4 skipped</span>
                     </div>
                     <p className="mb-3 text-zinc-300">
                       Solid execution Monday through Wednesday, then you fell off a cliff.
@@ -193,19 +194,19 @@ export default function Home() {
                     </p>
                     <div className="mb-3 space-y-1.5">
                       <div className="flex items-start gap-2 text-xs">
-                        <span>✅</span>
+                        <Check className="h-3.5 w-3.5 mt-0.5 shrink-0 text-green-400" />
                         <span className="text-green-400">
                           5-day streak on deep work tasks — keep that up
                         </span>
                       </div>
                       <div className="flex items-start gap-2 text-xs">
-                        <span>⚠️</span>
-                        <span className="text-amber-400">
+                        <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0 text-zinc-400" />
+                        <span className="text-zinc-400">
                           You skipped &quot;admin tasks&quot; every single day this week
                         </span>
                       </div>
                       <div className="flex items-start gap-2 text-xs">
-                        <span>🔴</span>
+                        <XCircle className="h-3.5 w-3.5 mt-0.5 shrink-0 text-red-400" />
                         <span className="text-red-400">
                           3 tasks carried over 4+ times — either do them or delete them
                         </span>

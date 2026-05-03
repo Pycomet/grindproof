@@ -56,7 +56,7 @@ export function MorningCheckIn() {
 
   if (isLoading) {
     return (
-      <div className="h-28 animate-pulse rounded-md border border-amber-200 bg-amber-50 dark:border-amber-900/50 dark:bg-amber-950/20" />
+      <div className="h-28 animate-pulse rounded-md border border-border bg-card" />
     );
   }
   if (!data || submitted || data.alreadySubmitted) return null;
@@ -80,22 +80,20 @@ export function MorningCheckIn() {
   const todayTasks = (data.todayTasks ?? []) as any[];
 
   return (
-    <div className="overflow-hidden rounded-md border border-amber-200 bg-amber-50 dark:border-amber-900/50 dark:bg-amber-950/20">
+    <div className="overflow-hidden rounded-md border border-border bg-card">
       {/* Step indicator */}
-      <div className="flex items-center justify-between border-b border-amber-200/60 px-4 py-2 dark:border-amber-900/30">
-        <span className="text-xs font-semibold text-amber-700 dark:text-amber-400">
-          Morning check-in
-        </span>
+      <div className="flex items-center justify-between border-b border-border px-4 py-2">
+        <span className="gp-eyebrow">Morning Check-in</span>
         <div className="flex items-center gap-1">
           {([1, 2, 3] as const).map((s) => (
             <div
               key={s}
-              className={`h-1.5 w-4 rounded-full transition-all ${
+              className={`h-1.5 w-4 rounded-full transition-colors ${
                 s === step
-                  ? "bg-amber-500"
+                  ? "bg-foreground"
                   : s < step
-                    ? "bg-amber-400/60"
-                    : "bg-amber-200 dark:bg-amber-900/50"
+                    ? "bg-muted-foreground"
+                    : "bg-border"
               }`}
             />
           ))}
@@ -106,10 +104,10 @@ export function MorningCheckIn() {
         {/* Step 1: Yesterday's unfinished */}
         {step === 1 && (
           <>
-            <p className="mb-3 text-sm font-semibold text-zinc-900 dark:text-zinc-50">
+            <p className="mb-3 text-sm font-semibold text-foreground">
               What didn&apos;t get done?
             </p>
-            <p className="mb-3 text-xs text-zinc-600 dark:text-zinc-400">
+            <p className="mb-3 text-xs text-muted-foreground">
               {incomplete.length} task{incomplete.length > 1 ? "s" : ""} left
               over from yesterday. Check what you&apos;re carrying forward.
             </p>
@@ -117,32 +115,30 @@ export function MorningCheckIn() {
               {incomplete.map((task) => (
                 <label
                   key={task.id}
-                  className="flex cursor-pointer items-center gap-2.5 rounded-sm p-1.5 hover:bg-amber-100/60 dark:hover:bg-amber-900/20"
+                  className="flex cursor-pointer items-center gap-2.5 rounded-sm p-1.5 hover:bg-accent transition-colors"
                 >
                   <input
                     type="checkbox"
                     checked={selectedIds.includes(task.id)}
                     onChange={() => toggleTask(task.id)}
-                    className="rounded border-zinc-300"
+                    className="rounded border-border"
                   />
                   <div
                     className={`h-3.5 w-[3px] rounded-full shrink-0 ${PRIORITY_BAR[task.priority] ?? "bg-zinc-300"}`}
                   />
-                  <span className="text-sm text-zinc-700 dark:text-zinc-300">
-                    {task.title}
-                  </span>
+                  <span className="text-sm text-foreground">{task.title}</span>
                 </label>
               ))}
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-xs text-zinc-500">
+              <span className="text-xs text-muted-foreground">
                 {selectedIds.length === 0
                   ? "None selected — fresh start"
                   : `${selectedIds.length} carrying over`}
               </span>
               <button
                 onClick={() => setStep(2)}
-                className="flex items-center gap-1 rounded-sm bg-amber-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-amber-600 transition-colors"
+                className="flex items-center gap-1 rounded-full bg-zinc-50 px-4 py-1.5 text-sm font-medium text-zinc-900 transition-opacity hover:opacity-90 active:opacity-85"
               >
                 Next <ChevronRight className="h-3.5 w-3.5" />
               </button>
@@ -153,7 +149,7 @@ export function MorningCheckIn() {
         {/* Step 2: Today's plan */}
         {step === 2 && (
           <>
-            <p className="mb-3 text-sm font-semibold text-zinc-900 dark:text-zinc-50">
+            <p className="mb-3 text-sm font-semibold text-foreground">
               What are you committing to today?
             </p>
             {todayTasks.length > 0 ? (
@@ -166,22 +162,22 @@ export function MorningCheckIn() {
                     <div
                       className={`h-3.5 w-[3px] rounded-full shrink-0 ${PRIORITY_BAR[task.priority] ?? "bg-zinc-300"}`}
                     />
-                    <span className="text-sm text-zinc-700 dark:text-zinc-300">
+                    <span className="text-sm text-foreground">
                       {task.title}
                     </span>
-                    <span className="ml-auto text-[10px] uppercase tracking-wide text-zinc-400">
+                    <span className="ml-auto text-[10px] uppercase tracking-wide text-muted-foreground">
                       {task.priority}
                     </span>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="mb-4 text-xs text-zinc-500">
+              <p className="mb-4 text-xs text-muted-foreground">
                 No tasks added yet — you can add them from the dashboard.
               </p>
             )}
             <div className="mb-4">
-              <label className="mb-1 block text-xs text-zinc-500">
+              <label className="mb-1 block text-xs text-muted-foreground">
                 One word or phrase for today&apos;s theme{" "}
                 <span className="text-zinc-400">(optional)</span>
               </label>
@@ -191,19 +187,19 @@ export function MorningCheckIn() {
                 onChange={(e) => setTheme(e.target.value)}
                 placeholder="e.g. deep work, shipping, recovery"
                 maxLength={50}
-                className="w-full rounded-sm border border-amber-200 bg-white/60 px-3 py-1.5 text-sm outline-none placeholder:text-zinc-400 focus:border-amber-400 dark:border-amber-900/50 dark:bg-zinc-900/60 dark:text-zinc-100"
+                className="w-full rounded-sm border border-input bg-transparent px-3 py-1.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-zinc-500 transition-colors"
               />
             </div>
             <div className="flex justify-between">
               <button
                 onClick={() => setStep(1)}
-                className="flex items-center gap-1 text-sm text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors"
+                className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
               >
                 <ChevronLeft className="h-3.5 w-3.5" /> Back
               </button>
               <button
                 onClick={() => setStep(3)}
-                className="flex items-center gap-1 rounded-sm bg-amber-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-amber-600 transition-colors"
+                className="flex items-center gap-1 rounded-full bg-zinc-50 px-4 py-1.5 text-sm font-medium text-zinc-900 transition-opacity hover:opacity-90 active:opacity-85"
               >
                 Next <ChevronRight className="h-3.5 w-3.5" />
               </button>
@@ -214,12 +210,12 @@ export function MorningCheckIn() {
         {/* Step 3: Confirm & commit */}
         {step === 3 && (
           <>
-            <p className="mb-3 text-sm font-semibold text-zinc-900 dark:text-zinc-50">
+            <p className="mb-3 text-sm font-semibold text-foreground">
               Your plan
             </p>
-            <div className="mb-4 space-y-2 text-sm text-zinc-700 dark:text-zinc-300">
+            <div className="mb-4 space-y-2 text-sm text-foreground">
               {selectedIds.length > 0 ? (
-                <div className="rounded-sm bg-amber-100/60 px-3 py-2 dark:bg-amber-900/20">
+                <div className="rounded-sm border border-border bg-accent/50 px-3 py-2">
                   <span className="font-medium">Carrying over:</span>{" "}
                   {incomplete
                     .filter((t) => selectedIds.includes(t.id))
@@ -227,41 +223,42 @@ export function MorningCheckIn() {
                     .join(", ")}
                 </div>
               ) : (
-                <div className="rounded-sm bg-zinc-100/60 px-3 py-2 text-zinc-500 dark:bg-zinc-800/40">
+                <div className="rounded-sm border border-border bg-accent/30 px-3 py-2 text-muted-foreground">
                   Fresh start — dropping all {incomplete.length} leftover task
                   {incomplete.length > 1 ? "s" : ""}
                 </div>
               )}
               {todayTasks.length > 0 && (
-                <div className="rounded-sm bg-white/60 px-3 py-2 dark:bg-zinc-900/40">
+                <div className="rounded-sm border border-border px-3 py-2">
                   <span className="font-medium">{todayTasks.length} on deck</span>{" "}
                   for today
                 </div>
               )}
               {theme.trim() && (
-                <div className="rounded-sm border border-amber-300/50 px-3 py-2 dark:border-amber-700/30">
-                  <span className="font-medium">Theme:</span> &ldquo;{theme.trim()}&rdquo;
+                <div className="rounded-sm border border-border px-3 py-2">
+                  <span className="font-medium">Theme:</span> &ldquo;
+                  {theme.trim()}&rdquo;
                 </div>
               )}
             </div>
             {carryOverMutation.isError && (
-              <p className="mb-2 rounded-sm border border-red-300 bg-red-50 px-2 py-1 text-xs text-red-700 dark:border-red-900/50 dark:bg-red-950/20 dark:text-red-400">
+              <p className="mb-2 rounded-sm border border-red-500/40 bg-red-500/10 px-2 py-1 text-xs text-red-400">
                 Couldn&apos;t save your check-in. Try again.
               </p>
             )}
             <div className="flex justify-between">
               <button
                 onClick={() => setStep(2)}
-                className="flex items-center gap-1 text-sm text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors"
+                className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
               >
                 <ChevronLeft className="h-3.5 w-3.5" /> Back
               </button>
               <button
                 onClick={handleSubmit}
                 disabled={carryOverMutation.isPending}
-                className="rounded-sm bg-amber-500 px-4 py-1.5 text-sm font-medium text-white hover:bg-amber-600 disabled:opacity-50 transition-colors"
+                className="rounded-full bg-zinc-50 px-5 py-1.5 text-sm font-medium text-zinc-900 transition-opacity hover:opacity-90 active:opacity-85 disabled:opacity-50"
               >
-                {carryOverMutation.isPending ? "Saving…" : "🔥 Let's go"}
+                {carryOverMutation.isPending ? "Saving…" : "Let's go"}
               </button>
             </div>
           </>

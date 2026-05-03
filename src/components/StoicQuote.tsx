@@ -49,19 +49,21 @@ export function StoicQuote() {
   if (!quote) return null;
 
   return (
-    <div className="border-l-2 border-l-brand px-4 py-3 bg-zinc-900/50">
-      <div className="flex items-center gap-2 mb-1">
-        <Flame className="h-3.5 w-3.5 text-brand/70" />
-        <span className="text-2xs font-semibold tracking-caps uppercase text-brand">
-          Today&apos;s Reminder
-        </span>
+    <div className="relative border-l-[3px] border-l-brand px-4 py-3 overflow-hidden">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 bg-gradient-to-r from-amber-500/[0.06] to-transparent"
+      />
+      <div className="relative">
+        <div className="flex items-center gap-2 mb-1">
+          <Flame className="h-3.5 w-3.5" style={{ color: "var(--gp-brand)" }} />
+          <span className="gp-eyebrow" style={{ color: "var(--gp-brand)" }}>
+            Today&apos;s Flame
+          </span>
+        </div>
+        <p className="gp-quote">&ldquo;{quote.text}&rdquo;</p>
+        <span className="gp-meta mt-1 block">— {quote.author}</span>
       </div>
-      <p className="font-serif italic text-sm leading-relaxed text-zinc-300">
-        &ldquo;{quote.text}&rdquo;
-      </p>
-      <span className="text-2xs text-zinc-500 mt-1 block">
-        — {quote.author}
-      </span>
     </div>
   );
 }

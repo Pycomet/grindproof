@@ -51,7 +51,7 @@ export function GoalList() {
         {[1, 2].map((i) => (
           <div
             key={i}
-            className="h-12 animate-pulse rounded-lg bg-zinc-100 dark:bg-zinc-800"
+            className="h-12 animate-pulse rounded-md border border-border bg-card"
           />
         ))}
       </div>
@@ -65,14 +65,14 @@ export function GoalList() {
         <div className="mb-2 flex items-center justify-between">
           <button
             onClick={toggle}
-            className="flex items-center gap-1 text-sm font-semibold text-zinc-900 dark:text-zinc-50"
+            className="flex items-center gap-1 text-sm font-semibold text-foreground"
           >
             <span>Goals ({activeGoals.length})</span>
-            <span className="text-zinc-400">{expanded ? "-" : "+"}</span>
+            <span className="text-muted-foreground">{expanded ? "-" : "+"}</span>
           </button>
           <button
             onClick={() => { setShowAddForm(true); setExpanded(true); }}
-            className="text-xs text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
+            className="text-xs text-muted-foreground transition-colors hover:text-foreground"
           >
             + Add Goal
           </button>
@@ -86,7 +86,7 @@ export function GoalList() {
           )}
 
           {activeGoals.length === 0 && !showAddForm && (
-            <div className="rounded-lg border border-dashed border-zinc-300 py-6 text-center text-sm text-zinc-500 dark:border-zinc-700">
+            <div className="rounded-md border border-dashed border-border py-6 text-center text-sm text-muted-foreground">
               No goals yet — set one to stay focused.
             </div>
           )}
@@ -100,25 +100,25 @@ export function GoalList() {
             return (
               <div
                 key={goal.id}
-                className="flex items-center gap-3 rounded-lg border border-zinc-200 bg-white px-4 py-3 dark:border-zinc-800 dark:bg-zinc-900"
+                className="flex items-center gap-3 rounded-md border border-border bg-card px-4 py-3"
               >
                 {/* Clickable title */}
                 <button
                   onClick={() => setSelectedGoalId(goal.id)}
-                  className="flex-1 text-left text-sm text-zinc-900 hover:underline dark:text-zinc-50"
+                  className="flex-1 text-left text-sm text-foreground hover:underline"
                 >
                   {goal.title}
                 </button>
 
                 {/* Progress bar */}
                 <div className="flex items-center gap-2">
-                  <div className="h-1.5 w-16 overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-700">
+                  <div className="h-1.5 w-16 overflow-hidden rounded-full bg-border">
                     <div
-                      className="h-full rounded-full bg-zinc-900 transition-all dark:bg-zinc-50"
+                      className="h-full rounded-full bg-foreground transition-all"
                       style={{ width: `${progressPct}%` }}
                     />
                   </div>
-                  <span className="text-xs text-zinc-500">
+                  <span className="text-xs text-muted-foreground gp-num">
                     {completed}/{total}
                   </span>
                 </div>
@@ -126,7 +126,7 @@ export function GoalList() {
                 {/* Delete confirmation inline */}
                 {deleteConfirmId === goal.id ? (
                   <div className="flex items-center gap-2">
-                    <span className="text-xs text-zinc-500">Delete?</span>
+                    <span className="text-xs text-muted-foreground">Delete?</span>
                     <Button variant="outline" size="sm" className="h-6 text-xs" onClick={() => setDeleteConfirmId(null)}>
                       Cancel
                     </Button>
@@ -137,7 +137,7 @@ export function GoalList() {
                 ) : (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <button className="rounded p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-800 dark:hover:text-zinc-300">
+                      <button className="rounded p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
                         <MoreHorizontal className="h-4 w-4" />
                       </button>
                     </DropdownMenuTrigger>
@@ -147,7 +147,7 @@ export function GoalList() {
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
-                        className="text-red-600 focus:text-red-600"
+                        className="text-red-400 focus:text-red-400"
                         onClick={() => setDeleteConfirmId(goal.id)}
                       >
                         Delete

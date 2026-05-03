@@ -69,7 +69,7 @@ export function TierUpModal({ fromColor, toColor, toName, score, onClose }: Prop
       onClick={onClose}
     >
       <div
-        className="relative mx-4 w-full max-w-[280px] overflow-hidden rounded-xl border border-white/[0.08] bg-zinc-950 shadow-2xl"
+        className="relative mx-4 w-full max-w-[280px] overflow-hidden rounded-lg border border-border bg-zinc-950 shadow-lg"
         onClick={(e) => e.stopPropagation()}
       >
         <button
@@ -131,7 +131,7 @@ export function TierUpModal({ fromColor, toColor, toName, score, onClose }: Prop
             <TierProgressBar activeColor={toColor} upToColor={toColor} />
             <button
               onClick={onClose}
-              className="mt-1 rounded-md bg-zinc-800 px-6 py-2 text-sm font-medium text-zinc-200 transition-colors hover:bg-zinc-700"
+              className="mt-1 rounded-full bg-zinc-50 px-6 py-2 text-sm font-medium text-zinc-900 transition-opacity hover:opacity-90 active:opacity-85"
             >
               Let&apos;s go
             </button>
