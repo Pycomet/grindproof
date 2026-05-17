@@ -2,6 +2,9 @@ import Link from "next/link";
 import { Logo } from "@/components/Logo";
 import { SignupCta } from "@/components/SignupCta";
 import { Flame, Check, AlertTriangle, XCircle } from "lucide-react";
+import { RoastCounter } from "@/components/marketing/RoastCounter";
+
+export const revalidate = 3600;
 
 export default function Home() {
   return (
@@ -259,6 +262,7 @@ export default function Home() {
 
         {/* Final CTA */}
         <div className="px-4 py-16 text-center">
+          <RoastCounter />
           <SignupCta
             variant="footer"
             className="inline-block rounded-full bg-brand px-8 py-4 text-base font-semibold text-brand-foreground transition-opacity hover:opacity-90"
