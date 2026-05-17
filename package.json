@@ -37,6 +37,7 @@
     "framer-motion": "^12.23.24",
     "lucide-react": "^0.553.0",
     "next": "^16.0.10",
+    "posthog-js": "^1.373.5",
     "posthog-node": "^5.34.2",
     "react": "19.2.0",
     "react-day-picker": "^9.11.1",

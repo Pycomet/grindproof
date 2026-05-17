@@ -69,11 +69,17 @@ export function AccountabilityWidget() {
       tier: tier.name,
       color: tier.color,
     });
-    const imageUrl =
-      (typeof window !== "undefined" ? window.location.origin : "") +
-      `/api/share/streak?${params.toString()}`;
+    const origin =
+      typeof window !== "undefined" ? window.location.origin : "";
+    const imageUrl = `${origin}/api/share/streak?${params.toString()}`;
+    // Annotate the share destination so inbound `share_link_clicked` events
+    // can attribute the referrer. GRI-6 §2 requires `referrer_user_id` and
+    // `share_surface` on that event.
+    const landingUrl = user
+      ? `${origin}/?ref=${encodeURIComponent(user.id)}&share_surface=twitter`
+      : origin;
     const tweetText = `Day ${currentStreak} streak on GrindProof. ${tier.name} tier — ${score}/100 accountability score`;
-    const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}&url=${encodeURIComponent(imageUrl)}`;
+    const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}&url=${encodeURIComponent(landingUrl)}`;
 
     if (typeof window !== "undefined") {
       navigator.clipboard.writeText(imageUrl).then(() => {

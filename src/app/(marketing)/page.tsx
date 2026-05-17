@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Logo } from "@/components/Logo";
+import { SignupCta } from "@/components/SignupCta";
 import { Flame, Check, AlertTriangle, XCircle } from "lucide-react";
 
 export default function Home() {
@@ -22,12 +23,12 @@ export default function Home() {
             >
               Sign In
             </Link>
-            <Link
-              href="/auth/signup"
+            <SignupCta
+              variant="nav"
               className="whitespace-nowrap rounded-full bg-brand px-4 py-2 text-sm font-semibold text-brand-foreground transition-opacity hover:opacity-90 sm:px-5"
             >
               Get Started
-            </Link>
+            </SignupCta>
           </div>
         </div>
       </nav>
@@ -50,12 +51,12 @@ export default function Home() {
 
             {/* CTAs */}
             <div className="mt-10 flex flex-col sm:flex-row gap-3">
-              <Link
-                href="/auth/signup"
+              <SignupCta
+                variant="hero"
                 className="inline-flex items-center justify-center rounded-full bg-brand px-8 py-4 text-base font-semibold text-brand-foreground transition-opacity duration-150 hover:opacity-90"
               >
                 Stop Bullshitting — Sign Up
-              </Link>
+              </SignupCta>
               <Link
                 href="/how-it-works"
                 className="inline-flex items-center justify-center rounded-md border border-zinc-700 px-8 py-4 text-base font-semibold text-zinc-50 transition-colors duration-150 hover:bg-zinc-50 hover:text-zinc-900"
@@ -230,12 +231,12 @@ export default function Home() {
 
         {/* Final CTA */}
         <div className="px-4 py-16 text-center">
-          <Link
-            href="/auth/signup"
+          <SignupCta
+            variant="footer"
             className="inline-block rounded-full bg-brand px-8 py-4 text-base font-semibold text-brand-foreground transition-opacity hover:opacity-90"
           >
             Ready to Stop Bullshitting? Let&apos;s Go
-          </Link>
+          </SignupCta>
         </div>
       </main>
 
