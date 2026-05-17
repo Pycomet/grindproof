@@ -2,6 +2,7 @@ import { z } from "zod";
 import { router, protectedProcedure } from "../context";
 import { computeUserPatterns } from "@/lib/ai/patterns";
 import { fireAndForgetScoreChange } from "@/lib/accountability/hooks";
+import { captureServerEvent } from "@/lib/posthog/server";
 
 export const dailyCheckRouter = router({
   getMorningSchedule: protectedProcedure.query(async ({ ctx }) => {
@@ -193,6 +194,21 @@ export const dailyCheckRouter = router({
       if (eveningErr && eveningErr.code !== "23505") {
         throw new Error(`Failed to record check-in: ${eveningErr.message}`);
       }
+
+      // Server-side funnel event — GRI-6 requires this fires from the server,
+      // not the client, so it can't be blocked by ad-blockers.
+      // `is_first` is true when this is the first evening check-in ever for this user.
+      const { count: previousCheckins } = await ctx.db
+        .from("daily_checks")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", ctx.user.id)
+        .eq("type", "evening");
+      captureServerEvent(ctx.user.id, "first_checkin_completed", {
+        user_id: ctx.user.id,
+        is_first: (previousCheckins ?? 0) <= 1,
+        tasks_completed: completedIds.length,
+        tasks_skipped: skipIds.length,
+      }).catch(() => {}); // fire-and-forget
 
       fireAndForgetScoreChange(ctx.db, ctx.user.id, "evening_reflection");
 
