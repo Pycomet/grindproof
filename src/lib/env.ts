@@ -5,6 +5,7 @@ const clientEnvSchema = z.object({
   NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1),
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
   NEXT_PUBLIC_APP_URL: z.string().url().optional(),
+  NEXT_PUBLIC_POSTHOG_KEY: z.string().min(1).optional(),
 });
 
 const serverEnvSchema = clientEnvSchema.extend({
@@ -37,6 +38,7 @@ const testDefaults: z.infer<typeof serverEnvSchema> = {
   AI_MODEL: "gemini-2.5-flash",
   NODE_ENV: "test" as const,
   NEXT_PUBLIC_APP_URL: undefined,
+  NEXT_PUBLIC_POSTHOG_KEY: undefined,
 };
 
 const rawEnv = {
@@ -48,6 +50,7 @@ const rawEnv = {
     (process.env.NEXT_PUBLIC_VERCEL_URL
       ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}`
       : undefined),
+  NEXT_PUBLIC_POSTHOG_KEY: process.env.NEXT_PUBLIC_POSTHOG_KEY,
   SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
   NEXT_GOOGLE_GEMINI_API_KEY: process.env.NEXT_GOOGLE_GEMINI_API_KEY,
   CRON_SECRET: process.env.CRON_SECRET,

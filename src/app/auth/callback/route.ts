@@ -1,4 +1,5 @@
 import { createServerClient } from '@/lib/supabase/server';
+import { captureServerEvent } from '@/lib/posthog/server';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(request: NextRequest) {
@@ -8,10 +9,16 @@ export async function GET(request: NextRequest) {
 
   if (code) {
     const supabase = await createServerClient();
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    const { data, error } = await supabase.auth.exchangeCodeForSession(code);
 
-    if (!error) {
-      // Successful authentication, redirect to the intended destination
+    if (!error && data.user) {
+      // Server-side conversion event — fires after DB commit, not from client.
+      // GRI-6 relies on this being server-side so ad-blockers can't suppress it.
+      await captureServerEvent(data.user.id, 'signup_completed', {
+        signup_method: data.user.app_metadata?.provider ?? 'email',
+        user_id: data.user.id,
+      });
+
       return NextResponse.redirect(new URL(next, request.url));
     }
   }
