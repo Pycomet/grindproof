@@ -10,6 +10,7 @@ import {
 } from "react";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase/client";
+import { resetPostHog } from "@/lib/posthog/client";
 
 interface AuthContextType {
   user: User | null;
@@ -41,6 +42,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = useCallback(async () => {
     await supabase.auth.signOut();
     setUser(null);
+    // Detach analytics identity so the next visitor in this browser isn't stitched
+    // to the previous user. GRI-6 §3 requires this on logout.
+    resetPostHog();
   }, []);
 
   return (

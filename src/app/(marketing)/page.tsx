@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Logo } from "@/components/Logo";
+import { SignupCta } from "@/components/SignupCta";
 import { Flame, Check, AlertTriangle, XCircle } from "lucide-react";
 import { RoastCounter } from "@/components/marketing/RoastCounter";
 
@@ -25,12 +26,12 @@ export default function Home() {
             >
               Sign In
             </Link>
-            <Link
-              href="/auth/signup"
+            <SignupCta
+              variant="nav"
               className="whitespace-nowrap rounded-full bg-brand px-4 py-2 text-sm font-semibold text-brand-foreground transition-opacity hover:opacity-90 sm:px-5"
             >
               Get Started
-            </Link>
+            </SignupCta>
           </div>
         </div>
       </nav>
@@ -53,12 +54,12 @@ export default function Home() {
 
             {/* CTAs */}
             <div className="mt-10 flex flex-col sm:flex-row gap-3">
-              <Link
-                href="/auth/signup"
+              <SignupCta
+                variant="hero"
                 className="inline-flex items-center justify-center rounded-full bg-brand px-8 py-4 text-base font-semibold text-brand-foreground transition-opacity duration-150 hover:opacity-90"
               >
                 Stop Bullshitting — Sign Up
-              </Link>
+              </SignupCta>
               <Link
                 href="/how-it-works"
                 className="inline-flex items-center justify-center rounded-md border border-zinc-700 px-8 py-4 text-base font-semibold text-zinc-50 transition-colors duration-150 hover:bg-zinc-50 hover:text-zinc-900"
@@ -231,15 +232,43 @@ export default function Home() {
           </div>
         </div>
 
+        {/* Founder note */}
+        <section aria-label="Founder note" className="px-4 py-16">
+          <div className="mx-auto max-w-2xl border-l-2 border-brand pl-6 sm:pl-8">
+            <p className="text-sm uppercase tracking-[0.18em] text-zinc-400 font-[family-name:var(--font-space-grotesk)]">
+              — Founder note
+            </p>
+            <div className="mt-4 space-y-4 text-lg leading-relaxed text-zinc-200">
+              <p className="text-zinc-50 font-semibold">Why this exists</p>
+              <p>I built GrindProof because I was sick of my own bullshit.</p>
+              <p>
+                Every Sunday I&apos;d write a plan. Every Friday I&apos;d quietly admit I hadn&apos;t done half of it — then re-write the same plan, in slightly nicer handwriting, like that would fix it.
+              </p>
+              <p>
+                The thing that actually worked wasn&apos;t another habit tracker. It was being looked at. Someone who knew what I said I&apos;d do, asked me whether I did it, and called me out when I didn&apos;t.
+              </p>
+              <p>
+                GrindProof is that, automated. No streaks to game. No badges. Just a morning plan, an evening reckon, and a weekly roast with the receipts.
+              </p>
+              <p>
+                If you want a tool that&apos;s nice to you, this isn&apos;t it. If you want one that catches you when you slip — sign up.
+              </p>
+            </div>
+            <p className="mt-6 text-base italic text-zinc-400">
+              — Alfred Inyang, founder of GrindProof
+            </p>
+          </div>
+        </section>
+
         {/* Final CTA */}
         <div className="px-4 py-16 text-center">
           <RoastCounter />
-          <Link
-            href="/auth/signup"
+          <SignupCta
+            variant="footer"
             className="inline-block rounded-full bg-brand px-8 py-4 text-base font-semibold text-brand-foreground transition-opacity hover:opacity-90"
           >
             Ready to Stop Bullshitting? Let&apos;s Go
-          </Link>
+          </SignupCta>
         </div>
       </main>
 

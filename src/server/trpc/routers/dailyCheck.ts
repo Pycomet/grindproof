@@ -2,6 +2,7 @@ import { z } from "zod";
 import { router, protectedProcedure } from "../context";
 import { computeUserPatterns } from "@/lib/ai/patterns";
 import { fireAndForgetScoreChange } from "@/lib/accountability/hooks";
+import { captureServerEvent } from "@/lib/posthog/server";
 
 export const dailyCheckRouter = router({
   getMorningSchedule: protectedProcedure.query(async ({ ctx }) => {
@@ -41,6 +42,21 @@ export const dailyCheckRouter = router({
       .gte("created_at", today.toISOString())
       .lt("created_at", tomorrow.toISOString())
       .maybeSingle();
+
+    // GRI-6 funnel event: user returns 24-48h after signup and reaches a
+    // meaningful surface (the dashboard's morning view). Fired server-side
+    // because client-side day-2 detection is unreliable across devices.
+    // PostHog funnel deduplication handles repeated fires inside the window.
+    const signupAt = Date.parse(ctx.user.created_at ?? "");
+    if (Number.isFinite(signupAt)) {
+      const hoursSinceSignup = (Date.now() - signupAt) / 3_600_000;
+      if (hoursSinceSignup >= 24 && hoursSinceSignup <= 48) {
+        captureServerEvent(userId, "returned_day_2", {
+          user_id: userId,
+          hours_since_signup: Math.round(hoursSinceSignup * 10) / 10,
+        }).catch(() => {});
+      }
+    }
 
     return {
       yesterdayIncomplete: yesterdayTasks || [],
@@ -192,6 +208,32 @@ export const dailyCheckRouter = router({
         .insert({ user_id: ctx.user.id, type: "evening" });
       if (eveningErr && eveningErr.code !== "23505") {
         throw new Error(`Failed to record check-in: ${eveningErr.message}`);
+      }
+
+      // Server-side funnel event — GRI-6 requires this fires from the server,
+      // not the client, so it can't be blocked by ad-blockers. Per the spec
+      // this event is the *first* check-in only — gate the capture, don't just
+      // tag a property.
+      const { count: previousEveningCheckins } = await ctx.db
+        .from("daily_checks")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", ctx.user.id)
+        .eq("type", "evening");
+
+      if ((previousEveningCheckins ?? 0) <= 1) {
+        const signupAtMs = ctx.user.created_at
+          ? Date.parse(ctx.user.created_at)
+          : NaN;
+        const timeToFirstCheckin = Number.isFinite(signupAtMs)
+          ? Math.max(0, Math.round((Date.now() - signupAtMs) / 1000))
+          : null;
+
+        captureServerEvent(ctx.user.id, "first_checkin_completed", {
+          user_id: ctx.user.id,
+          time_to_first_checkin_seconds: timeToFirstCheckin,
+          tasks_completed: completedIds.length,
+          tasks_skipped: skipIds.length,
+        }).catch(() => {}); // fire-and-forget
       }
 
       fireAndForgetScoreChange(ctx.db, ctx.user.id, "evening_reflection");
