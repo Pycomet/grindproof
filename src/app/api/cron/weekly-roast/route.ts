@@ -106,9 +106,22 @@ export async function GET(request: NextRequest) {
           ? wrapUntrustedBlock(reflectionLines.join("\n"))
           : "None provided.";
 
+      const { data: missedDays } = await supabase
+        .from("score_events")
+        .select("occurred_at")
+        .eq("user_id", setting.user_id)
+        .eq("reason", "missed_day")
+        .gte("occurred_at", weekStart.toISOString())
+        .lte("occurred_at", weekEnd.toISOString());
+
+      const missedDates = (missedDays ?? []).map((row) =>
+        row.occurred_at.slice(0, 10)
+      );
+
       const weekData = `
 Tasks this week: ${total} total, ${completed} completed, ${skipped} skipped, ${pending} still pending.
 Completion rate: ${completionRate}%.
+Missed-day events logged: ${missedDates.length}${missedDates.length > 0 ? ` (${missedDates.join(", ")})` : ""}.
 Reflections on skipped tasks:
 ${reflectionsBlock}
       `.trim();

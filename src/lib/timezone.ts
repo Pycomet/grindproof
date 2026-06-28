@@ -4,7 +4,7 @@
  * which is fragile across serverless runtimes.
  */
 
-interface UserLocalTime {
+export interface UserLocalTime {
   hour: number;
   minute: number;
   day: number; // 0 = Sunday

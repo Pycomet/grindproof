@@ -3,7 +3,6 @@
 import {
   createContext,
   useContext,
-  useState,
   useCallback,
   type ReactNode,
 } from "react";
@@ -34,13 +33,16 @@ function getDeviceName(): string {
 
 export function NotificationProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
-  const [isSubscribed, setIsSubscribed] = useState(false);
   const isSupported =
     typeof window !== "undefined" &&
     "serviceWorker" in navigator &&
     "PushManager" in window;
 
   const { data: vapidData } = trpc.notification.getPublicKey.useQuery(
+    undefined,
+    { enabled: !!user }
+  );
+  const { data: subscriptions } = trpc.notification.getSubscriptions.useQuery(
     undefined,
     { enabled: !!user }
   );
@@ -67,7 +69,6 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       deviceName: `${getDeviceName()} - ${navigator.userAgent.split(" ").pop()?.split("/")[0] || "Browser"}`,
     });
 
-    setIsSubscribed(true);
   }, [isSupported, vapidData, doSubscribe]);
 
   const unsubscribe = useCallback(async () => {
@@ -82,8 +83,9 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       await subscription.unsubscribe();
     }
 
-    setIsSubscribed(false);
   }, [isSupported, doUnsubscribe]);
+
+  const isSubscribed = (subscriptions?.length ?? 0) > 0;
 
   return (
     <NotificationContext.Provider

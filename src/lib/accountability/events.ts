@@ -15,7 +15,9 @@ export type ScoreEventReason =
   | "task_rescheduled"
   | "task_carried_over"
   | "evening_reflection"
-  | "snapshot_cron";
+  | "snapshot_cron"
+  | "missed_day"
+  | "reengaged";
 
 export interface ScoreEventInput {
   userId: string;
@@ -23,6 +25,7 @@ export interface ScoreEventInput {
   scoreAfter: number;
   reason: ScoreEventReason;
   relatedTaskId?: string | null;
+  allowNoop?: boolean;
 }
 
 export async function appendScoreEvent(
@@ -32,6 +35,7 @@ export async function appendScoreEvent(
   // Skip the noise: identical before/after with no related task id is just a
   // recompute that didn't move the needle.
   if (
+    !input.allowNoop &&
     input.scoreBefore !== null &&
     input.scoreBefore === input.scoreAfter &&
     !input.relatedTaskId

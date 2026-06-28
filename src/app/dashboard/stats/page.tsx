@@ -149,6 +149,8 @@ const EVENT_META: Record<string, { Icon: LucideIcon; cls: string; label: string 
   task_carried_over: { Icon: ArrowRight, cls: "text-tier-grinding",  label: "carried over"    },
   evening_reflection:{ Icon: CircleDot, cls: "text-tier-proven",    label: "evening check-in" },
   snapshot_cron:     { Icon: Diamond,   cls: "text-muted-foreground", label: "daily snapshot"  },
+  missed_day:        { Icon: XIcon,     cls: "text-tier-slacking",  label: "missed day (logged)" },
+  reengaged:         { Icon: Check,     cls: "text-tier-locked",    label: "re-engaged" },
 };
 
 function fmtTime(iso: string) {

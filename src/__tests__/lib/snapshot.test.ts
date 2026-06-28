@@ -125,6 +125,18 @@ describe("appendScoreEvent", () => {
     expect(insert).not.toHaveBeenCalled();
   });
 
+  it("records no-op events when allowNoop is true", async () => {
+    const { db, insert } = spyDb();
+    await appendScoreEvent(db, {
+      userId: "u1",
+      scoreBefore: 60,
+      scoreAfter: 60,
+      reason: "missed_day",
+      allowNoop: true,
+    });
+    expect(insert).toHaveBeenCalledTimes(1);
+  });
+
   it("still records events on first compute (scoreBefore=null)", async () => {
     const { db, insert } = spyDb();
     await appendScoreEvent(db, {

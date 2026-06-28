@@ -163,16 +163,58 @@ function NotificationsSection() {
         />
       </div>
 
-      {/* Push notifications - disabled (T-025) */}
-      <div className="flex items-center justify-between opacity-60 cursor-not-allowed rounded-md border border-border bg-card p-3">
-        <div>
-          <p className="text-sm font-medium">Push notifications</p>
-          <p className="text-xs text-zinc-500">Coming soon — email is the active channel today.</p>
+      {/* Push notifications */}
+      <div className="space-y-3 rounded-md border border-border bg-card p-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium">Push notifications</p>
+            <p className="text-xs text-zinc-500">
+              Browser reminders for plan + reckon + re-entry nudges.
+            </p>
+          </div>
+          <ToggleSwitch
+            checked={settings.pushNotificationsEnabled}
+            onChange={(v) => toggle("pushNotificationsEnabled", v)}
+            disabled={!isSupported}
+          />
         </div>
-        <div className="text-xs text-zinc-500 bg-accent px-2 py-1 rounded-sm">
-          Soon
-        </div>
+
+        {settings.pushNotificationsEnabled && (
+          <div className="flex items-center justify-between gap-2 rounded-sm border border-border px-3 py-2">
+            <p className="text-xs text-zinc-500">
+              {isSubscribed
+                ? "This browser is subscribed to push notifications."
+                : "This browser is not subscribed yet."}
+            </p>
+            {isSubscribed ? (
+              <button
+                onClick={() => {
+                  unsubscribe().catch(() => {});
+                }}
+                className="rounded-sm border border-border px-2 py-1 text-xs font-medium hover:bg-accent transition-colors duration-150"
+              >
+                Unsubscribe
+              </button>
+            ) : (
+              <button
+                onClick={() => {
+                  subscribe().catch(() => {});
+                }}
+                disabled={!isSupported}
+                className="rounded-sm bg-primary px-2 py-1 text-xs font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50 transition-opacity duration-150"
+              >
+                Subscribe
+              </button>
+            )}
+          </div>
+        )}
       </div>
+
+      {!isSupported && (
+        <p className="text-xs text-zinc-500">
+          Push notifications are not supported in this browser.
+        </p>
+      )}
 
       {updateSettings.isError && (
         <p className="text-sm text-error">Failed to update settings</p>
