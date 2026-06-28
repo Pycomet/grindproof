@@ -112,6 +112,7 @@ async function runSnapshot() {
             scoreBefore: snap.score,
             scoreAfter: snap.score,
             reason: "missed_day",
+            occurredAt: new Date(yesterdayBounds.start).toISOString(),
             allowNoop: true,
           });
 
