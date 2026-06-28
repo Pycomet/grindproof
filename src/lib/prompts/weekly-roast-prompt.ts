@@ -36,6 +36,10 @@ Focus on:
    - Comment on score trend (improving, declining, stagnant)
    - If streak is long, acknowledge it; if broken recently, call it out
    - Tie the score into your overall assessment
+8. Missed-day accountability:
+   - Treat "missed day" entries as explicit failures, not missing data
+   - If missed days exist, call them out directly
+   - Differentiate missed days from skipped tasks in your wording
 
 Reflection Guidelines:
 - If you see "distracted" more than once, call it out as a focus problem

@@ -23,6 +23,7 @@ import {
   sendMorningEmail,
   sendEveningEmail,
   sendWeeklyRoastEmail,
+  sendReengagementEmail,
 } from "@/lib/notifications/email-service";
 
 // -------------------------------------------------------------------------
@@ -289,5 +290,24 @@ describe("sendWeeklyRoastEmail", () => {
     await expect(
       sendWeeklyRoastEmail("user@example.com", { ...BASE_DATA, recommendations: [] })
     ).resolves.not.toThrow();
+  });
+});
+
+describe("sendReengagementEmail", () => {
+  it("sends email with provided subject and CTA link", async () => {
+    await sendReengagementEmail("user@example.com", {
+      name: "Alex",
+      subject: "Brutal week. Don't disappear now.",
+      title: "Brutal stretch: 4 missed days.",
+      body: "Most people quit right here.",
+      cta: "Plan tomorrow",
+      url: "https://grindproof.co/dashboard?uid=u1&day=2026-06-28&sig=abc",
+    });
+
+    expect(mockEmailsSend).toHaveBeenCalledOnce();
+    const { subject, html } = mockEmailsSend.mock.calls[0][0];
+    expect(subject).toContain("Brutal week");
+    expect(html).toContain("Plan tomorrow");
+    expect(html).toContain("uid=u1");
   });
 });

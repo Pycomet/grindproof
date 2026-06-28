@@ -121,3 +121,32 @@ export async function sendWeeklyRoastEmail(
     `,
   });
 }
+
+export async function sendReengagementEmail(
+  to: string,
+  data: {
+    name: string | null;
+    subject: string;
+    title: string;
+    body: string;
+    cta: string;
+    url: string;
+  }
+) {
+  const greeting = data.name ? `${escapeHtml(data.name)},` : "there,";
+
+  await resend.emails.send({
+    from: FROM_EMAIL,
+    to,
+    subject: data.subject,
+    html: `
+      <div style="font-family: system-ui, -apple-system, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px 16px;">
+        <h2 style="margin: 0 0 8px;">${escapeHtml(data.title)}</h2>
+        <p style="color: #52525b; margin: 0 0 16px;">Hey ${greeting}</p>
+        <p style="color: #52525b; margin: 0 0 24px;">${escapeHtml(data.body)}</p>
+        <a href="${escapeHtml(data.url)}" style="display: inline-block; background: #18181b; color: #fff; padding: 12px 24px; border-radius: 9999px; text-decoration: none; font-weight: 600;">${escapeHtml(data.cta)}</a>
+        <p style="color: #a1a1aa; font-size: 12px; margin-top: 32px;">GrindProof - Silence is logged. Progress still counts.</p>
+      </div>
+    `,
+  });
+}

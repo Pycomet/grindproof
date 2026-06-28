@@ -14,11 +14,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { env } from "@/lib/env";
 import { verifyCronSecret } from "@/lib/cron-auth";
-import { getUserLocalTime } from "@/lib/timezone";
+import { getUserLocalTime, getUserDateBounds } from "@/lib/timezone";
 import { computeUserAccountability } from "@/lib/accountability/compute";
 import { upsertSnapshot } from "@/lib/accountability/snapshot";
 import { appendScoreEvent } from "@/lib/accountability/events";
 import { shiftLocalDate } from "@/lib/accountability/active-day";
+import { captureServerEvent } from "@/lib/posthog/server";
+import { wasActiveOnLocalDate } from "@/lib/accountability/reengagement";
 import type { Database } from "@/lib/supabase/types";
 
 async function runSnapshot() {
@@ -82,6 +84,43 @@ async function runSnapshot() {
         scoreAfter: snap.score,
         reason: "snapshot_cron",
       });
+
+      const yesterdayLocalDate = shiftLocalDate(now, tz, -1);
+      const wasActiveYesterday = await wasActiveOnLocalDate(
+        supabase,
+        setting.user_id,
+        tz,
+        yesterdayLocalDate
+      );
+
+      if (!wasActiveYesterday) {
+        const yesterdayBounds = getUserDateBounds(now, tz, -1);
+
+        const { data: existingMissed } = await supabase
+          .from("score_events")
+          .select("id")
+          .eq("user_id", setting.user_id)
+          .eq("reason", "missed_day")
+          .gte("occurred_at", yesterdayBounds.start)
+          .lte("occurred_at", yesterdayBounds.end)
+          .limit(1)
+          .maybeSingle();
+
+        if (!existingMissed) {
+          await appendScoreEvent(supabase, {
+            userId: setting.user_id,
+            scoreBefore: snap.score,
+            scoreAfter: snap.score,
+            reason: "missed_day",
+            allowNoop: true,
+          });
+
+          captureServerEvent(setting.user_id, "missed_day", {
+            local_date: yesterdayLocalDate,
+            timezone: tz,
+          }).catch(() => {});
+        }
+      }
 
       snapshotsWritten++;
     } catch (err) {

@@ -47,6 +47,7 @@ export type Database = {
           id: string;
           name: string | null;
           email: string | null;
+          last_reengaged_date: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -54,6 +55,7 @@ export type Database = {
           id: string;
           name?: string | null;
           email?: string | null;
+          last_reengaged_date?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -61,6 +63,7 @@ export type Database = {
           id?: string;
           name?: string | null;
           email?: string | null;
+          last_reengaged_date?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -367,6 +370,7 @@ export type Database = {
           user_id: string;
           type: string;
           sent_date: string;
+          variant: string | null;
           created_at: string;
         };
         Insert: {
@@ -374,6 +378,7 @@ export type Database = {
           user_id: string;
           type: string;
           sent_date: string;
+          variant?: string | null;
           created_at?: string;
         };
         Update: {
@@ -381,6 +386,7 @@ export type Database = {
           user_id?: string;
           type?: string;
           sent_date?: string;
+          variant?: string | null;
           created_at?: string;
         };
         Relationships: [

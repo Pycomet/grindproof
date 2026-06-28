@@ -80,7 +80,10 @@ export function MorningCheckIn() {
   const todayTasks = (data.todayTasks ?? []) as any[];
 
   return (
-    <div className="overflow-hidden rounded-md border border-border bg-card">
+    <div
+      id="morning-checkin"
+      className="overflow-hidden rounded-md border border-border bg-card"
+    >
       {/* Step indicator */}
       <div className="flex items-center justify-between border-b border-border px-4 py-2">
         <span className="gp-eyebrow">Morning Check-in</span>
