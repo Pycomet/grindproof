@@ -25,6 +25,7 @@ export interface ScoreEventInput {
   scoreAfter: number;
   reason: ScoreEventReason;
   relatedTaskId?: string | null;
+  occurredAt?: string;
   allowNoop?: boolean;
 }
 
@@ -49,6 +50,7 @@ export async function appendScoreEvent(
     score_after: input.scoreAfter,
     reason: input.reason,
     related_task_id: input.relatedTaskId ?? null,
+    occurred_at: input.occurredAt,
   });
 }
 

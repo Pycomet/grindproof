@@ -67,7 +67,7 @@ export function ReentryBanner() {
           <p className="mt-1 text-xs text-muted-foreground">{copy.body}</p>
         </div>
         <a
-          href="#morning-checkin"
+          href="/dashboard"
           className="shrink-0 rounded-full bg-zinc-50 px-4 py-2 text-xs font-semibold text-zinc-900 transition-opacity hover:opacity-90"
         >
           {copy.cta}

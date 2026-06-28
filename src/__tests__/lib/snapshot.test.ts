@@ -102,6 +102,7 @@ describe("appendScoreEvent", () => {
       scoreAfter: 65,
       reason: "task_completed",
       relatedTaskId: "task-abc",
+      occurredAt: "2026-06-28T00:00:00.000Z",
     });
     expect(insert).toHaveBeenCalledTimes(1);
     const call = insert.mock.calls[0] as unknown as [Record<string, unknown>];
@@ -111,6 +112,7 @@ describe("appendScoreEvent", () => {
       score_after: 65,
       reason: "task_completed",
       related_task_id: "task-abc",
+      occurred_at: "2026-06-28T00:00:00.000Z",
     });
   });
 
