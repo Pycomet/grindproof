@@ -86,6 +86,32 @@ export default function Home() {
           </div>
         </div>
 
+        {/* Promo Video Section */}
+        <div className="px-4 py-16">
+          <div className="mx-auto max-w-5xl">
+            <h2 className="text-3xl font-bold text-zinc-50 mb-12 text-center font-[family-name:var(--font-space-grotesk)]">
+              You&apos;ve said this before.
+            </h2>
+            <div className="overflow-hidden rounded-md border border-zinc-800 bg-zinc-900">
+              <video
+                src="/grindproof-promo.mp4"
+                poster="/grindproof-promo-poster.jpg"
+                autoPlay
+                muted
+                loop
+                playsInline
+                width={1920}
+                height={1080}
+                className="aspect-video w-full"
+                aria-label="GrindProof promo: someone promises a 5am wake-up and a gym streak, then gets roasted for the gap"
+              />
+            </div>
+            <p className="mt-4 text-center text-sm text-zinc-400">
+              Tracks what you plan. Proves what you did. Roasts you for the gap — in 15 seconds.
+            </p>
+          </div>
+        </div>
+
         {/* Product Preview Section */}
         <div className="px-4 py-16">
           <div className="mx-auto max-w-5xl">
