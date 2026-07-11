@@ -1,43 +1,52 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# GrindProof
 
-## Getting Started
+**Track what you plan. Prove what you did. Get roasted for the gap.**
 
-First, run the development server:
+![GrindProof: promise a 5am wake-up, get roasted for the gap](.github/grindproof-promo.gif)
+
+Live at [grindproof.co](https://grindproof.co).
+
+GrindProof is an AI accountability app for people who are done lying to themselves. It's not a habit tracker — no streaks to game, no badges, no confetti. You say what you'll do, it checks whether you did it, and it calls you out when you didn't.
+
+## The three rituals
+
+- **Morning Check-in** — plan the day. Yesterday's unfinished tasks get carried over or confronted, not quietly forgotten.
+- **Evening Reality Check** — mark what got done. Whatever didn't, you explain — and the excuse goes on the record.
+- **Weekly Roast** — every Sunday, a report with the receipts: completion rate, streaks worth keeping, the tasks you've skipped every single day, and recommendations that don't spare your feelings.
+
+## Tech stack
+
+- [Next.js 16](https://nextjs.org) (App Router) with React 19, deployed on Vercel
+- [Supabase](https://supabase.com) — auth and Postgres
+- tRPC + TanStack Query for the API layer
+- AI SDK with Google Gemini for check-in analysis and roast generation
+- Tailwind CSS 4, Radix UI, Lucide icons
+- Resend for email, Web Push for notifications, QStash for scheduled jobs, PostHog for analytics
+- Vitest for tests
+
+## Getting started
+
+Copy the environment template and fill in your keys (Supabase, Gemini, VAPID, Resend, QStash):
 
 ```bash
+cp .env.example .env.local
+```
+
+Install and run:
+
+```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-## Generation Icons
+Open [http://localhost:3000](http://localhost:3000).
 
-Run the generation script:
+Other scripts:
+
 ```bash
-node scripts/generate-icons.js
+npm run test:run          # run the test suite
+npm run generate:icons    # regenerate PWA icons
+npm run build             # production build
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Database schema and migrations live in `supabase/`.
