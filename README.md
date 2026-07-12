@@ -14,6 +14,18 @@ GrindProof is an AI accountability app for people who are done lying to themselv
 - **Evening Reality Check** — mark what got done. Whatever didn't, you explain — and the excuse goes on the record.
 - **Weekly Roast** — every Sunday, a report with the receipts: completion rate, streaks worth keeping, the tasks you've skipped every single day, and recommendations that don't spare your feelings.
 
+## Set up your iPhone properly
+
+All three rituals arrive as notifications, and iPhones only deliver notifications to installed apps. The app walks you through this after signup; here is the same drill:
+
+1. Open [grindproof.co](https://grindproof.co) in Safari — not Chrome, not the Instagram browser.
+2. Tap the Share button, then "Add to Home Screen", then Add.
+3. Open GrindProof from the Home Screen icon and log in again — the installed app doesn't share Safari's session. That's an Apple thing, not a bug.
+4. Enable notifications when asked, then send yourself the test roast to prove they arrive.
+5. If nothing comes: check Focus modes (Do Not Disturb, Sleep, Work), Low Power Mode, and Settings → Notifications → GrindProof.
+
+Android and desktop skip the install — enabling notifications is enough.
+
 ## Tech stack
 
 - [Next.js 16](https://nextjs.org) (App Router) with React 19, deployed on Vercel
