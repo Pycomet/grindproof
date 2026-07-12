@@ -10,7 +10,7 @@ import { getPlatform, isStandalone } from "@/lib/setup/device";
 export function SetupChecklistCard() {
   const utils = trpc.useUtils();
   const { data } = trpc.profile.getSetupState.useQuery();
-  const { isSubscribed } = useNotificationContext();
+  const { isSubscribedOnThisDevice } = useNotificationContext();
   const dismiss = trpc.profile.setSetupState.useMutation({
     onSuccess: () => utils.profile.getSetupState.invalidate(),
   });
@@ -25,7 +25,7 @@ export function SetupChecklistCard() {
 
   const rows = [
     { label: "Install the app", done: installDone },
-    { label: "Turn on notifications", done: isSubscribed },
+    { label: "Turn on notifications", done: isSubscribedOnThisDevice },
     { label: "Receive a test roast", done: false },
   ];
 
