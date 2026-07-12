@@ -4,6 +4,7 @@ import { TaskProvider } from "@/contexts/TaskContext";
 import { NotificationProvider } from "@/contexts/NotificationContext";
 import { ChatProvider } from "@/contexts/ChatContext";
 import { MobileNav } from "@/components/MobileNav";
+import { SetupRedirect } from "@/components/setup/SetupRedirect";
 
 export default function DashboardLayout({
   children,
@@ -13,6 +14,7 @@ export default function DashboardLayout({
   return (
     <TaskProvider>
       <NotificationProvider>
+        <SetupRedirect />
         <ChatProvider>
           <div className="pb-16 lg:pb-0">
             {children}
