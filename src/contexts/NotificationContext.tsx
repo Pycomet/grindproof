@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import { trpc } from "@/lib/trpc/client";
+import { urlBase64ToUint8Array } from "@/lib/notifications/vapid";
 import { useAuth } from "./AuthContext";
 
 interface NotificationContextType {
@@ -93,7 +94,10 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     const registration = await navigator.serviceWorker.ready;
     const subscription = await registration.pushManager.subscribe({
       userVisibleOnly: true,
-      applicationServerKey: vapidData.publicKey,
+      // WebKit historically only accepts a BufferSource here, not the raw
+      // base64url string — pass a Uint8Array so this works on every browser,
+      // not just the ones that added string support.
+      applicationServerKey: urlBase64ToUint8Array(vapidData.publicKey),
     });
 
     const json = subscription.toJSON();
