@@ -12,7 +12,7 @@ import { useAuth } from "./AuthContext";
 interface NotificationContextType {
   isSubscribed: boolean;
   isSupported: boolean;
-  subscribe: () => Promise<void>;
+  subscribe: () => Promise<"subscribed" | "denied" | "unsupported">;
   unsubscribe: () => Promise<void>;
 }
 
@@ -33,6 +33,7 @@ function getDeviceName(): string {
 
 export function NotificationProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
+  const utils = trpc.useUtils();
   const isSupported =
     typeof window !== "undefined" &&
     "serviceWorker" in navigator &&
@@ -50,10 +51,10 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   const { mutateAsync: doUnsubscribe } = trpc.notification.unsubscribe.useMutation();
 
   const subscribe = useCallback(async () => {
-    if (!isSupported || !vapidData?.publicKey) return;
+    if (!isSupported || !vapidData?.publicKey) return "unsupported" as const;
 
     const permission = await Notification.requestPermission();
-    if (permission !== "granted") return;
+    if (permission !== "granted") return "denied" as const;
 
     const registration = await navigator.serviceWorker.ready;
     const subscription = await registration.pushManager.subscribe({
@@ -69,7 +70,9 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       deviceName: `${getDeviceName()} - ${navigator.userAgent.split(" ").pop()?.split("/")[0] || "Browser"}`,
     });
 
-  }, [isSupported, vapidData, doSubscribe]);
+    await utils.notification.getSubscriptions.invalidate();
+    return "subscribed" as const;
+  }, [isSupported, vapidData, doSubscribe, utils]);
 
   const unsubscribe = useCallback(async () => {
     if (!isSupported) return;
@@ -81,9 +84,10 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         endpoint: subscription.endpoint,
       });
       await subscription.unsubscribe();
+      await utils.notification.getSubscriptions.invalidate();
     }
 
-  }, [isSupported, doUnsubscribe]);
+  }, [isSupported, doUnsubscribe, utils]);
 
   const isSubscribed = (subscriptions?.length ?? 0) > 0;
 

@@ -81,6 +81,7 @@ export default function SetupPage() {
   const [testPushConfirmed, setTestPushConfirmed] = useState(false);
   const [testPushFailed, setTestPushFailed] = useState(false);
   const [subscribeError, setSubscribeError] = useState(false);
+  const [permissionDenied, setPermissionDenied] = useState(false);
   const [copied, setCopied] = useState(false);
 
   useEffect(() => setMounted(true), []);
@@ -158,7 +159,8 @@ export default function SetupPage() {
 
   if (screen === "enable-notifications") {
     const denied =
-      typeof Notification !== "undefined" && Notification.permission === "denied";
+      permissionDenied ||
+      (typeof Notification !== "undefined" && Notification.permission === "denied");
     return (
       <Shell>
         <Title>Turn on the accountability.</Title>
@@ -177,7 +179,8 @@ export default function SetupPage() {
             onClick={async () => {
               setSubscribeError(false);
               try {
-                await subscribe();
+                const result = await subscribe();
+                if (result === "denied") setPermissionDenied(true);
               } catch {
                 setSubscribeError(true);
               }
