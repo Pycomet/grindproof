@@ -20,16 +20,24 @@ import {
   type Platform,
 } from "@/lib/setup/device";
 
-function Shell({ children }: { children: React.ReactNode }) {
+function Shell({
+  children,
+  showSkip = true,
+}: {
+  children: React.ReactNode;
+  showSkip?: boolean;
+}) {
   return (
     <div className="mx-auto flex min-h-[80vh] max-w-xl flex-col justify-center gap-6 px-4 py-12">
       {children}
-      <Link
-        href="/dashboard"
-        className="text-center text-sm text-zinc-500 transition-colors hover:text-zinc-300"
-      >
-        Skip for now
-      </Link>
+      {showSkip && (
+        <Link
+          href="/dashboard"
+          className="text-center text-sm text-zinc-500 transition-colors hover:text-zinc-300"
+        >
+          Skip for now
+        </Link>
+      )}
     </div>
   );
 }
@@ -107,8 +115,10 @@ export default function SetupPage() {
         </p>
         <button
           onClick={() => {
-            navigator.clipboard.writeText("https://grindproof.co/dashboard/setup");
-            setCopied(true);
+            navigator.clipboard
+              .writeText("https://grindproof.co/dashboard/setup")
+              .then(() => setCopied(true))
+              .catch(() => {});
           }}
           className="inline-flex items-center justify-center gap-2 rounded-full bg-brand px-6 py-3 text-sm font-semibold text-brand-foreground transition-opacity hover:opacity-90"
         >
@@ -242,15 +252,19 @@ export default function SetupPage() {
 
   // done
   return (
-    <Shell>
+    <Shell showSkip={false}>
       <Title>Set up. No excuses left.</Title>
       <p className="text-zinc-300">
         Notifications verified. The 9am check-in finds you tomorrow.
       </p>
       <button
         onClick={async () => {
-          await setState.mutateAsync({ setupState: "completed" });
-          router.replace("/dashboard");
+          try {
+            await setState.mutateAsync({ setupState: "completed" });
+            router.replace("/dashboard");
+          } catch {
+            // handled by setState.isError below
+          }
         }}
         disabled={setState.isPending}
         className="inline-flex items-center justify-center gap-2 rounded-full bg-brand px-6 py-3 text-sm font-semibold text-brand-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
@@ -258,6 +272,9 @@ export default function SetupPage() {
         <Check className="h-4 w-4" />
         Go to dashboard
       </button>
+      {setState.isError && (
+        <p className="text-sm text-red-400">That didn&apos;t save. Try again.</p>
+      )}
     </Shell>
   );
 }
