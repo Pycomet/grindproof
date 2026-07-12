@@ -1,6 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, afterEach, vi } from "vitest";
 import {
   getPlatform,
+  isStandalone,
   selectSetupScreen,
   type SetupSignals,
 } from "@/lib/setup/device";
@@ -65,5 +66,35 @@ describe("selectSetupScreen", () => {
         testPushConfirmed: true,
       })
     ).toBe("done");
+  });
+});
+
+describe("isStandalone", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    delete (window.navigator as any).standalone;
+  });
+
+  it("returns true when matchMedia reports (display-mode: standalone) matches", () => {
+    vi.stubGlobal("matchMedia", vi.fn().mockReturnValue({ matches: true }));
+    expect(isStandalone()).toBe(true);
+  });
+
+  it("returns true via legacy fallback when matchMedia reports no match but navigator.standalone is true", () => {
+    vi.stubGlobal("matchMedia", vi.fn().mockReturnValue({ matches: false }));
+    Object.defineProperty(window.navigator, "standalone", {
+      value: true,
+      configurable: true,
+    });
+    expect(isStandalone()).toBe(true);
+  });
+
+  it("returns false when neither matchMedia nor navigator.standalone signal standalone mode", () => {
+    vi.stubGlobal("matchMedia", vi.fn().mockReturnValue({ matches: false }));
+    Object.defineProperty(window.navigator, "standalone", {
+      value: false,
+      configurable: true,
+    });
+    expect(isStandalone()).toBe(false);
   });
 });
