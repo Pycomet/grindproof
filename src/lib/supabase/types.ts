@@ -50,6 +50,7 @@ export type Database = {
           last_reengaged_date: string | null;
           created_at: string;
           updated_at: string;
+          setup_state: string;
         };
         Insert: {
           id: string;
@@ -58,6 +59,7 @@ export type Database = {
           last_reengaged_date?: string | null;
           created_at?: string;
           updated_at?: string;
+          setup_state?: string;
         };
         Update: {
           id?: string;
@@ -66,6 +68,7 @@ export type Database = {
           last_reengaged_date?: string | null;
           created_at?: string;
           updated_at?: string;
+          setup_state?: string;
         };
         Relationships: [
           {
