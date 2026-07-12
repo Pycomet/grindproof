@@ -81,7 +81,7 @@ export default function SetupPage() {
   const [mounted, setMounted] = useState(false);
   const [testPushConfirmed, setTestPushConfirmed] = useState(false);
   const [testPushFailed, setTestPushFailed] = useState(false);
-  const [subscribeError, setSubscribeError] = useState(false);
+  const [subscribeError, setSubscribeError] = useState<string | null>(null);
   const [permissionDenied, setPermissionDenied] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -178,12 +178,14 @@ export default function SetupPage() {
         ) : (
           <button
             onClick={async () => {
-              setSubscribeError(false);
+              setSubscribeError(null);
               try {
                 const result = await subscribe();
                 if (result === "denied") setPermissionDenied(true);
-              } catch {
-                setSubscribeError(true);
+              } catch (err) {
+                const message =
+                  err instanceof Error ? err.message : String(err);
+                setSubscribeError(message);
               }
             }}
             disabled={!isSupported}
@@ -195,7 +197,8 @@ export default function SetupPage() {
         )}
         {subscribeError && (
           <p className="text-sm text-red-400">
-            That didn&apos;t work. Reload and try again.
+            That didn&apos;t work: {subscribeError}. Reload and try again, and
+            tell us what it said if it keeps happening.
           </p>
         )}
       </Shell>
