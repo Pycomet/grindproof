@@ -75,7 +75,8 @@ function StepCard({
 export default function SetupPage() {
   const router = useRouter();
   const utils = trpc.useUtils();
-  const { isSubscribed, isSupported, subscribe } = useNotificationContext();
+  const { isSubscribedOnThisDevice, deviceStatusKnown, isSupported, subscribe } =
+    useNotificationContext();
 
   const [mounted, setMounted] = useState(false);
   const [testPushConfirmed, setTestPushConfirmed] = useState(false);
@@ -96,12 +97,12 @@ export default function SetupPage() {
     [mounted]
   );
 
-  if (!mounted) return null;
+  if (!mounted || !deviceStatusKnown) return null;
 
   const screen = selectSetupScreen({
     platform,
     standalone: isStandalone(),
-    subscribed: isSubscribed,
+    subscribed: isSubscribedOnThisDevice,
     testPushConfirmed,
   });
 

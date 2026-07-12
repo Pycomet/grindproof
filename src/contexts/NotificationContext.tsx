@@ -4,13 +4,24 @@ import {
   createContext,
   useContext,
   useCallback,
+  useEffect,
+  useState,
   type ReactNode,
 } from "react";
 import { trpc } from "@/lib/trpc/client";
 import { useAuth } from "./AuthContext";
 
 interface NotificationContextType {
+  /** Any device on the account has an active subscription. */
   isSubscribed: boolean;
+  /**
+   * THIS device/browser holds a push subscription. Setup flows must use
+   * this, not isSubscribed — the account-wide flag hides an unsubscribed
+   * device behind subscriptions created on other devices.
+   */
+  isSubscribedOnThisDevice: boolean;
+  /** False until the device subscription check resolves; gate setup UI on it. */
+  deviceStatusKnown: boolean;
   isSupported: boolean;
   subscribe: () => Promise<"subscribed" | "denied" | "unsupported">;
   unsubscribe: () => Promise<void>;
@@ -50,6 +61,29 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   const { mutateAsync: doSubscribe } = trpc.notification.subscribe.useMutation();
   const { mutateAsync: doUnsubscribe } = trpc.notification.unsubscribe.useMutation();
 
+  // null = not yet checked. Resolved from this device's actual push
+  // subscription, independent of what other devices did on the account.
+  const [deviceSubscribed, setDeviceSubscribed] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    if (!isSupported) {
+      setDeviceSubscribed(false);
+      return;
+    }
+    let cancelled = false;
+    navigator.serviceWorker.ready
+      .then((registration) => registration.pushManager.getSubscription())
+      .then((subscription) => {
+        if (!cancelled) setDeviceSubscribed(subscription !== null);
+      })
+      .catch(() => {
+        if (!cancelled) setDeviceSubscribed(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isSupported]);
+
   const subscribe = useCallback(async () => {
     if (!isSupported || !vapidData?.publicKey) return "unsupported" as const;
 
@@ -71,6 +105,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     });
 
     await utils.notification.getSubscriptions.invalidate();
+    setDeviceSubscribed(true);
     return "subscribed" as const;
   }, [isSupported, vapidData, doSubscribe, utils]);
 
@@ -85,6 +120,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       });
       await subscription.unsubscribe();
       await utils.notification.getSubscriptions.invalidate();
+      setDeviceSubscribed(false);
     }
 
   }, [isSupported, doUnsubscribe, utils]);
@@ -93,7 +129,14 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
 
   return (
     <NotificationContext.Provider
-      value={{ isSubscribed, isSupported, subscribe, unsubscribe }}
+      value={{
+        isSubscribed,
+        isSubscribedOnThisDevice: deviceSubscribed === true,
+        deviceStatusKnown: deviceSubscribed !== null,
+        isSupported,
+        subscribe,
+        unsubscribe,
+      }}
     >
       {children}
     </NotificationContext.Provider>
