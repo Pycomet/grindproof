@@ -56,10 +56,12 @@ describe("profile setup state", () => {
   });
 
   it("rejects invalid states", async () => {
+    upsertMock.mockResolvedValue({ error: null });
     const caller = profileRouter.createCaller(makeCtx());
     await expect(
       // @ts-expect-error intentionally invalid
       caller.setSetupState({ setupState: "nope" })
     ).rejects.toThrow();
+    expect(upsertMock).not.toHaveBeenCalled();
   });
 });
