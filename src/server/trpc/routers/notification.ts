@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { router, protectedProcedure } from "../context";
 import { NOTIFICATION_CONFIG } from "@/lib/config";
+import { sendPushToUser } from "@/lib/notifications/push-service";
 
 export const notificationRouter = router({
   subscribe: protectedProcedure
@@ -159,5 +160,23 @@ export const notificationRouter = router({
 
   getPublicKey: protectedProcedure.query(() => {
     return { publicKey: NOTIFICATION_CONFIG.VAPID.PUBLIC_KEY };
+  }),
+
+  sendTestPush: protectedProcedure.mutation(async ({ ctx }) => {
+    const result = await sendPushToUser(ctx.user.id, {
+      title: "GrindProof is watching",
+      body: "Test roast delivered. Notifications work. No excuses now.",
+      url: "/dashboard/setup",
+      tag: "test-push",
+      urgency: "high",
+      ttl: 300,
+    });
+
+    if (result.successful === 0) {
+      throw new Error(
+        "No device received the test push. Check that notifications are enabled."
+      );
+    }
+    return result;
   }),
 });
