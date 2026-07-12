@@ -16,7 +16,14 @@ export interface NotificationPayload {
   url?: string;
   data?: Record<string, unknown>;
   tag?: string;
+  /** Push service delivery priority. iOS may delay non-high pushes for battery reasons. */
+  urgency?: "very-low" | "low" | "normal" | "high";
+  /** Seconds the push service keeps an undeliverable notification. A stale check-in shouldn't arrive hours late. */
+  ttl?: number;
 }
+
+const DEFAULT_URGENCY = "high";
+const DEFAULT_TTL_SECONDS = 3600;
 
 webpush.setVapidDetails(
   env.VAPID_EMAIL,
@@ -71,7 +78,10 @@ export async function sendPushNotification(
     },
   });
 
-  await webpush.sendNotification(toWebPushSubscription(subscription), serialized);
+  await webpush.sendNotification(toWebPushSubscription(subscription), serialized, {
+    urgency: payload.urgency ?? DEFAULT_URGENCY,
+    TTL: payload.ttl ?? DEFAULT_TTL_SECONDS,
+  });
 }
 
 export async function sendToUser(
