@@ -16,6 +16,7 @@ import { ChatPanel } from "@/components/ChatPanel";
 import { AccountabilityWidget } from "@/components/AccountabilityWidget";
 import { Day1Orientation } from "@/components/Day1Orientation";
 import { ReentryBanner } from "@/components/ReentryBanner";
+import { SetupChecklistCard } from "@/components/setup/SetupChecklistCard";
 import { useEffect } from "react";
 
 function getGreeting(): string {
@@ -39,6 +40,7 @@ function DashboardContent() {
   return (
     <div className="mx-auto max-w-7xl lg:flex lg:gap-6 px-4 py-6 pb-20 lg:pb-6">
       <main className="flex-1 lg:max-w-xl space-y-3">
+        <SetupChecklistCard />
         <Day1Orientation />
         <ReentryBanner />
         <AccountabilityWidget />

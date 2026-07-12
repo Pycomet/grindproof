@@ -219,6 +219,13 @@ function NotificationsSection() {
       {updateSettings.isError && (
         <p className="text-sm text-error">Failed to update settings</p>
       )}
+
+      <Link
+        href="/dashboard/setup"
+        className="text-sm text-zinc-400 underline underline-offset-4 transition-colors hover:text-zinc-50"
+      >
+        Re-run notification setup
+      </Link>
     </section>
   );
 }
