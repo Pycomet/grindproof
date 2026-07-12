@@ -6,6 +6,9 @@ export const updateProfileSchema = z.object({
   name: z.string().optional(),
 });
 
+export const setupStateSchema = z.enum(["pending", "completed", "dismissed"]);
+export type SetupState = z.infer<typeof setupStateSchema>;
+
 export const profileRouter = router({
   getCurrent: protectedProcedure.query(async ({ ctx }) => {
     const { data, error } = await ctx.db
@@ -96,6 +99,32 @@ export const profileRouter = router({
         createdAt: new Date(data.created_at),
         updatedAt: new Date(data.updated_at),
       };
+    }),
+
+  getSetupState: protectedProcedure.query(async ({ ctx }) => {
+    const { data, error } = await ctx.db
+      .from("profiles")
+      .select("setup_state")
+      .eq("id", ctx.user.id)
+      .maybeSingle();
+
+    if (error) throw new Error(`Failed to fetch setup state: ${error.message}`);
+    const parsed = setupStateSchema.safeParse(data?.setup_state);
+    return { setupState: parsed.success ? parsed.data : ("pending" as const) };
+  }),
+
+  setSetupState: protectedProcedure
+    .input(z.object({ setupState: setupStateSchema }))
+    .mutation(async ({ ctx, input }) => {
+      // Profile row may not exist yet (see getCurrent) — upsert, not update.
+      const { error } = await ctx.db.from("profiles").upsert({
+        id: ctx.user.id,
+        email: ctx.user.email ?? null,
+        setup_state: input.setupState,
+      });
+
+      if (error) throw new Error(`Failed to update setup state: ${error.message}`);
+      return { setupState: input.setupState };
     }),
 
   deleteAccount: protectedProcedure.mutation(async ({ ctx }) => {
