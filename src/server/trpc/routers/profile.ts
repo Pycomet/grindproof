@@ -117,9 +117,11 @@ export const profileRouter = router({
     .input(z.object({ setupState: setupStateSchema }))
     .mutation(async ({ ctx, input }) => {
       // Profile row may not exist yet (see getCurrent) — upsert, not update.
+      // Only include email when we actually have one, so a dismiss/complete
+      // call can never null out a previously stored email.
       const { error } = await ctx.db.from("profiles").upsert({
         id: ctx.user.id,
-        email: ctx.user.email ?? null,
+        ...(ctx.user.email ? { email: ctx.user.email } : {}),
         setup_state: input.setupState,
       });
 
