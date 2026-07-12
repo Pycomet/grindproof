@@ -5,8 +5,20 @@
 self.addEventListener('push', function(event) {
   console.log('[Service Worker] Push received:', event);
 
+  // iOS revokes push permission for sites whose service worker receives a
+  // push without displaying a notification ("silent push"). Every code path
+  // below must end in showNotification, even when the payload is unusable.
+  const FALLBACK = {
+    body: 'You have a check-in waiting.',
+    icon: '/icons/icon-192x192.png',
+    badge: '/icons/icon-72x72.png',
+    tag: 'grindproof-notification',
+    data: { url: '/dashboard' },
+  };
+
   if (!event.data) {
     console.log('[Service Worker] Push event but no data');
+    event.waitUntil(self.registration.showNotification('GrindProof', FALLBACK));
     return;
   }
 
@@ -39,6 +51,7 @@ self.addEventListener('push', function(event) {
     );
   } catch (error) {
     console.error('[Service Worker] Error parsing push data:', error);
+    event.waitUntil(self.registration.showNotification('GrindProof', FALLBACK));
   }
 });
 

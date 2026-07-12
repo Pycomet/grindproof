@@ -88,6 +88,44 @@ describe("push-service", () => {
     const payloadArg = sendNotificationMock.mock.calls[0][1] as string;
     expect(payloadArg).toContain("Plan tomorrow");
     expect(payloadArg).toContain("/dashboard#morning-checkin");
+
+    const optionsArg = sendNotificationMock.mock.calls[0][2] as {
+      urgency?: string;
+      TTL?: number;
+    };
+    expect(optionsArg.urgency).toBe("high");
+    expect(optionsArg.TTL).toBe(3600);
+  });
+
+  it("allows overriding urgency and TTL per notification", async () => {
+    selectEqMock.mockImplementationOnce(() => ({
+      eq: vi.fn().mockResolvedValue({
+        data: [
+          {
+            endpoint: "https://push-1",
+            p256dh_key: "p256-1",
+            auth_key: "auth-1",
+          },
+        ],
+        error: null,
+      }),
+    }));
+
+    const mod = await import("@/lib/notifications/push-service");
+
+    await mod.sendPushToUser("user-1", {
+      title: "Weekly Roast",
+      body: "The receipts are in.",
+      urgency: "normal",
+      ttl: 86400,
+    });
+
+    const optionsArg = sendNotificationMock.mock.calls[0][2] as {
+      urgency?: string;
+      TTL?: number;
+    };
+    expect(optionsArg.urgency).toBe("normal");
+    expect(optionsArg.TTL).toBe(86400);
   });
 
   it("deactivates expired subscriptions on 410", async () => {
