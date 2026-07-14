@@ -20,6 +20,7 @@ const spaceGrotesk = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://www.grindproof.co"),
   title: "GrindProof - AI Accountability Coach",
   description:
     "Track what you plan. Prove what you did. Get roasted for the gap.",
@@ -34,6 +35,20 @@ export const metadata: Metadata = {
     siteName: "GrindProof",
     title: "GrindProof - AI Accountability Coach",
     description: "The accountability app that actually calls out your BS.",
+    images: [
+      {
+        url: "/grindproof-promo-poster.jpg",
+        width: 1920,
+        height: 1080,
+        alt: "GrindProof: promise a 5am wake-up, get roasted for the gap",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "GrindProof - AI Accountability Coach",
+    description: "The accountability app that actually calls out your BS.",
+    images: ["/grindproof-promo-poster.jpg"],
   },
 };
 

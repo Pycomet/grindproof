@@ -6,9 +6,29 @@ import { RoastCounter } from "@/components/marketing/RoastCounter";
 
 export const revalidate = 3600;
 
+export const metadata = {
+  alternates: { canonical: "/" },
+};
+
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  name: "GrindProof",
+  url: "https://www.grindproof.co",
+  description:
+    "AI accountability app: track what you plan, prove what you did, get roasted for the gap.",
+  applicationCategory: "LifestyleApplication",
+  operatingSystem: "Web",
+  offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+};
+
 export default function Home() {
   return (
     <div className="flex flex-col min-h-screen bg-background text-foreground">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       {/* Nav */}
       <nav className="border-b border-zinc-700 bg-zinc-900/40 backdrop-blur-sm">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
