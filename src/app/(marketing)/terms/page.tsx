@@ -4,6 +4,7 @@ import Link from "next/link";
 export const metadata: Metadata = {
   title: "Terms of Use | GrindProof",
   description: "GrindProof Terms of Use - Read our terms and conditions for using the service.",
+  alternates: { canonical: "/terms" },
 };
 
 export default function TermsOfUsePage() {
