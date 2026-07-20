@@ -20,7 +20,7 @@ export function sanitizeForPrompt(input: unknown, maxLen: number): string {
   }
 
   const collapsed = cleaned
-    .replace(/<\/?untrusted_user_reflections>/gi, "")
+    .replace(/<\/?untrusted_user_(?:reflections|context)>/gi, "")
     .replace(/\r\n?/g, "\n")
     .replace(/[ \t]+/g, " ")
     .trim();
@@ -31,7 +31,12 @@ export function sanitizeForPrompt(input: unknown, maxLen: number): string {
 
 export const UNTRUSTED_OPEN = "<untrusted_user_reflections>";
 export const UNTRUSTED_CLOSE = "</untrusted_user_reflections>";
+export const UNTRUSTED_CONTEXT_TAG = "untrusted_user_context";
+
+export function wrapUntrusted(body: string, tag: string): string {
+  return `<${tag}>\n${body}\n</${tag}>`;
+}
 
 export function wrapUntrustedBlock(body: string): string {
-  return `${UNTRUSTED_OPEN}\n${body}\n${UNTRUSTED_CLOSE}`;
+  return wrapUntrusted(body, "untrusted_user_reflections");
 }
