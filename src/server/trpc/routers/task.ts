@@ -3,8 +3,8 @@ import { router, protectedProcedure } from "../context";
 import { fireAndForgetScoreChange } from "@/lib/accountability/hooks";
 
 export const createTaskSchema = z.object({
-  title: z.string().min(1, "Title is required"),
-  description: z.string().optional(),
+  title: z.string().min(1, "Title is required").max(200),
+  description: z.string().max(1000).optional(),
   dueDate: z.date().optional(),
   startTime: z.date().optional(),
   endTime: z.date().optional(),
@@ -16,8 +16,8 @@ export const createTaskSchema = z.object({
 
 export const updateTaskSchema = z.object({
   id: z.string().min(1, "ID is required"),
-  title: z.string().min(1).optional(),
-  description: z.string().optional().nullable(),
+  title: z.string().min(1).max(200).optional(),
+  description: z.string().max(1000).optional().nullable(),
   dueDate: z.date().optional().nullable(),
   startTime: z.date().optional().nullable(),
   endTime: z.date().optional().nullable(),
@@ -25,7 +25,7 @@ export const updateTaskSchema = z.object({
   goalId: z.string().optional().nullable(),
   tags: z.array(z.string()).optional(),
   status: z.enum(["pending", "completed", "skipped"]).optional(),
-  reflection: z.string().optional().nullable(),
+  reflection: z.string().max(1000).optional().nullable(),
   recurrencePattern: z.any().optional().nullable(),
 });
 

@@ -18,8 +18,8 @@ export function createGrindproofTools(
       description:
         "Create a new task for the user. Use when they mention wanting to do something, add a task, or plan an activity.",
       inputSchema: z.object({
-        title: z.string().describe("Task title"),
-        description: z.string().optional().describe("Task description"),
+        title: z.string().max(200).describe("Task title"),
+        description: z.string().max(1000).optional().describe("Task description"),
         dueDate: z
           .string()
           .optional()
@@ -68,7 +68,7 @@ export function createGrindproofTools(
           .string()
           .describe("Keywords to find the task by title"),
         updates: z.object({
-          title: z.string().optional(),
+          title: z.string().max(200).optional(),
           priority: z.enum(["high", "medium", "low"]).optional(),
           status: z.enum(["pending", "completed", "skipped"]).optional(),
           dueDate: z.string().optional().describe("YYYY-MM-DD format"),
@@ -314,7 +314,7 @@ export function createGrindproofTools(
         category: z
           .enum(["commitment", "recommendation", "pattern_flagged", "observation", "excuse_called"])
           .describe("The type of coaching note"),
-        content: z.string().describe("The content of the coaching note"),
+        content: z.string().max(500).describe("The content of the coaching note"),
         relatedTo: z
           .object({
             taskIds: z.array(z.string()).optional(),
