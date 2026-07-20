@@ -151,9 +151,11 @@ Driver: ${acctSnap.drivers.top}${acctSnap.drivers.drag ? ` | Drag: ${acctSnap.dr
         .limit(20);
 
       const memoryContext = (coachMemory || []).length > 0
-        ? `\nCoach Memory:\n${(coachMemory || []).map(
-            (m: any) => `- [${m.category}] ${m.content}`
-          ).join("\n")}`
+        ? `\nCoach Memory:\n${wrapUntrustedBlock(
+            (coachMemory || [])
+              .map((m: any) => `- [${m.category}] ${sanitizeForPrompt(m.content, 500)}`)
+              .join("\n")
+          )}`
         : "";
 
       // Fetch previous roast for continuity

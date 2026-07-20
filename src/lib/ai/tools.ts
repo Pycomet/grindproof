@@ -3,6 +3,7 @@ import { z } from "zod";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
 import { computeUserAccountability } from "@/lib/accountability/compute";
+import { sanitizeForPrompt } from "@/lib/prompts/sanitize";
 
 /** Escape Postgres LIKE/ILIKE wildcards so user input is treated literally. */
 function escapeLike(str: string): string {
@@ -18,8 +19,8 @@ export function createGrindproofTools(
       description:
         "Create a new task for the user. Use when they mention wanting to do something, add a task, or plan an activity.",
       inputSchema: z.object({
-        title: z.string().describe("Task title"),
-        description: z.string().optional().describe("Task description"),
+        title: z.string().max(200).describe("Task title"),
+        description: z.string().max(1000).optional().describe("Task description"),
         dueDate: z
           .string()
           .optional()
@@ -68,7 +69,7 @@ export function createGrindproofTools(
           .string()
           .describe("Keywords to find the task by title"),
         updates: z.object({
-          title: z.string().optional(),
+          title: z.string().max(200).optional(),
           priority: z.enum(["high", "medium", "low"]).optional(),
           status: z.enum(["pending", "completed", "skipped"]).optional(),
           dueDate: z.string().optional().describe("YYYY-MM-DD format"),
@@ -201,12 +202,20 @@ export function createGrindproofTools(
             .in("id", uniqueGoalIds);
 
           for (const g of goals ?? []) {
-            goalTitleMap.set(g.id, g.title);
+            goalTitleMap.set(g.id, sanitizeForPrompt(g.title, 200));
           }
         }
 
+        // Tool results feed back into the model across multiple agentic steps.
+        // Sanitize user-authored strings so stored task/goal text can't act as
+        // indirect prompt injection when the coach reads it back.
         const enrichedTasks = tasks.map((t) => ({
           ...t,
+          title: sanitizeForPrompt(t.title, 200),
+          reflection: t.reflection ? sanitizeForPrompt(t.reflection, 1000) : t.reflection,
+          tags: Array.isArray(t.tags)
+            ? t.tags.map((tag) => sanitizeForPrompt(tag, 100))
+            : t.tags,
           goalTitle: t.goal_id ? (goalTitleMap.get(t.goal_id) ?? null) : null,
         }));
 
@@ -270,6 +279,10 @@ export function createGrindproofTools(
 
             return {
               ...goal,
+              title: sanitizeForPrompt(goal.title, 200),
+              description: goal.description
+                ? sanitizeForPrompt(goal.description, 1000)
+                : goal.description,
               totalTasks: total ?? 0,
               completedTasks: completed ?? 0,
               daysSinceLastCompletion,
@@ -314,7 +327,7 @@ export function createGrindproofTools(
         category: z
           .enum(["commitment", "recommendation", "pattern_flagged", "observation", "excuse_called"])
           .describe("The type of coaching note"),
-        content: z.string().describe("The content of the coaching note"),
+        content: z.string().max(500).describe("The content of the coaching note"),
         relatedTo: z
           .object({
             taskIds: z.array(z.string()).optional(),
@@ -411,8 +424,8 @@ export function createGrindproofTools(
         if (error) return { success: false as const, error: error.message };
 
         const reflections = (data ?? []).map((t) => ({
-          taskTitle: t.title,
-          reflection: t.reflection,
+          taskTitle: sanitizeForPrompt(t.title, 200),
+          reflection: t.reflection ? sanitizeForPrompt(t.reflection, 1000) : t.reflection,
           dueDate: t.due_date,
           status: t.status,
         }));
@@ -470,7 +483,7 @@ export function createGrindproofTools(
               .select("id, title")
               .in("id", uniqueGoalIds);
             for (const g of goals ?? []) {
-              goalTitleMap.set(g.id, g.title);
+              goalTitleMap.set(g.id, sanitizeForPrompt(g.title, 200));
             }
           }
 

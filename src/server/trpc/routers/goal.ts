@@ -2,16 +2,16 @@ import { z } from "zod";
 import { router, protectedProcedure } from "../context";
 
 export const createGoalSchema = z.object({
-  title: z.string().min(1, "Title is required"),
-  description: z.string().optional(),
+  title: z.string().min(1, "Title is required").max(200),
+  description: z.string().max(1000).optional(),
   status: z.enum(["active", "completed"]).default("active"),
   priority: z.enum(["high", "medium", "low"]).default("medium"),
 });
 
 export const updateGoalSchema = z.object({
   id: z.string(),
-  title: z.string().min(1).optional(),
-  description: z.string().optional().nullable(),
+  title: z.string().min(1).max(200).optional(),
+  description: z.string().max(1000).optional().nullable(),
   status: z.enum(["active", "completed"]).optional(),
   priority: z.enum(["high", "medium", "low"]).optional(),
 });
