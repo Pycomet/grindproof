@@ -28,6 +28,7 @@ import {
   localToday,
   shiftLocalDate,
 } from "./active-day";
+import { sanitizeForPrompt } from "@/lib/prompts/sanitize";
 
 const WINDOW_DAYS = 14;
 const STREAK_LOOKBACK_DAYS = 365;
@@ -330,10 +331,14 @@ function explain(
     .sort((a, b) => b.carry_over_count - a.carry_over_count);
   if (chronic.length > 0) {
     const worst = chronic[0];
-    drag = `"${worst.title}" carried ${worst.carry_over_count}×`;
+    // worst.title is a user-authored task title. Sanitize before it enters the
+    // "drag" string, which is embedded (unquoted) into the coach system prompt
+    // and the weekly-roast prompt — and also shown in the UI widget.
+    const safeWorstTitle = sanitizeForPrompt(worst.title, 120);
+    drag = `"${safeWorstTitle}" carried ${worst.carry_over_count}×`;
     weakSignals.push({
       kind: "chronic_carry_over",
-      detail: `${chronic.length} chronic carry-over${chronic.length > 1 ? "s" : ""}; worst is "${worst.title}" at ${worst.carry_over_count}`,
+      detail: `${chronic.length} chronic carry-over${chronic.length > 1 ? "s" : ""}; worst is "${safeWorstTitle}" at ${worst.carry_over_count}`,
     });
   } else if (inputs.weightedCompletion < 40 && windowTasks.length > 0) {
     drag = `Only ${inputs.weightedCompletion}% completion in the last 14 days`;

@@ -71,9 +71,14 @@ interface FormatInput {
 
 export function formatCoachContext(input: FormatInput): string {
   const lines: string[] = ["=== CURRENT USER CONTEXT ===", ""];
+  // Alert strings are derived from user-authored task/goal titles, so they are
+  // untrusted: sanitize each line and fence the block like the other sections.
   if (input.alerts.length > 0) {
+    const alertsBody = input.alerts
+      .map((a) => `- ${sanitizeForPrompt(a, 300)}`)
+      .join("\n");
     lines.push("ALERTS:");
-    for (const a of input.alerts) lines.push(`- ${a}`);
+    lines.push(wrapUntrusted(alertsBody, UNTRUSTED_CONTEXT_TAG));
     lines.push("");
   }
   const deltaStr = input.delta > 0 ? `+${input.delta}` : `${input.delta}`;
@@ -81,8 +86,16 @@ export function formatCoachContext(input: FormatInput): string {
     `ACCOUNTABILITY: Score ${input.score}/100 (${input.tierName}) | Streak: ${input.streak} days | Completion: ${input.completionRate}% | Consistency: ${input.consistencyRate}%`
   );
   lines.push(`Delta: ${deltaStr} from last week`);
+  // drivers.drag can contain a user task title; sanitize + fence it.
+  const driverTop = sanitizeForPrompt(input.drivers.top, 200);
+  const driverDrag = input.drivers.drag
+    ? sanitizeForPrompt(input.drivers.drag, 200)
+    : null;
   lines.push(
-    `Driver: ${input.drivers.top}${input.drivers.drag ? ` | Drag: ${input.drivers.drag}` : ""}`
+    wrapUntrusted(
+      `Driver: ${driverTop}${driverDrag ? ` | Drag: ${driverDrag}` : ""}`,
+      UNTRUSTED_CONTEXT_TAG
+    )
   );
   lines.push("");
   const today = new Date().toLocaleDateString("en-US", {
