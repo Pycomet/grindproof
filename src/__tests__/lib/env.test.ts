@@ -36,6 +36,7 @@ describe("env – server-side validation", () => {
     NEXT_PUBLIC_SUPABASE_URL: "https://abc.supabase.co",
     NEXT_PUBLIC_SUPABASE_ANON_KEY: "anon-key-value",
     SUPABASE_SERVICE_ROLE_KEY: "service-role-key-value",
+    SUPABASE_JWT_SECRET: "jwt-secret-value",
     NEXT_GOOGLE_GEMINI_API_KEY: "gemini-key-value",
     CRON_SECRET: "super-secret",
     RESEND_API_KEY: "re_test_key",

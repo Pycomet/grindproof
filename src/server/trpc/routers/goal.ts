@@ -1,33 +1,16 @@
 import { z } from "zod";
 import { router, protectedProcedure } from "../context";
+import {
+  createGoalSchema,
+  updateGoalSchema,
+  mapGoalFromDb,
+  createGoal,
+  updateGoal,
+  deleteGoal,
+} from "@/lib/actions/goals";
 
-export const createGoalSchema = z.object({
-  title: z.string().min(1, "Title is required").max(200),
-  description: z.string().max(1000).optional(),
-  status: z.enum(["active", "completed"]).default("active"),
-  priority: z.enum(["high", "medium", "low"]).default("medium"),
-});
-
-export const updateGoalSchema = z.object({
-  id: z.string(),
-  title: z.string().min(1).max(200).optional(),
-  description: z.string().max(1000).optional().nullable(),
-  status: z.enum(["active", "completed"]).optional(),
-  priority: z.enum(["high", "medium", "low"]).optional(),
-});
-
-function mapGoalFromDb(goal: any) {
-  return {
-    id: goal.id,
-    userId: goal.user_id,
-    title: goal.title,
-    description: goal.description || null,
-    status: goal.status as "active" | "completed",
-    priority: goal.priority as "high" | "medium" | "low",
-    createdAt: new Date(goal.created_at),
-    updatedAt: new Date(goal.updated_at),
-  };
-}
+// Re-exported for consumers that import the schemas from the router (e.g. tests).
+export { createGoalSchema, updateGoalSchema };
 
 export const goalRouter = router({
   getAll: protectedProcedure.query(async ({ ctx }) => {
@@ -58,57 +41,13 @@ export const goalRouter = router({
 
   create: protectedProcedure
     .input(createGoalSchema)
-    .mutation(async ({ ctx, input }) => {
-      const { data, error } = await ctx.db
-        .from("goals")
-        .insert({
-          user_id: ctx.user.id,
-          title: input.title,
-          description: input.description || null,
-          status: input.status || "active",
-          priority: input.priority || "medium",
-        })
-        .select()
-        .maybeSingle();
-
-      if (error) throw new Error(`Failed to create goal: ${error.message}`);
-      if (!data) throw new Error("Failed to create goal: No data returned");
-      return mapGoalFromDb(data);
-    }),
+    .mutation(({ ctx, input }) => createGoal(ctx.db, ctx.user.id, input)),
 
   update: protectedProcedure
     .input(updateGoalSchema)
-    .mutation(async ({ ctx, input }) => {
-      const updateData: Record<string, unknown> = {};
-      if (input.title !== undefined) updateData.title = input.title;
-      if (input.description !== undefined)
-        updateData.description = input.description || null;
-      if (input.status !== undefined) updateData.status = input.status;
-      if (input.priority !== undefined) updateData.priority = input.priority;
-
-      const { data, error } = await ctx.db
-        .from("goals")
-        .update(updateData)
-        .eq("id", input.id)
-        .eq("user_id", ctx.user.id)
-        .select()
-        .maybeSingle();
-
-      if (error) throw new Error(`Failed to update goal: ${error.message}`);
-      if (!data) throw new Error("Goal not found or access denied");
-      return mapGoalFromDb(data);
-    }),
+    .mutation(({ ctx, input }) => updateGoal(ctx.db, ctx.user.id, input)),
 
   delete: protectedProcedure
     .input(z.object({ id: z.string() }))
-    .mutation(async ({ ctx, input }) => {
-      const { error } = await ctx.db
-        .from("goals")
-        .delete()
-        .eq("id", input.id)
-        .eq("user_id", ctx.user.id);
-
-      if (error) throw new Error(`Failed to delete goal: ${error.message}`);
-      return { success: true, id: input.id };
-    }),
+    .mutation(({ ctx, input }) => deleteGoal(ctx.db, ctx.user.id, input.id)),
 });
