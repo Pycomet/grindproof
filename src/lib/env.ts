@@ -10,6 +10,9 @@ const clientEnvSchema = z.object({
 
 const serverEnvSchema = clientEnvSchema.extend({
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
+  // Legacy Supabase JWT secret (HS256) — used to mint short-lived user-scoped
+  // access tokens for the MCP server so RLS still applies. See scoped.ts.
+  SUPABASE_JWT_SECRET: z.string().min(1),
   NEXT_GOOGLE_GEMINI_API_KEY: z.string().min(1),
   CRON_SECRET: z.string().min(1),
   QSTASH_CURRENT_SIGNING_KEY: z.string().min(1).optional(),
@@ -26,6 +29,7 @@ const testDefaults: z.infer<typeof serverEnvSchema> = {
   NEXT_PUBLIC_SUPABASE_URL: "https://test.supabase.co",
   NEXT_PUBLIC_SUPABASE_ANON_KEY: "test-key",
   SUPABASE_SERVICE_ROLE_KEY: "test-service-key",
+  SUPABASE_JWT_SECRET: "test-jwt-secret-at-least-32-chars-long!!",
   NEXT_GOOGLE_GEMINI_API_KEY: "test-gemini-key",
   CRON_SECRET: "test-cron-secret",
   QSTASH_CURRENT_SIGNING_KEY: undefined,
@@ -52,6 +56,7 @@ const rawEnv = {
       : undefined),
   NEXT_PUBLIC_POSTHOG_KEY: process.env.NEXT_PUBLIC_POSTHOG_KEY,
   SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
+  SUPABASE_JWT_SECRET: process.env.SUPABASE_JWT_SECRET,
   NEXT_GOOGLE_GEMINI_API_KEY: process.env.NEXT_GOOGLE_GEMINI_API_KEY,
   CRON_SECRET: process.env.CRON_SECRET,
   QSTASH_CURRENT_SIGNING_KEY: process.env.QSTASH_CURRENT_SIGNING_KEY,

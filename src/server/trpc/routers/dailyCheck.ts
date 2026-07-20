@@ -1,8 +1,10 @@
 import { z } from "zod";
 import { router, protectedProcedure } from "../context";
-import { computeUserPatterns } from "@/lib/ai/patterns";
-import { fireAndForgetScoreChange } from "@/lib/accountability/hooks";
 import { captureServerEvent } from "@/lib/posthog/server";
+import {
+  recordMorningCheckIn,
+  recordEveningReflections,
+} from "@/lib/actions/daily-checks";
 
 export const dailyCheckRouter = router({
   getMorningSchedule: protectedProcedure.query(async ({ ctx }) => {
@@ -92,34 +94,9 @@ export const dailyCheckRouter = router({
         taskIds: z.array(z.string()).max(100),
       })
     )
-    .mutation(async ({ ctx, input }) => {
-      const today = new Date();
-      today.setHours(12, 0, 0, 0);
-
-      // Atomic single-statement carry-over via Postgres RPC. Replaces the
-      // read-then-write loop that raced on concurrent submits and double-
-      // incremented carry_over_count. RLS enforces user_id scoping.
-      const { data: count, error } = await ctx.db.rpc("carry_over_tasks", {
-        p_task_ids: input.taskIds,
-        p_new_due: today.toISOString(),
-      });
-
-      if (error)
-        throw new Error(`Failed to carry over tasks: ${error.message}`);
-
-      // Idempotent: unique index on (user_id, type, day) — swallow 23505
-      // (unique_violation) so retries don't surface as errors to the client.
-      const { error: morningErr } = await ctx.db
-        .from("daily_checks")
-        .insert({ user_id: ctx.user.id, type: "morning" });
-      if (morningErr && morningErr.code !== "23505") {
-        throw new Error(`Failed to record check-in: ${morningErr.message}`);
-      }
-
-      fireAndForgetScoreChange(ctx.db, ctx.user.id, "task_carried_over");
-
-      return { success: true, count: count ?? 0 };
-    }),
+    .mutation(({ ctx, input }) =>
+      recordMorningCheckIn(ctx.db, ctx.user.id, { taskIds: input.taskIds })
+    ),
 
   submitEveningReflections: protectedProcedure
     .input(
@@ -134,86 +111,20 @@ export const dailyCheckRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const failures: string[] = [];
-
-      const tomorrow = new Date();
-      tomorrow.setHours(0, 0, 0, 0);
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      tomorrow.setHours(12, 0, 0, 0);
-
-      // Bucket reflections so carry-overs can hit the atomic RPC in one shot.
-      const skipIds: string[] = [];
-      const skipReflections: Record<string, string> = {};
-      const completedIds: string[] = [];
-      const completedReflections: Record<string, string> = {};
-
-      for (const item of input.reflections) {
-        if (item.status === "skipped") {
-          skipIds.push(item.taskId);
-          if (item.reflection) skipReflections[item.taskId] = item.reflection;
-        } else {
-          completedIds.push(item.taskId);
-          if (item.reflection)
-            completedReflections[item.taskId] = item.reflection;
-        }
-      }
-
-      // Carry-over: atomic increment + reschedule via RPC. Reflections are
-      // applied separately because the RPC's signature only handles the
-      // shared rollover fields.
-      if (skipIds.length > 0) {
-        const { error: rpcErr } = await ctx.db.rpc("carry_over_tasks", {
-          p_task_ids: skipIds,
-          p_new_due: tomorrow.toISOString(),
-        });
-        if (rpcErr) {
-          throw new Error(`Failed to carry over tasks: ${rpcErr.message}`);
-        }
-        for (const id of skipIds) {
-          if (skipReflections[id]) {
-            const { error } = await ctx.db
-              .from("tasks")
-              .update({ reflection: skipReflections[id] })
-              .eq("id", id)
-              .eq("user_id", ctx.user.id);
-            if (error) failures.push(id);
-          }
-        }
-      }
-
-      // Completed: set status + completed_at + optional reflection.
-      const nowIso = new Date().toISOString();
-      for (const id of completedIds) {
-        const update: Record<string, unknown> = {
-          status: "completed",
-          completed_at: nowIso,
-        };
-        if (completedReflections[id]) update.reflection = completedReflections[id];
-        const { error } = await ctx.db
-          .from("tasks")
-          .update(update)
-          .eq("id", id)
-          .eq("user_id", ctx.user.id);
-        if (error) failures.push(id);
-      }
-
-      if (failures.length > 0) {
-        throw new Error(`Failed to update tasks: ${failures.join(", ")}`);
-      }
-
-      // Idempotent: unique index on (user_id, type, day) — swallow 23505
-      // (unique_violation) so retries don't surface as errors to the client.
-      const { error: eveningErr } = await ctx.db
-        .from("daily_checks")
-        .insert({ user_id: ctx.user.id, type: "evening" });
-      if (eveningErr && eveningErr.code !== "23505") {
-        throw new Error(`Failed to record check-in: ${eveningErr.message}`);
-      }
+      // Core writes + accountability side effects (carry-over, markers, score
+      // recompute, pattern engine) live in the shared action so MCP-driven
+      // check-ins behave identically.
+      const { completedCount, skippedCount } = await recordEveningReflections(
+        ctx.db,
+        ctx.user.id,
+        input
+      );
 
       // Server-side funnel event — GRI-6 requires this fires from the server,
       // not the client, so it can't be blocked by ad-blockers. Per the spec
       // this event is the *first* check-in only — gate the capture, don't just
-      // tag a property.
+      // tag a property. Kept in the router because it needs the full user
+      // session (created_at) and is analytics, not accountability state.
       const { count: previousEveningCheckins } = await ctx.db
         .from("daily_checks")
         .select("*", { count: "exact", head: true })
@@ -231,17 +142,10 @@ export const dailyCheckRouter = router({
         captureServerEvent(ctx.user.id, "first_checkin_completed", {
           user_id: ctx.user.id,
           time_to_first_checkin_seconds: timeToFirstCheckin,
-          tasks_completed: completedIds.length,
-          tasks_skipped: skipIds.length,
+          tasks_completed: completedCount,
+          tasks_skipped: skippedCount,
         }).catch(() => {}); // fire-and-forget
       }
-
-      fireAndForgetScoreChange(ctx.db, ctx.user.id, "evening_reflection");
-
-      // Fire pattern engine (non-blocking)
-      computeUserPatterns(ctx.db, ctx.user.id).catch((err) =>
-        console.error("Pattern engine error:", err)
-      );
 
       return { success: true, count: input.reflections.length };
     }),
