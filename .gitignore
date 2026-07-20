@@ -45,6 +45,7 @@ supabase/.branches/
 
 # superpowers
 .superpowers/
+docs/superpowers/
 
 # mcp config (contains tokens)
 .mcp.json

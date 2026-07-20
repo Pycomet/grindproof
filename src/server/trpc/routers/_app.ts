@@ -8,6 +8,7 @@ import { dailyCheckRouter } from "./dailyCheck";
 import { weeklyRoastRouter } from "./weeklyRoast";
 import { accountabilityScoreRouter } from "./accountabilityScore";
 import { retentionRouter } from "./retention";
+import { mcpTokenRouter } from "./mcpToken";
 
 export const appRouter = router({
   goal: goalRouter,
@@ -19,6 +20,7 @@ export const appRouter = router({
   weeklyRoast: weeklyRoastRouter,
   accountabilityScore: accountabilityScoreRouter,
   retention: retentionRouter,
+  mcpToken: mcpTokenRouter,
 });
 
 export type AppRouter = typeof appRouter;

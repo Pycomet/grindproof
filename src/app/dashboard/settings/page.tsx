@@ -372,6 +372,243 @@ function AccountSection() {
   );
 }
 
+function ConnectAgentSection() {
+  const utils = trpc.useUtils();
+  const { data: tokens, isLoading } = trpc.mcpToken.list.useQuery();
+  const [name, setName] = useState("");
+  const [expiry, setExpiry] = useState<"never" | "90" | "365">("never");
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [revealed, setRevealed] = useState<{ token: string; name: string } | null>(null);
+  const [copied, setCopied] = useState<"token" | "config" | null>(null);
+  const [revokeTarget, setRevokeTarget] = useState<{ id: string; name: string } | null>(null);
+
+  const createToken = trpc.mcpToken.create.useMutation({
+    onSuccess: (data) => {
+      setRevealed({ token: data.token, name: data.name });
+      setName("");
+      setExpiry("never");
+      setDialogOpen(false);
+      utils.mcpToken.list.invalidate();
+    },
+  });
+
+  const revokeToken = trpc.mcpToken.revoke.useMutation({
+    onSuccess: () => {
+      setRevokeTarget(null);
+      utils.mcpToken.list.invalidate();
+    },
+  });
+
+  const endpoint =
+    (typeof window !== "undefined" ? window.location.origin : "https://grindproof.co") +
+    "/api/mcp/mcp";
+
+  const configSnippet = revealed
+    ? `{
+  "mcpServers": {
+    "grindproof": {
+      "url": "${endpoint}",
+      "headers": { "Authorization": "Bearer ${revealed.token}" }
+    }
+  }
+}`
+    : "";
+
+  async function copy(text: string, which: "token" | "config") {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(which);
+      setTimeout(() => setCopied(null), 1500);
+    } catch {
+      // Clipboard may be unavailable (e.g. insecure context); ignore.
+    }
+  }
+
+  return (
+    <section className="space-y-4 rounded-md border border-border bg-card p-4">
+      <div className="space-y-1">
+        <h2 className="text-sm font-semibold tracking-caps uppercase text-muted-foreground">
+          Connect an agent
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          Generate a token to connect your own AI agent (Claude Code, Cursor, custom
+          agents) to your GrindProof account over MCP.
+        </p>
+      </div>
+
+      {/* One-time reveal of a freshly created token. */}
+      {revealed && (
+        <div className="space-y-3 rounded-sm border border-border bg-background p-3">
+          <p className="text-sm font-medium">
+            Token created — copy it now. You won&apos;t be able to see it again.
+          </p>
+          <div className="flex items-center gap-2">
+            <code className="flex-1 overflow-x-auto rounded-sm border border-border bg-card px-2 py-1.5 text-xs">
+              {revealed.token}
+            </code>
+            <button
+              onClick={() => copy(revealed.token, "token")}
+              className="shrink-0 rounded-sm border border-border px-3 py-1.5 text-xs font-medium hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors duration-150"
+            >
+              {copied === "token" ? "Copied" : "Copy"}
+            </button>
+          </div>
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">MCP client config</span>
+              <button
+                onClick={() => copy(configSnippet, "config")}
+                className="rounded-sm border border-border px-2 py-1 text-xs font-medium hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors duration-150"
+              >
+                {copied === "config" ? "Copied" : "Copy config"}
+              </button>
+            </div>
+            <pre className="overflow-x-auto rounded-sm border border-border bg-card p-2 text-xs">
+              {configSnippet}
+            </pre>
+          </div>
+          <button
+            onClick={() => setRevealed(null)}
+            className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Done
+          </button>
+        </div>
+      )}
+
+      {/* Existing tokens */}
+      {isLoading ? (
+        <SectionSkeleton />
+      ) : tokens && tokens.length > 0 ? (
+        <ul className="space-y-2">
+          {tokens.map((t) => (
+            <li
+              key={t.id}
+              className="flex items-center justify-between gap-3 rounded-sm border border-border px-3 py-2"
+            >
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium">{t.name}</p>
+                <p className="truncate text-xs text-muted-foreground">
+                  {t.prefix}… ·{" "}
+                  {t.lastUsedAt
+                    ? `last used ${new Date(t.lastUsedAt).toLocaleDateString()}`
+                    : "never used"}
+                  {t.expiresAt
+                    ? ` · expires ${new Date(t.expiresAt).toLocaleDateString()}`
+                    : ""}
+                </p>
+              </div>
+              <button
+                onClick={() => setRevokeTarget({ id: t.id, name: t.name })}
+                className="shrink-0 rounded-sm border border-error px-3 py-1.5 text-xs font-medium text-error hover:bg-error/5 transition-colors duration-150"
+              >
+                Revoke
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-sm text-muted-foreground">No connected agents yet.</p>
+      )}
+
+      {/* Generate token dialog */}
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogTrigger asChild>
+          <button className="w-full rounded-sm border border-border px-4 py-2 text-sm font-medium hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors duration-150">
+            Generate token
+          </button>
+        </DialogTrigger>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Generate an access token</DialogTitle>
+            <DialogDescription>
+              Give it a name so you can recognize it later, then paste it into your MCP
+              client.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="token-name">Name</Label>
+              <Input
+                id="token-name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Claude Code laptop"
+                maxLength={100}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="token-expiry">Expires</Label>
+              <Select value={expiry} onValueChange={(v) => setExpiry(v as typeof expiry)}>
+                <SelectTrigger id="token-expiry">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="never">Never</SelectItem>
+                  <SelectItem value="90">90 days</SelectItem>
+                  <SelectItem value="365">1 year</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {createToken.isError && (
+              <p className="text-sm text-error">Failed to create token. Please try again.</p>
+            )}
+          </div>
+          <DialogFooter>
+            <DialogClose asChild>
+              <button className="rounded-sm border border-border px-4 py-2 text-sm font-medium hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors duration-150">
+                Cancel
+              </button>
+            </DialogClose>
+            <button
+              onClick={() =>
+                createToken.mutate({
+                  name: name.trim() || "Untitled agent",
+                  expiresInDays: expiry === "never" ? null : Number(expiry),
+                })
+              }
+              disabled={createToken.isPending || name.trim().length === 0}
+              className="rounded-sm bg-foreground px-4 py-2 text-sm font-medium text-background hover:opacity-90 disabled:opacity-50 transition-opacity duration-150"
+            >
+              {createToken.isPending ? "Generating..." : "Generate"}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Revoke confirmation */}
+      <Dialog open={!!revokeTarget} onOpenChange={(open) => !open && setRevokeTarget(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Revoke token</DialogTitle>
+            <DialogDescription>
+              Any agent using “{revokeTarget?.name}” will immediately lose access. This
+              cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          {revokeToken.isError && (
+            <p className="text-sm text-error">Failed to revoke. Please try again.</p>
+          )}
+          <DialogFooter>
+            <DialogClose asChild>
+              <button className="rounded-sm border border-border px-4 py-2 text-sm font-medium hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors duration-150">
+                Cancel
+              </button>
+            </DialogClose>
+            <button
+              onClick={() => revokeTarget && revokeToken.mutate({ id: revokeTarget.id })}
+              disabled={revokeToken.isPending}
+              className="rounded-sm bg-error px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50 transition-opacity duration-150"
+            >
+              {revokeToken.isPending ? "Revoking..." : "Revoke token"}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </section>
+  );
+}
+
 function ToggleSwitch({
   checked,
   onChange,
@@ -448,6 +685,7 @@ export default function SettingsPage() {
         <NotificationsSection />
         <ThemeSection />
         <TimezoneSection />
+        <ConnectAgentSection />
         <AccountSection />
       </div>
     </div>

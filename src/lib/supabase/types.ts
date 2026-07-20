@@ -267,6 +267,53 @@ export type Database = {
           }
         ];
       };
+      mcp_tokens: {
+        Row: {
+          id: string;
+          user_id: string;
+          name: string;
+          token_hash: string;
+          token_prefix: string;
+          scopes: string[];
+          last_used_at: string | null;
+          expires_at: string | null;
+          revoked_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          name: string;
+          token_hash: string;
+          token_prefix: string;
+          scopes?: string[];
+          last_used_at?: string | null;
+          expires_at?: string | null;
+          revoked_at?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          name?: string;
+          token_hash?: string;
+          token_prefix?: string;
+          scopes?: string[];
+          last_used_at?: string | null;
+          expires_at?: string | null;
+          revoked_at?: string | null;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "mcp_tokens_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
       push_subscriptions: {
         Row: {
           id: string;
@@ -584,6 +631,14 @@ export type Database = {
           p_new_due: string;
         };
         Returns: number;
+      };
+      mcp_touch_rate_limit: {
+        Args: {
+          p_token_id: string;
+          p_window_seconds: number;
+          p_max: number;
+        };
+        Returns: boolean;
       };
     };
     Enums: {
