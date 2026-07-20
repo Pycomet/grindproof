@@ -3,6 +3,11 @@ import type { Database } from "@/lib/supabase/types";
 import { computeUserAccountability } from "@/lib/accountability/compute";
 import { localToday } from "@/lib/accountability/active-day";
 import { fetchRecentSnapshots } from "@/lib/accountability/snapshot";
+import {
+  sanitizeForPrompt,
+  wrapUntrusted,
+  UNTRUSTED_CONTEXT_TAG,
+} from "@/lib/prompts/sanitize";
 
 interface AlertInput {
   score: number;
@@ -84,38 +89,53 @@ export function formatCoachContext(input: FormatInput): string {
     month: "long",
     day: "numeric",
   });
-  lines.push(`TODAY (${today}):`);
+  // User-authored fields (task/goal titles, coach-memory content) are untrusted:
+  // sanitize each string and fence the whole section so injected instructions
+  // are treated as data, not commands. Mirrors the weekly-roast pipeline.
+  const todayBody: string[] = [];
   if (input.todayTasks.length === 0) {
-    lines.push("- No tasks scheduled for today");
+    todayBody.push("- No tasks scheduled for today");
   } else {
     for (const t of input.todayTasks) {
       const label = t.isOverdue ? "overdue" : t.status;
-      lines.push(`- [${label}] ${t.title} (${t.priority} priority)`);
+      todayBody.push(
+        `- [${label}] ${sanitizeForPrompt(t.title, 200)} (${t.priority} priority)`
+      );
     }
   }
+  lines.push(`TODAY (${today}):`);
+  lines.push(wrapUntrusted(todayBody.join("\n"), UNTRUSTED_CONTEXT_TAG));
   lines.push("");
-  lines.push("ACTIVE GOALS:");
+
+  const goalsBody: string[] = [];
   if (input.activeGoals.length === 0) {
-    lines.push("- No active goals");
+    goalsBody.push("- No active goals");
   } else {
     for (const g of input.activeGoals) {
       const pct = g.total > 0 ? Math.round((g.completed / g.total) * 100) : 0;
-      lines.push(`- ${g.title}: ${g.completed}/${g.total} tasks done (${pct}%)`);
+      goalsBody.push(
+        `- ${sanitizeForPrompt(g.title, 200)}: ${g.completed}/${g.total} tasks done (${pct}%)`
+      );
     }
   }
+  lines.push("ACTIVE GOALS:");
+  lines.push(wrapUntrusted(goalsBody.join("\n"), UNTRUSTED_CONTEXT_TAG));
   lines.push("");
-  lines.push("COACH MEMORY (recent):");
+
+  const memoryBody: string[] = [];
   if (input.coachMemory.length === 0) {
-    lines.push("- No prior notes");
+    memoryBody.push("- No prior notes");
   } else {
     for (const m of input.coachMemory) {
       const dateStr = new Date(m.createdAt).toLocaleDateString("en-US", {
         month: "short",
         day: "numeric",
       });
-      lines.push(`- [${m.category}, ${dateStr}] ${m.content}`);
+      memoryBody.push(`- [${m.category}, ${dateStr}] ${sanitizeForPrompt(m.content, 500)}`);
     }
   }
+  lines.push("COACH MEMORY (recent):");
+  lines.push(wrapUntrusted(memoryBody.join("\n"), UNTRUSTED_CONTEXT_TAG));
   lines.push("");
   lines.push("=== END CONTEXT ===");
   lines.push("");
@@ -204,10 +224,15 @@ export async function buildCoachContext(
     delta: snap.delta,
     currentStreak: snap.streak,
     previousStreak,
-    overdueTasks: overdueTasks.map((t) => ({ title: t.title })),
-    chronicCarryOvers,
+    overdueTasks: overdueTasks.map((t) => ({
+      title: sanitizeForPrompt(t.title, 200),
+    })),
+    chronicCarryOvers: chronicCarryOvers.map((c) => ({
+      title: sanitizeForPrompt(c.title, 200),
+      carryOverCount: c.carryOverCount,
+    })),
     activeCommitmentsPastDue: activeCommitmentsPastDue.map((m) => ({
-      content: m.content,
+      content: sanitizeForPrompt(m.content, 500),
     })),
     goalsUnder50,
   });
