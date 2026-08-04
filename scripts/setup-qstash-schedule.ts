@@ -32,6 +32,14 @@ const SCHEDULES = [
     // time to settle before the snapshot crystallizes.
     cron: "5 * * * *",
   },
+  {
+    name: "weekly-roast",
+    path: "/api/cron/weekly-roast",
+    // Hourly: the route only acts on users whose *local* time is ~9am Sunday,
+    // so it must wake every hour to cover all timezones. Lives here rather
+    // than in vercel.json because Hobby-plan native cron is capped at daily.
+    cron: "0 * * * *",
+  },
 ];
 
 async function createSchedules() {
