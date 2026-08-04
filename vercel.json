@@ -1,10 +1,4 @@
 {
-  "crons": [
-    {
-      "path": "/api/cron/weekly-roast",
-      "schedule": "0 * * * *"
-    }
-  ],
   "installCommand": "npm install --force --include=dev",
   "buildCommand": "npm run build"
 }

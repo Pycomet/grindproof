@@ -25,10 +25,7 @@ const roastSchema = z.object({
   weekSummary: z.string(),
 });
 
-export async function GET(request: NextRequest) {
-  const authError = verifyCronSecret(request.headers.get("authorization"));
-  if (authError) return authError;
-
+async function runWeeklyRoast() {
   const supabase = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
@@ -246,4 +243,44 @@ Driver: ${acctSnap.drivers.top}${acctSnap.drivers.drag ? ` | Drag: ${acctSnap.dr
   }
 
   return NextResponse.json({ success: true, roastsGenerated });
+}
+
+// QStash POST with signature verification. This runs hourly so that every
+// timezone gets its ~9am-Sunday window; Vercel's Hobby plan caps native cron
+// at once per day, so the schedule lives in QStash (as with the other crons).
+export async function POST(request: NextRequest) {
+  const { Receiver } = await import("@upstash/qstash");
+
+  if (!env.QSTASH_CURRENT_SIGNING_KEY || !env.QSTASH_NEXT_SIGNING_KEY) {
+    return NextResponse.json(
+      { error: "QStash not configured" },
+      { status: 500 }
+    );
+  }
+
+  const receiver = new Receiver({
+    currentSigningKey: env.QSTASH_CURRENT_SIGNING_KEY,
+    nextSigningKey: env.QSTASH_NEXT_SIGNING_KEY,
+  });
+
+  const body = await request.text();
+  const signature = request.headers.get("upstash-signature");
+  if (!signature) {
+    return NextResponse.json({ error: "Missing signature" }, { status: 401 });
+  }
+
+  try {
+    await receiver.verify({ signature, body });
+  } catch {
+    return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
+  }
+
+  return runWeeklyRoast();
+}
+
+// Manual GET fallback with CRON_SECRET.
+export async function GET(request: NextRequest) {
+  const authError = verifyCronSecret(request.headers.get("authorization"));
+  if (authError) return authError;
+  return runWeeklyRoast();
 }
