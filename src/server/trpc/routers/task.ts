@@ -29,6 +29,23 @@ export const updateTaskSchema = z.object({
   recurrencePattern: z.any().optional().nullable(),
 });
 
+/**
+ * Backstop on how many rows a single task fetch may return. It is a safety
+ * limit, not a filter — the query must be ordered so that hitting this cap
+ * costs the user their oldest tasks rather than their current ones.
+ */
+const TASK_ROW_CAP = 200;
+
+type MappedTask = ReturnType<typeof mapTaskFromDb>;
+
+/** Chronological, with undated tasks pinned to the end. */
+function byDueDateAscNullsLast(a: MappedTask, b: MappedTask) {
+  if (!a.dueDate && !b.dueDate) return 0;
+  if (!a.dueDate) return 1;
+  if (!b.dueDate) return -1;
+  return a.dueDate.getTime() - b.dueDate.getTime();
+}
+
 function mapTaskFromDb(task: any) {
   return {
     id: task.id,
@@ -62,11 +79,16 @@ export const taskRouter = router({
         .optional()
     )
     .query(async ({ ctx, input }) => {
+      // Sort DESCENDING so that when an account has more tasks than ROW_CAP the
+      // rows we drop are the oldest, not the newest. Sorting ascending here (as
+      // this once did) silently hid every recent task — including today's and
+      // this week's — from any account past the cap, because the window filled
+      // up with ancient history before it ever reached the present.
       let query = ctx.db
         .from("tasks")
         .select("*")
         .eq("user_id", ctx.user.id)
-        .order("due_date", { ascending: true, nullsFirst: false });
+        .order("due_date", { ascending: false, nullsFirst: false });
 
       if (input?.status) query = query.eq("status", input.status);
       if (input?.goalId) query = query.eq("goal_id", input.goalId);
@@ -75,9 +97,12 @@ export const taskRouter = router({
       if (input?.endDate)
         query = query.lte("due_date", input.endDate.toISOString());
 
-      const { data, error } = await query.limit(200);
+      const { data, error } = await query.limit(TASK_ROW_CAP);
       if (error) throw new Error(`Failed to fetch tasks: ${error.message}`);
-      return (data || []).map(mapTaskFromDb);
+
+      // Callers still expect chronological order (undated last), so restore the
+      // ascending contract after the cap has kept the most recent rows.
+      return (data || []).map(mapTaskFromDb).sort(byDueDateAscNullsLast);
     }),
 
   getById: protectedProcedure
