@@ -21,7 +21,32 @@ export const goalRouter = router({
       .order("created_at", { ascending: false });
 
     if (error) throw new Error(`Failed to fetch goals: ${error.message}`);
-    return (data || []).map(mapGoalFromDb);
+    const goals = (data || []).map(mapGoalFromDb);
+
+    // Progress is counted in the database rather than derived on the client
+    // from the dashboard's task array — that array is capped at a page of
+    // rows, so a goal whose tasks fell outside the cap reported a wrong (often
+    // zero) percentage. These are head-only count probes: no rows come back,
+    // and all goals are counted concurrently.
+    return Promise.all(
+      goals.map(async (goal) => {
+        const [{ count: total }, { count: completed }] = await Promise.all([
+          ctx.db
+            .from("tasks")
+            .select("*", { count: "exact", head: true })
+            .eq("user_id", ctx.user.id)
+            .eq("goal_id", goal.id),
+          ctx.db
+            .from("tasks")
+            .select("*", { count: "exact", head: true })
+            .eq("user_id", ctx.user.id)
+            .eq("goal_id", goal.id)
+            .eq("status", "completed"),
+        ]);
+
+        return { ...goal, taskTotal: total ?? 0, taskCompleted: completed ?? 0 };
+      })
+    );
   }),
 
   getById: protectedProcedure

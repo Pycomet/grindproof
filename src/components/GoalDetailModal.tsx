@@ -27,8 +27,16 @@ const priorityColors = {
 };
 
 export function GoalDetailModal({ goalId, open, onOpenChange, initialEditMode = false }: GoalDetailModalProps) {
-  const { tasks, goals, refreshGoals, refreshTasks } = useTaskContext();
+  const { goals, refreshGoals, refreshTasks } = useTaskContext();
   const goal = goals.find((g) => g.id === goalId);
+
+  // Ask for this goal's tasks directly rather than sifting them out of the
+  // dashboard's task page — that page is capped globally, so a goal's tasks
+  // could be missing from it entirely while the goal itself still renders.
+  const { data: linkedTaskData } = trpc.task.getAll.useQuery(
+    { goalId },
+    { enabled: open }
+  );
 
   const [isEditing, setIsEditing] = useState(initialEditMode);
   const [editTitle, setEditTitle] = useState(goal?.title || "");
@@ -68,8 +76,10 @@ export function GoalDetailModal({ goalId, open, onOpenChange, initialEditMode = 
 
   if (!goal) return null;
 
-  const linkedTasks = tasks.filter((t) => t.goalId === goalId);
-  const completedCount = linkedTasks.filter((t) => t.status === "completed").length;
+  const linkedTasks = linkedTaskData ?? [];
+  // Lifetime totals come from the server; `linkedTasks` may be a recent slice.
+  const completedCount = goal.taskCompleted;
+  const totalCount = goal.taskTotal;
 
   const handleSave = () => {
     if (!editTitle.trim()) return;
@@ -184,17 +194,24 @@ export function GoalDetailModal({ goalId, open, onOpenChange, initialEditMode = 
             <div>
               <div className="mb-2 flex items-center justify-between">
                 <span className="text-xs font-medium text-muted-foreground">
-                  Linked Tasks ({completedCount}/{linkedTasks.length} completed)
+                  Linked Tasks ({completedCount}/{totalCount} completed)
                 </span>
               </div>
               {linkedTasks.length === 0 ? (
                 <p className="text-xs text-muted-foreground">No tasks linked to this goal.</p>
               ) : (
-                <div className="max-h-60 space-y-1 overflow-y-auto">
-                  {linkedTasks.map((task) => (
-                    <TaskItem key={task.id} task={task} />
-                  ))}
-                </div>
+                <>
+                  <div className="max-h-60 space-y-1 overflow-y-auto">
+                    {linkedTasks.map((task) => (
+                      <TaskItem key={task.id} task={task} />
+                    ))}
+                  </div>
+                  {totalCount > linkedTasks.length && (
+                    <p className="pt-1 text-xs text-muted-foreground">
+                      Showing the {linkedTasks.length} most recent of {totalCount}.
+                    </p>
+                  )}
+                </>
               )}
               <form
                 onSubmit={(e) => {
