@@ -34,6 +34,13 @@ interface Goal {
   description: string | null;
   status: "active" | "completed";
   priority: "high" | "medium" | "low";
+  /**
+   * Lifetime task counts for this goal, counted server-side. Do not recompute
+   * these from `tasks` — that array is a capped page, so filtering it
+   * undercounts any goal whose tasks fall outside the window.
+   */
+  taskTotal: number;
+  taskCompleted: number;
   createdAt: Date;
   updatedAt: Date;
 }

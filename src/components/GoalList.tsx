@@ -13,7 +13,7 @@ import { AddGoalForm } from "./AddGoalForm";
 import { GoalDetailModal } from "./GoalDetailModal";
 
 export function GoalList() {
-  const { goals, tasks, isLoading, refreshGoals, refreshTasks } = useTaskContext();
+  const { goals, isLoading, refreshGoals, refreshTasks } = useTaskContext();
   const [expanded, setExpanded] = useState<boolean | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
   const [selectedGoalId, setSelectedGoalId] = useState<string | null>(null);
@@ -92,9 +92,10 @@ export function GoalList() {
           )}
 
           {activeGoals.map((goal) => {
-            const goalTasks = tasks.filter((t) => t.goalId === goal.id);
-            const completed = goalTasks.filter((t) => t.status === "completed").length;
-            const total = goalTasks.length;
+            // Counted server-side across all tasks, not derived from the
+            // capped `tasks` page.
+            const completed = goal.taskCompleted;
+            const total = goal.taskTotal;
             const progressPct = total > 0 ? Math.round((completed / total) * 100) : 0;
 
             return (
