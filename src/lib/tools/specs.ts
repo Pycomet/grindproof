@@ -1,7 +1,11 @@
 import { z } from "zod";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
-import { computeUserAccountability } from "@/lib/accountability/compute";
+import {
+  computeUserAccountability,
+  fetchUserTimezone,
+} from "@/lib/accountability/compute";
+import { getUserDateBounds, getUserLocalTime } from "@/lib/timezone";
 import { sanitizeForPrompt } from "@/lib/prompts/sanitize";
 import {
   createGoalSchema,
@@ -58,6 +62,29 @@ function def<S extends z.ZodObject<z.ZodRawShape>>(d: ToolDef<S>): ToolDef {
 /** Escape Postgres LIKE/ILIKE wildcards so user input is treated literally. */
 function escapeLike(str: string): string {
   return str.replace(/%/g, "\\%").replace(/_/g, "\\_");
+}
+
+/**
+ * Resolve a named date filter to a UTC instant range covering those days on the
+ * user's local calendar. Weeks run Monday..Sunday to match the dashboard's
+ * "This Week" view, so the coach and the UI never disagree about which tasks
+ * belong to this week.
+ */
+function localRangeFor(
+  dateFilter: "today" | "tomorrow" | "this_week",
+  now: Date,
+  timezone: string
+): { start: string; end: string } {
+  if (dateFilter === "this_week") {
+    const local = getUserLocalTime(now, timezone);
+    const daysSinceMonday = (local.day + 6) % 7; // local.day: 0 = Sunday
+    return {
+      start: getUserDateBounds(now, timezone, -daysSinceMonday).start,
+      end: getUserDateBounds(now, timezone, -daysSinceMonday + 6).end,
+    };
+  }
+  const bounds = getUserDateBounds(now, timezone, dateFilter === "tomorrow" ? 1 : 0);
+  return { start: bounds.start, end: bounds.end };
 }
 
 /**
@@ -209,14 +236,17 @@ export function coreToolDefs(): ToolDef[] {
         if (status !== "all") query = query.eq("status", status);
 
         const now = new Date();
-        if (dateFilter === "today") {
-          const start = new Date(now);
-          start.setHours(0, 0, 0, 0);
-          const end = new Date(now);
-          end.setHours(23, 59, 59, 999);
-          query = query.gte("due_date", start.toISOString()).lte("due_date", end.toISOString());
-        } else if (dateFilter === "overdue") {
+        if (dateFilter === "overdue") {
           query = query.lt("due_date", now.toISOString()).eq("status", "pending");
+        } else if (dateFilter !== "all") {
+          // Day boundaries must follow the user's calendar, not the server's.
+          // These ran on setHours() before, which on Vercel means UTC — so
+          // "today" silently meant "today in UTC" for every user, and
+          // "tomorrow"/"this_week" were never implemented at all and fell
+          // through to no filter whatsoever.
+          const timezone = await fetchUserTimezone(supabase, userId);
+          const { start, end } = localRangeFor(dateFilter, now, timezone);
+          query = query.gte("due_date", start).lte("due_date", end);
         }
 
         const { data, error } = await query.limit(50);
