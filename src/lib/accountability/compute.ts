@@ -249,7 +249,12 @@ export async function computeUserAccountability(
   };
 }
 
-async function fetchUserTimezone(
+/**
+ * Resolve the user's IANA timezone, falling back to UTC. Exported so that any
+ * feature bucketing rows into the user's local calendar — accountability here,
+ * the coach's date filters in lib/tools/specs.ts — resolves it the same way.
+ */
+export async function fetchUserTimezone(
   db: SupabaseClient<Database>,
   userId: string
 ): Promise<string> {
