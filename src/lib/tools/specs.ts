@@ -197,11 +197,14 @@ export function coreToolDefs(): ToolDef[] {
           .describe("Filter by date range"),
       }),
       execute: async ({ userId, supabase }, { status, dateFilter }) => {
+        // Descending so the row cap below sheds the oldest tasks rather than
+        // the newest — an ascending sort here left the coach blind to the
+        // user's current tasks once their history outgrew the cap.
         let query = supabase
           .from("tasks")
           .select("id, title, status, priority, due_date, tags, reflection, goal_id, created_at, carry_over_count")
           .eq("user_id", userId)
-          .order("due_date", { ascending: true });
+          .order("due_date", { ascending: false, nullsFirst: false });
 
         if (status !== "all") query = query.eq("status", status);
 
@@ -219,7 +222,13 @@ export function coreToolDefs(): ToolDef[] {
         const { data, error } = await query.limit(50);
         if (error) return { success: false as const, error: error.message };
 
-        const tasks = data ?? [];
+        // Hand the model a chronological list, undated last.
+        const tasks = [...(data ?? [])].sort((a, b) => {
+          if (!a.due_date && !b.due_date) return 0;
+          if (!a.due_date) return 1;
+          if (!b.due_date) return -1;
+          return a.due_date < b.due_date ? -1 : a.due_date > b.due_date ? 1 : 0;
+        });
 
         const uniqueGoalIds = [...new Set(tasks.map((t) => t.goal_id).filter(Boolean))] as string[];
         const goalTitleMap = new Map<string, string>();
