@@ -42,6 +42,13 @@ interface TaskContextType {
   tasks: Task[];
   goals: Goal[];
   isLoading: boolean;
+  /**
+   * Set when the task fetch itself failed. Without this the UI cannot tell
+   * "you have no tasks" apart from "we could not load your tasks", and renders
+   * the empty state for both — which is how a fetch regression reached
+   * production looking like the user's data had vanished.
+   */
+  tasksError: string | null;
   refreshTasks: () => Promise<void>;
   refreshGoals: () => Promise<void>;
 }
@@ -55,6 +62,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
   const {
     data: tasks,
     isLoading: tasksLoading,
+    error: tasksQueryError,
     refetch: refetchTasks,
   } = trpc.task.getAll.useQuery(undefined, {
     enabled: !!user,
@@ -86,6 +94,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
         tasks: (tasks as Task[]) || [],
         goals: (goals as Goal[]) || [],
         isLoading: tasksLoading || goalsLoading,
+        tasksError: tasksQueryError?.message ?? null,
         refreshTasks,
         refreshGoals,
       }}

@@ -6,7 +6,7 @@ import { TaskItem } from "./TaskItem";
 import { AddTaskForm } from "./AddTaskForm";
 
 export function TaskList() {
-  const { tasks, isLoading } = useTaskContext();
+  const { tasks, isLoading, tasksError, refreshTasks } = useTaskContext();
   const [viewMode, setViewMode] = useState<"today" | "week">("today");
 
   const today = new Date();
@@ -82,6 +82,32 @@ export function TaskList() {
             className="h-14 animate-pulse rounded-md border border-border bg-card"
           />
         ))}
+      </div>
+    );
+  }
+
+  // A failed fetch must never render as "no tasks" — that reads as data loss.
+  if (tasksError) {
+    return (
+      <div className="space-y-2">
+        <h2 className="text-sm font-semibold text-foreground">Tasks</h2>
+        <div
+          role="alert"
+          className="rounded-md border border-red-500/30 bg-red-500/10 px-4 py-6 text-center"
+        >
+          <p className="text-sm text-foreground">
+            Couldn&apos;t load your tasks.
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Your tasks are safe — this is a loading problem, not lost data.
+          </p>
+          <button
+            onClick={() => refreshTasks()}
+            className="mt-3 rounded-full bg-zinc-50 px-4 py-1.5 text-xs font-medium text-zinc-900 transition-opacity hover:opacity-90"
+          >
+            Try again
+          </button>
+        </div>
       </div>
     );
   }
