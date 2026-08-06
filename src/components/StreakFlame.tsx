@@ -282,7 +282,12 @@ const TIER_TEXT_COLORS: Record<string, string> = {
 
 export function StreakFlame({ streak, color, size = 40 }: Props) {
   const FlameComponent = FLAME_COMPONENTS[color] ?? NuclearFlame;
-  const textColor = TIER_TEXT_COLORS[color] ?? "text-tier-proven";
+  // A zero streak is the absence of a result, not a result worth colouring.
+  // Tier colour is earned from the first day on. Per phase-3 §2.3.
+  const textColor =
+    streak === 0
+      ? "text-muted-foreground"
+      : (TIER_TEXT_COLORS[color] ?? "text-tier-proven");
 
   return (
     <div className="flex flex-col items-center gap-0.5">

@@ -3,11 +3,12 @@
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { trpc } from "@/lib/trpc/client";
+import { cn } from "@/lib/utils";
 import { Check, AlertTriangle, Info, type LucideIcon } from "lucide-react";
 
 const SEVERITY_ICON: Record<string, { Icon: LucideIcon; color: string }> = {
-  positive: { Icon: Check, color: "text-green-400" },
-  high: { Icon: AlertTriangle, color: "text-red-400" },
+  positive: { Icon: Check, color: "text-success" },
+  high: { Icon: AlertTriangle, color: "text-error" },
   medium: { Icon: Info, color: "text-muted-foreground" },
 };
 
@@ -21,7 +22,7 @@ export function WeeklyRoastCard() {
 
   if (isLoading) {
     return (
-      <div className="h-32 animate-pulse rounded-md border border-border bg-card p-4" />
+      <div className="h-32 animate-pulse rounded-md border border-border bg-card p-5" />
     );
   }
   if (!user || dismissed) return null;
@@ -49,7 +50,18 @@ export function WeeklyRoastCard() {
       {/* Stats bar */}
       {taskStats && (
         <div className="mb-3 flex gap-3 text-xs">
-          <span className="text-green-400 gp-num">
+          {/* Same rule as the accountability widget: green is earned, not the
+              default. A 57% week is not a success colour. */}
+          <span
+            className={cn(
+              "gp-num",
+              taskStats.completionRate === 0
+                ? "text-muted-foreground"
+                : taskStats.completionRate === 100
+                  ? "text-success"
+                  : "text-tier-warming"
+            )}
+          >
             {taskStats.completionRate}% done
           </span>
           <span className="text-muted-foreground gp-num">
