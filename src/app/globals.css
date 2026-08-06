@@ -204,7 +204,10 @@
 :root[data-theme="light"] {
   color-scheme: light;
 
-  --gp-bg: #ffffff;
+  /* Page sits one step below cards so surfaces read as raised. When both were
+     #ffffff the whole theme was one flat sheet separated only by hairlines.
+     Per design-system-foundation §1.4: page = zinc-50, card = white. */
+  --gp-bg: var(--gp-zinc-50);
   --gp-surface: #ffffff;
   --gp-surface-2: var(--gp-zinc-100);
   --gp-surface-mute: var(--gp-zinc-100);
