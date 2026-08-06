@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { trpc } from "@/lib/trpc/client";
-import { Badge } from "@/components/ui/badge";
 import { useTaskContext } from "@/contexts/TaskContext";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
@@ -28,12 +27,6 @@ interface TaskItemProps {
     goalId: string | null;
   };
 }
-
-const priorityColors = {
-  high: "bg-red-500/10 text-red-400 border-red-500/30",
-  medium: "bg-amber-500/10 text-amber-400 border-amber-500/30",
-  low: "bg-accent text-muted-foreground border-border",
-};
 
 const priorityBarColors = {
   high: "bg-tier-slacking",
@@ -83,14 +76,6 @@ export function TaskItem({ task }: TaskItemProps) {
     } else {
       completeMutation.mutate({ id: task.id });
     }
-  };
-
-  const formatDate = (date: Date | null) => {
-    if (!date) return "";
-    return new Date(date).toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-    });
   };
 
   const startEditing = () => {
@@ -205,15 +190,21 @@ export function TaskItem({ task }: TaskItemProps) {
 
   return (
     <div className="flex items-center overflow-hidden rounded-md border border-border bg-card">
-      {/* Priority strip */}
-      <div className={`w-[3px] self-stretch shrink-0 ${priorityBarColors[task.priority]}`} />
+      {/* Priority strip. This is the only priority encoding on the row — the
+          colour-coded text badge that used to sit beside the title said the
+          same thing a second time. Screen readers get it from the sr-only
+          label below rather than from colour. */}
+      <div
+        aria-hidden
+        className={`w-[3px] self-stretch shrink-0 ${priorityBarColors[task.priority]}`}
+      />
       <div className="flex flex-1 items-center gap-3 px-4 py-3">
       <button
         onClick={handleToggle}
         role="checkbox"
         aria-checked={isCompleted}
         aria-label={`Mark "${task.title}" as ${isCompleted ? "incomplete" : "complete"}`}
-        className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 transition-colors ${
+        className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 outline-none transition-colors focus-visible:ring-[3px] focus-visible:ring-ring/50 ${
           isCompleted
             ? "border-foreground bg-foreground text-background"
             : "border-border hover:border-muted-foreground"
@@ -225,18 +216,15 @@ export function TaskItem({ task }: TaskItemProps) {
         className={`flex-1 text-sm ${isCompleted ? "text-muted-foreground line-through" : "text-foreground"}`}
       >
         {task.title}
+        <span className="sr-only">, {task.priority} priority</span>
       </span>
-      <Badge variant="outline" className={`text-xs ${priorityColors[task.priority]}`}>
-        {task.priority}
-      </Badge>
       {task.goalId && (
         <span title="Linked to a goal" className="text-muted-foreground">
           <Link2 className="h-3 w-3" />
         </span>
       )}
-      {task.dueDate && (
-        <span className="text-xs text-muted-foreground gp-num">{formatDate(task.dueDate)}</span>
-      )}
+      {/* No due date here: the Today view is by definition today, and the Week
+          view already groups every row under a day header. */}
 
       {showDeleteConfirm ? (
         <div className="flex items-center gap-2">
@@ -251,7 +239,10 @@ export function TaskItem({ task }: TaskItemProps) {
       ) : (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="rounded p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
+            <button
+              aria-label={`Actions for "${task.title}"`}
+              className="rounded-sm p-1 text-muted-foreground outline-none transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50"
+            >
               <MoreHorizontal className="h-4 w-4" />
             </button>
           </DropdownMenuTrigger>
