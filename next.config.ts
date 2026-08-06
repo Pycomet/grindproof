@@ -21,7 +21,9 @@ const nextConfig: NextConfig = {
           },
           {
             key: "X-Frame-Options",
-            value: "DENY",
+            // QA design-review harness renders the app in same-origin iframes
+            // to audit fixed breakpoints. Production keeps DENY.
+            value: process.env.NEXT_PUBLIC_QA_MOCK === "1" ? "SAMEORIGIN" : "DENY",
           },
         ],
       },
