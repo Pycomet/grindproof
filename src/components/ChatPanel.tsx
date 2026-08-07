@@ -3,8 +3,87 @@
 import { useRef, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useChatContext } from "@/contexts/ChatContext";
+import { useTaskContext } from "@/contexts/TaskContext";
+import { trpc } from "@/lib/trpc/client";
 import { AnimatePresence, motion } from "framer-motion";
 import { MessageCircle, X, Info } from "lucide-react";
+
+/**
+ * Opening move for the coach panel.
+ *
+ * The panel used to greet an empty conversation with one generic sentence,
+ * which on desktop left the largest region of the dashboard doing nothing.
+ * These prompts are built from the user's actual score, streak, today's
+ * progress and goal count, so the first thing the coach says already knows
+ * what kind of week this is. Per design-system-phase-3 §6.1.
+ */
+function ChatEmptyState({
+  onPick,
+}: {
+  onPick: (prompt: string) => void;
+}) {
+  const { data } = trpc.accountabilityScore.getScore.useQuery();
+  const { goals } = useTaskContext();
+
+  const prompts: string[] = [];
+
+  if (data) {
+    const { score, tier, currentStreak, delta, today } = data;
+    const openGoals = goals.filter((g) => g.status === "active");
+    const { completed, total } = today;
+
+    // Most specific signal first, so an unusual week leads the conversation.
+    // Every branch below is reachable — a steady mid-week user still gets a
+    // prompt built from their own numbers rather than the generic fallbacks.
+    if (delta <= -20) {
+      prompts.push("What happened last week?");
+    }
+    if (tier?.name === "Slacking") {
+      prompts.push(`Score ${score} — what's actually getting in the way?`);
+    }
+    if (total === 0) {
+      prompts.push("Nothing planned today. What's worth committing to?");
+    } else if (completed === 0) {
+      prompts.push(`0/${total} done today. What should I ship first?`);
+    } else if (completed === total) {
+      prompts.push("Everything's done. What should tomorrow look like?");
+    } else {
+      prompts.push(`${completed}/${total} done today — what do I take next?`);
+    }
+    if (openGoals.length >= 5) {
+      prompts.push(`Help me cut a goal — ${openGoals.length} is too many.`);
+    }
+    if (currentStreak >= 3) {
+      prompts.push(`${currentStreak} days in. How do I not break it?`);
+    }
+  }
+
+  // Always leave the user something to press, including on first load.
+  for (const fallback of [
+    "What should I focus on today?",
+    "Review my plan with me.",
+  ]) {
+    if (prompts.length >= 3) break;
+    prompts.push(fallback);
+  }
+
+  return (
+    <div className="flex h-full flex-col justify-end gap-2 p-4">
+      <p className="text-sm text-muted-foreground">
+        {data ? "I've seen your week. Pick one:" : "Pick one to start:"}
+      </p>
+      {prompts.slice(0, 3).map((prompt) => (
+        <button
+          key={prompt}
+          onClick={() => onPick(prompt)}
+          className="rounded-sm border border-border px-3 py-2 text-left text-sm text-foreground outline-none transition-colors duration-150 hover:border-brand hover:bg-brand/5 focus-visible:ring-[3px] focus-visible:ring-ring/50"
+        >
+          {prompt}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 export function ChatPanel({ docked = false }: { docked?: boolean }) {
   const { user } = useAuth();
@@ -22,14 +101,7 @@ export function ChatPanel({ docked = false }: { docked?: boolean }) {
 
   const renderMessages = () => (
     <>
-      {messages.length === 0 && (
-        <div className="flex h-full items-center justify-center text-center text-sm text-muted-foreground">
-          <p>
-            I&apos;m your accountability coach. Ask me anything, or tell me
-            what you&apos;re working on.
-          </p>
-        </div>
-      )}
+      {messages.length === 0 && <ChatEmptyState onPick={sendMessage} />}
       {messages.map((message) => {
         const text =
           message.parts?.find((p) => p.type === "text")?.text ?? "";

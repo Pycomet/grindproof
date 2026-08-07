@@ -49,21 +49,18 @@ export function StoicQuote() {
   if (!quote) return null;
 
   return (
-    <div className="relative border-l-[3px] border-l-brand px-4 py-3 overflow-hidden">
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 bg-gradient-to-r from-amber-500/[0.06] to-transparent"
-      />
-      <div className="relative">
-        <div className="flex items-center gap-2 mb-1">
-          <Flame className="h-3.5 w-3.5" style={{ color: "var(--gp-brand)" }} />
-          <span className="gp-eyebrow" style={{ color: "var(--gp-brand)" }}>
-            Today&apos;s Flame
-          </span>
-        </div>
-        <p className="gp-quote">&ldquo;{quote.text}&rdquo;</p>
-        <span className="gp-meta mt-1 block">— {quote.author}</span>
+    // The brand accent is the left border and the icon — nothing more. The
+    // amber gradient wash that used to sit behind this block was decorative
+    // depth the surface language (foundation §5) doesn't have a slot for.
+    <div className="border-l-2 border-l-brand px-4 py-3">
+      <div className="flex items-center gap-2 mb-1">
+        <Flame className="h-3.5 w-3.5" style={{ color: "var(--gp-brand)" }} />
+        <span className="gp-eyebrow" style={{ color: "var(--gp-brand)" }}>
+          Today&apos;s Reminder
+        </span>
       </div>
+      <p className="gp-quote">&ldquo;{quote.text}&rdquo;</p>
+      <span className="gp-meta mt-1 block">— {quote.author}</span>
     </div>
   );
 }

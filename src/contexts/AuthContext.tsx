@@ -25,6 +25,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    // QA design-review harness: skip the network round-trip and mount a
+    // deterministic user so dashboard surfaces render for visual inspection.
+    if (process.env.NEXT_PUBLIC_QA_MOCK === "1") {
+      setUser({
+        id: "u1",
+        email: "you@example.com",
+        app_metadata: {},
+        user_metadata: {},
+        aud: "authenticated",
+        created_at: new Date().toISOString(),
+      } as User);
+      setIsLoading(false);
+      return;
+    }
+
     supabase.auth.getUser().then(({ data: { user } }) => {
       setUser(user);
       setIsLoading(false);

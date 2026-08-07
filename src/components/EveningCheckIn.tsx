@@ -186,15 +186,19 @@ export function EveningCheckIn() {
                       </span>
                     </div>
                     <div className="flex shrink-0 gap-1">
+                      {/* Two opposite answers used to be pixel-identical until
+                          clicked. Each now previews its own outcome on hover
+                          and focus, so the choice reads before it is made —
+                          without weighting one above the other. */}
                       <button
                         onClick={() =>
                           handleStatusChange(task.id, "completed")
                         }
                         className={cn(
-                          "rounded-sm px-2 py-1 text-xs transition-colors",
+                          "rounded-sm px-2 py-1 text-xs outline-none transition-colors focus-visible:ring-[3px] focus-visible:ring-ring/50",
                           reflections[task.id]?.status === "completed"
-                            ? "bg-green-500/15 text-green-400"
-                            : "bg-accent text-muted-foreground hover:text-foreground"
+                            ? "bg-success/15 text-success ring-1 ring-success/30"
+                            : "bg-accent text-muted-foreground hover:bg-success/10 hover:text-success"
                         )}
                       >
                         Done
@@ -202,10 +206,10 @@ export function EveningCheckIn() {
                       <button
                         onClick={() => handleStatusChange(task.id, "skipped")}
                         className={cn(
-                          "rounded-sm px-2 py-1 text-xs transition-colors",
+                          "rounded-sm px-2 py-1 text-xs outline-none transition-colors focus-visible:ring-[3px] focus-visible:ring-ring/50",
                           reflections[task.id]?.status === "skipped"
-                            ? "bg-red-500/15 text-red-400"
-                            : "bg-accent text-muted-foreground hover:text-foreground"
+                            ? "bg-error/15 text-error ring-1 ring-error/30"
+                            : "bg-accent text-muted-foreground hover:bg-error/10 hover:text-error"
                         )}
                       >
                         Skipped

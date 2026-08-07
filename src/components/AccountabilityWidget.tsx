@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Share2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { trpc } from "@/lib/trpc/client";
+import { cn } from "@/lib/utils";
 import { AccountabilityScoreRing } from "./AccountabilityScoreRing";
 import { StreakBreakBanner } from "./StreakBreakBanner";
 import { StreakFlame } from "./StreakFlame";
@@ -118,8 +119,8 @@ export function AccountabilityWidget() {
         />
       )}
 
-      <div className="rounded-md border border-border bg-card p-4 text-foreground">
-        <div className="flex items-center justify-between gap-3">
+      <div className="rounded-md border border-border bg-card p-5 text-foreground">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <AccountabilityScoreRing score={score} color={tier.color} />
             <div className="min-w-0">
@@ -130,45 +131,70 @@ export function AccountabilityWidget() {
               </div>
               <div className="mt-0.5 text-xs text-muted-foreground">
                 {delta > 0 && (
-                  <span className="gp-num text-green-400">
+                  <span className="gp-num text-success">
                     +{delta} from last week
                   </span>
                 )}
-                {delta < 0 && (
-                  <span className="gp-num text-red-400">
+                {/* A small dip is a number. A collapse is a sentence — quoting
+                    "-38 from last week" back at someone is punishment, not
+                    accountability. Per design-system-phase-3 §2.2. */}
+                {delta < 0 && delta > -20 && (
+                  <span className="gp-num text-tier-warming">
                     {delta} from last week
                   </span>
+                )}
+                {delta <= -20 && (
+                  <span>Last week was a write-off. New week starts now.</span>
                 )}
                 {delta === 0 && <span>No change from last week</span>}
               </div>
             </div>
           </div>
 
-          <div className="flex flex-col items-center">
-            <StreakFlame streak={currentStreak} color={tier.color} size={44} />
-            <div className="mt-1 text-xs text-muted-foreground">day streak</div>
-          </div>
-
-          <div className="text-right">
-            <div className="text-xs text-muted-foreground">Today</div>
-            <div className="gp-num text-base font-semibold text-green-400">
-              {today.completed}/{today.total} done
+          {/* Below `sm` this wrapper is a single flex item, so the streak and
+              today blocks drop to a second line together instead of each
+              squeezing to two-line wraps. At `sm` and up `contents` dissolves
+              it and the original three-column row returns unchanged. */}
+          <div className="flex items-center gap-6 sm:contents">
+            <div className="flex flex-col items-center">
+              <StreakFlame streak={currentStreak} color={tier.color} size={44} />
+              <div className="mt-1 text-xs text-muted-foreground">
+                {currentStreak === 0 ? "Start one today" : "day streak"}
+              </div>
             </div>
-            <Link
-              href="/dashboard/stats"
-              className="text-xs text-muted-foreground transition-colors hover:text-foreground"
-            >
-              View stats →
-            </Link>
-            {currentStreak > 0 && (
-              <button
-                onClick={handleShare}
-                className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
+
+            <div className="text-right">
+              <div className="text-xs text-muted-foreground">Today</div>
+              {/* Never green unless it was earned: zero done is neutral, partial
+                  is warming, only a full sweep reads as success. §2.4 */}
+              <div
+                className={cn(
+                  "gp-num text-base font-semibold",
+                  today.total === 0 || today.completed === 0
+                    ? "text-muted-foreground"
+                    : today.completed === today.total
+                      ? "text-tier-locked"
+                      : "text-tier-warming"
+                )}
               >
-                <Share2 size={12} />
-                {copied ? "Copied!" : "Share streak"}
-              </button>
-            )}
+                {today.completed}/{today.total} done
+              </div>
+              <Link
+                href="/dashboard/stats"
+                className="text-xs text-muted-foreground transition-colors hover:text-foreground"
+              >
+                View stats →
+              </Link>
+              {currentStreak > 0 && (
+                <button
+                  onClick={handleShare}
+                  className="ml-auto flex items-center gap-1 rounded-sm text-xs text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                >
+                  <Share2 size={12} />
+                  {copied ? "Copied!" : "Share"}
+                </button>
+              )}
+            </div>
           </div>
         </div>
 

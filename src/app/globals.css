@@ -43,6 +43,11 @@
   --gp-success: #22c55e;
 
   /* Semantic — DARK-FIRST (canonical experience) */
+  /* Declared here too, so scrollbars, form controls and autofill match the
+     dark surface by default. Without it the unclassed default rendered dark
+     tokens with light native chrome. `.light` overrides this below. */
+  color-scheme: dark;
+
   --gp-bg: var(--gp-zinc-950);
   --gp-surface: var(--gp-zinc-900);
   --gp-surface-2: var(--gp-zinc-800);
@@ -204,7 +209,10 @@
 :root[data-theme="light"] {
   color-scheme: light;
 
-  --gp-bg: #ffffff;
+  /* Page sits one step below cards so surfaces read as raised. When both were
+     #ffffff the whole theme was one flat sheet separated only by hairlines.
+     Per design-system-foundation §1.4: page = zinc-50, card = white. */
+  --gp-bg: var(--gp-zinc-50);
   --gp-surface: #ffffff;
   --gp-surface-2: var(--gp-zinc-100);
   --gp-surface-mute: var(--gp-zinc-100);
@@ -359,16 +367,22 @@
   --duration-slow: var(--motion-slow);
 }
 
-/* Override Tailwind's dark variant: respond to .dark / .marketing-dark
-   classes (forced) AND OS preference when no explicit class is set. */
+/* Override Tailwind's dark variant so it tracks the tokens rather than the OS.
+   The semantic tokens above are dark-first: absent an explicit light opt-in the
+   page IS dark, whatever the OS says. Gating `dark:` on
+   prefers-color-scheme meant that a visitor on an OS set to light, who had
+   chosen no theme, got a dark page rendered with every `dark:` utility switched
+   off — the wordmark resolved to zinc-900 on a zinc-950 background and
+   disappeared. So the condition is "not explicitly light", not "OS is dark".
+
+   The light opt-in has three spellings (see the light block above); all three
+   have to turn the variant off, not just `.light`. */
 @variant dark {
   &:where(.dark, .dark *, .marketing-dark, .marketing-dark *) {
     @slot;
   }
-  @media (prefers-color-scheme: dark) {
-    html:not(.light):not(.dark) & {
-      @slot;
-    }
+  html:not(.dark):not(.light):not(.gp-allow-light):not([data-theme="light"]) & {
+    @slot;
   }
 }
 
